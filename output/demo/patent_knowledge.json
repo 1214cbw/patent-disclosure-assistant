@@ -1,0 +1,336 @@
+{
+  "technical_field": "电机状态监测、故障预警与自适应控制，涉及多源传感信息同步、状态融合和闭环控制。",
+  "technical_problem": "- 单一电流或转速反馈难以同时反映电气、机械和热状态。\n- 多类传感器的采样时钟和噪声水平不同，直接拼接可能导致状态估计不稳定。\n- 状态监测与控制回路相互独立，检测结果不能及时转化为控制参数修正量。",
+  "existing_technology": [
+    "现有电机控制器通常以定子电流和转速作为主要反馈量。",
+    "独立的振动监测设备可用于机械故障检测，但检测结果通常不直接参与控制参数修正。",
+    "温度保护一般采用固定阈值，难以描述负载变化下的连续热状态。"
+  ],
+  "existing_limitations": [
+    "单一电流或转速反馈难以同时反映电气、机械和热状态。",
+    "多类传感器的采样时钟和噪声水平不同，直接拼接可能导致状态估计不稳定。",
+    "状态监测与控制回路相互独立，检测结果不能及时转化为控制参数修正量。"
+  ],
+  "core_idea": "- 状态采集单元：采集振动、定子电流、转速和温度信号。\n- 时间同步单元：将不同采样频率的信号映射到统一时间窗。\n- 状态估计单元：计算传感信号置信度并形成融合状态量。\n- 控制处理单元：根据目标状态与融合状态量的偏差更新控制参数。\n- 电机驱动单元：依据自适应控制指令驱动电机。",
+  "components": [
+    "状态采集单元：采集振动、定子电流、转速和温度信号。",
+    "时间同步单元：将不同采样频率的信号映射到统一时间窗。",
+    "状态估计单元：计算传感信号置信度并形成融合状态量。",
+    "控制处理单元：根据目标状态与融合状态量的偏差更新控制参数。",
+    "电机驱动单元：依据自适应控制指令驱动电机。"
+  ],
+  "steps": [
+    "获取振动、定子电流、转速和温度信号。",
+    "对多源信号进行时间同步和归一化，形成多源特征向量。",
+    "根据各信号的质量指标计算置信度权重，并得到融合状态量。",
+    "计算目标状态与融合状态量之间的状态偏差。",
+    "根据状态偏差和历史偏差生成自适应控制指令并输出至电机驱动单元。"
+  ],
+  "relationships": [
+    "多源传感模块向状态估计模块提供同步信号",
+    "状态估计模块向控制器提供状态量",
+    "控制器向电机驱动单元输出控制指令"
+  ],
+  "data_flow": [
+    "多源传感信号",
+    "同步特征向量",
+    "融合状态量",
+    "自适应控制指令"
+  ],
+  "control_flow": [
+    "获取振动、定子电流、转速和温度信号。",
+    "对多源信号进行时间同步和归一化，形成多源特征向量。",
+    "根据各信号的质量指标计算置信度权重，并得到融合状态量。",
+    "计算目标状态与融合状态量之间的状态偏差。",
+    "根据状态偏差和历史偏差生成自适应控制指令并输出至电机驱动单元。"
+  ],
+  "inputs": [
+    "振动信号",
+    "定子电流",
+    "转速信号",
+    "温度信号"
+  ],
+  "outputs": [
+    "电机状态估计结果",
+    "自适应控制指令"
+  ],
+  "technical_effects": [
+    "将机械、电气和热状态映射为同一融合状态量，为闭环控制提供统一输入。",
+    "通过置信度权重降低单个传感通道异常对控制指令的影响。",
+    "使状态监测结果能够直接参与控制参数修正，缩短监测与控制之间的信息链路。"
+  ],
+  "key_parameters": {
+    "时间窗长度": "100 ms（SYNTHETIC DEMO DATA，仅用于演示）",
+    "权重更新周期": "20 ms（SYNTHETIC DEMO DATA，仅用于演示）",
+    "振动采样率": "12.8 kHz（SYNTHETIC DEMO DATA，仅用于演示）",
+    "电流采样率": "10 kHz（SYNTHETIC DEMO DATA，仅用于演示）",
+    "温度采样率": "10 Hz（SYNTHETIC DEMO DATA，仅用于演示）"
+  },
+  "equations": [
+    {
+      "id": "EQ-001",
+      "latex": "z_k=\\alpha x_{v,k}+\\beta x_{i,k}+(1-\\alpha-\\beta)x_{T,k}",
+      "role": "多源状态融合",
+      "source_ids": [
+        "P007"
+      ],
+      "symbols": {
+        "z": "融合状态量",
+        "k": "离散时间序号",
+        "\\alpha": "振动特征权重",
+        "\\beta": "电流特征权重",
+        "x": "归一化传感特征",
+        "v": "振动通道标识",
+        "i": "电流通道标识",
+        "T": "温度通道标识",
+        "e": "状态偏差",
+        "r": "目标状态",
+        "u": "控制指令",
+        "K_p": "比例修正系数",
+        "K_i": "积分修正系数",
+        "j": "累计序号",
+        "T_e": "电磁转矩",
+        "L_d": "d轴电感",
+        "L_q": "q轴电感",
+        "i_q": "q轴电流",
+        "p": "电机极对数"
+      },
+      "number": null
+    },
+    {
+      "id": "EQ-002",
+      "latex": "e_k=r_k-z_k",
+      "role": "状态偏差计算",
+      "source_ids": [
+        "P007"
+      ],
+      "symbols": {
+        "z": "融合状态量",
+        "k": "离散时间序号",
+        "\\alpha": "振动特征权重",
+        "\\beta": "电流特征权重",
+        "x": "归一化传感特征",
+        "v": "振动通道标识",
+        "i": "电流通道标识",
+        "T": "温度通道标识",
+        "e": "状态偏差",
+        "r": "目标状态",
+        "u": "控制指令",
+        "K_p": "比例修正系数",
+        "K_i": "积分修正系数",
+        "j": "累计序号",
+        "T_e": "电磁转矩",
+        "L_d": "d轴电感",
+        "L_q": "q轴电感",
+        "i_q": "q轴电流",
+        "p": "电机极对数"
+      },
+      "number": null
+    },
+    {
+      "id": "EQ-003",
+      "latex": "u_k=u_{k-1}+K_pe_k+K_i\\sum_{j=1}^{k}e_j",
+      "role": "自适应控制更新",
+      "source_ids": [
+        "P007"
+      ],
+      "symbols": {
+        "z": "融合状态量",
+        "k": "离散时间序号",
+        "\\alpha": "振动特征权重",
+        "\\beta": "电流特征权重",
+        "x": "归一化传感特征",
+        "v": "振动通道标识",
+        "i": "电流通道标识",
+        "T": "温度通道标识",
+        "e": "状态偏差",
+        "r": "目标状态",
+        "u": "控制指令",
+        "K_p": "比例修正系数",
+        "K_i": "积分修正系数",
+        "j": "累计序号",
+        "T_e": "电磁转矩",
+        "L_d": "d轴电感",
+        "L_q": "q轴电感",
+        "i_q": "q轴电流",
+        "p": "电机极对数"
+      },
+      "number": null
+    },
+    {
+      "id": "EQ-004",
+      "latex": "T_e=\\frac{3}{2}p[\\psi_f i_q+(L_d-L_q)i_di_q]",
+      "role": "电磁转矩估计",
+      "source_ids": [
+        "P007"
+      ],
+      "symbols": {
+        "z": "融合状态量",
+        "k": "离散时间序号",
+        "\\alpha": "振动特征权重",
+        "\\beta": "电流特征权重",
+        "x": "归一化传感特征",
+        "v": "振动通道标识",
+        "i": "电流通道标识",
+        "T": "温度通道标识",
+        "e": "状态偏差",
+        "r": "目标状态",
+        "u": "控制指令",
+        "K_p": "比例修正系数",
+        "K_i": "积分修正系数",
+        "j": "累计序号",
+        "T_e": "电磁转矩",
+        "L_d": "d轴电感",
+        "L_q": "q轴电感",
+        "i_q": "q轴电流",
+        "p": "电机极对数"
+      },
+      "number": null
+    }
+  ],
+  "experimental_evidence": [],
+  "alternative_embodiments": [
+    "状态采集单元可仅使用振动、电流和温度中的两种信号。",
+    "置信度权重可由信噪比、缺失率或传感器自检状态确定。",
+    "控制处理单元可采用PI控制、模型预测控制或其他有来源支持的控制方式。"
+  ],
+  "optional_features": [
+    "状态采集单元可仅使用振动、电流和温度中的两种信号。",
+    "置信度权重可由信噪比、缺失率或传感器自检状态确定。",
+    "控制处理单元可采用PI控制、模型预测控制或其他有来源支持的控制方式。"
+  ],
+  "mandatory_features": [
+    "获取振动、定子电流、转速和温度信号。",
+    "对多源信号进行时间同步和归一化，形成多源特征向量。",
+    "根据各信号的质量指标计算置信度权重，并得到融合状态量。",
+    "计算目标状态与融合状态量之间的状态偏差。"
+  ],
+  "inventor_assertions": [],
+  "uncertain_information": [
+    "真实样机的传感器型号、采样精度和通信接口待发明人确认。",
+    "权重约束、控制参数边界和故障安全策略待发明人确认。",
+    "公开日期、发明人和权属信息待确认。"
+  ],
+  "evidence": [
+    {
+      "id": "P001",
+      "claim": "本材料仅用于软件端到端测试，全部技术内容与实验结果均为 SYNTHETIC DEMO DATA，不代表任何真实未公开发明、样机或申请人的研发资料。",
+      "source_type": "source_document",
+      "source_file": "technical_description.md",
+      "source_location": "DEMO声明",
+      "confidence": 0.98,
+      "status": "SOURCE_FACT",
+      "support_state": "explicit"
+    },
+    {
+      "id": "P002",
+      "claim": "电机状态监测、故障预警与自适应控制，涉及多源传感信息同步、状态融合和闭环控制。",
+      "source_type": "source_document",
+      "source_file": "technical_description.md",
+      "source_location": "技术领域",
+      "confidence": 0.98,
+      "status": "SOURCE_FACT",
+      "support_state": "explicit"
+    },
+    {
+      "id": "P003",
+      "claim": "- 现有电机控制器通常以定子电流和转速作为主要反馈量。\n- 独立的振动监测设备可用于机械故障检测，但检测结果通常不直接参与控制参数修正。\n- 温度保护一般采用固定阈值，难以描述负载变化下的连续热状态。",
+      "source_type": "source_document",
+      "source_file": "technical_description.md",
+      "source_location": "技术背景",
+      "confidence": 0.98,
+      "status": "SOURCE_FACT",
+      "support_state": "explicit"
+    },
+    {
+      "id": "P004",
+      "claim": "- 单一电流或转速反馈难以同时反映电气、机械和热状态。\n- 多类传感器的采样时钟和噪声水平不同，直接拼接可能导致状态估计不稳定。\n- 状态监测与控制回路相互独立，检测结果不能及时转化为控制参数修正量。",
+      "source_type": "source_document",
+      "source_file": "technical_description.md",
+      "source_location": "现有技术存在的问题",
+      "confidence": 0.98,
+      "status": "SOURCE_FACT",
+      "support_state": "explicit"
+    },
+    {
+      "id": "P005",
+      "claim": "如何在不依赖单一传感源的情况下获得可用于闭环控制的电机融合状态量，并根据该融合状态量在线生成自适应控制指令。",
+      "source_type": "source_document",
+      "source_file": "technical_description.md",
+      "source_location": "技术问题",
+      "confidence": 0.98,
+      "status": "SOURCE_FACT",
+      "support_state": "explicit"
+    },
+    {
+      "id": "P006",
+      "claim": "- 状态采集单元：采集振动、定子电流、转速和温度信号。\n- 时间同步单元：将不同采样频率的信号映射到统一时间窗。\n- 状态估计单元：计算传感信号置信度并形成融合状态量。\n- 控制处理单元：根据目标状态与融合状态量的偏差更新控制参数。\n- 电机驱动单元：依据自适应控制指令驱动电机。",
+      "source_type": "source_document",
+      "source_file": "technical_description.md",
+      "source_location": "系统组成",
+      "confidence": 0.98,
+      "status": "SOURCE_FACT",
+      "support_state": "explicit"
+    },
+    {
+      "id": "P007",
+      "claim": "- 获取振动、定子电流、转速和温度信号。\n- 对多源信号进行时间同步和归一化，形成多源特征向量。\n- 根据各信号的质量指标计算置信度权重，并得到融合状态量。\n- 计算目标状态与融合状态量之间的状态偏差。\n- 根据状态偏差和历史偏差生成自适应控制指令并输出至电机驱动单元。\n\nFORMULA EQ-001 | 多源状态融合",
+      "source_type": "source_document",
+      "source_file": "technical_description.md",
+      "source_location": "算法流程",
+      "confidence": 0.98,
+      "status": "SOURCE_FACT",
+      "support_state": "explicit"
+    },
+    {
+      "id": "P008",
+      "claim": "PARAM 时间窗长度=100 ms（SYNTHETIC DEMO DATA，仅用于演示）\nPARAM 权重更新周期=20 ms（SYNTHETIC DEMO DATA，仅用于演示）\nPARAM 振动采样率=12.8 kHz（SYNTHETIC DEMO DATA，仅用于演示）\nPARAM 电流采样率=10 kHz（S",
+      "source_type": "source_document",
+      "source_file": "technical_description.md",
+      "source_location": "关键参数",
+      "confidence": 0.98,
+      "status": "SOURCE_FACT",
+      "support_state": "explicit"
+    },
+    {
+      "id": "P009",
+      "claim": "- 将机械、电气和热状态映射为同一融合状态量，为闭环控制提供统一输入。\n- 通过置信度权重降低单个传感通道异常对控制指令的影响。\n- 使状态监测结果能够直接参与控制参数修正，缩短监测与控制之间的信息链路。",
+      "source_type": "source_document",
+      "source_file": "technical_description.md",
+      "source_location": "技术效果",
+      "confidence": 0.98,
+      "status": "SOURCE_FACT",
+      "support_state": "explicit"
+    },
+    {
+      "id": "P010",
+      "claim": "SYNTHETIC DEMO DATA：在人工构造的传感噪声场景下，与等权融合演示基线相比，状态估计均方误差由0.082降至0.061；该数值仅用于测试证据标记、表述和校验，不得作为真实实验结果或申请事实。",
+      "source_type": "source_document",
+      "source_file": "technical_description.md",
+      "source_location": "合成演示实验",
+      "confidence": 0.98,
+      "status": "SOURCE_FACT",
+      "support_state": "explicit"
+    },
+    {
+      "id": "P011",
+      "claim": "- 状态采集单元可仅使用振动、电流和温度中的两种信号。\n- 置信度权重可由信噪比、缺失率或传感器自检状态确定。\n- 控制处理单元可采用PI控制、模型预测控制或其他有来源支持的控制方式。",
+      "source_type": "source_document",
+      "source_file": "technical_description.md",
+      "source_location": "可替代实施方式",
+      "confidence": 0.98,
+      "status": "SOURCE_FACT",
+      "support_state": "explicit"
+    },
+    {
+      "id": "P012",
+      "claim": "- 真实样机的传感器型号、采样精度和通信接口待发明人确认。\n- 权重约束、控制参数边界和故障安全策略待发明人确认。\n- 公开日期、发明人和权属信息待确认。",
+      "source_type": "source_document",
+      "source_file": "technical_description.md",
+      "source_location": "待确认信息",
+      "confidence": 0.98,
+      "status": "SOURCE_FACT",
+      "support_state": "explicit"
+    }
+  ]
+}

@@ -1,0 +1,134 @@
+[
+  {
+    "id": "FIG-001",
+    "number": 1,
+    "type": "flowchart",
+    "title": "电机状态监测与自适应控制方法流程图",
+    "nodes": [
+      {
+        "id": "S1",
+        "label": "S1：获取振动、定子电流、转速和温度信号。",
+        "claim_step": "S1"
+      },
+      {
+        "id": "S2",
+        "label": "S2：对多源信号进行时间同步和归一化，形成多源特征向量。",
+        "claim_step": "S2"
+      },
+      {
+        "id": "S3",
+        "label": "S3：根据各信号的质量指标计算置信度权重，并得到融合状态量。",
+        "claim_step": "S3"
+      },
+      {
+        "id": "S4",
+        "label": "S4：计算目标状态与融合状态量之间的状态偏差。",
+        "claim_step": "S4"
+      },
+      {
+        "id": "S5",
+        "label": "S5：根据状态偏差和历史偏差生成自适应控制指令并输出至电机驱动单元。",
+        "claim_step": "S5"
+      }
+    ],
+    "edges": [
+      {
+        "source": "S1",
+        "target": "S2",
+        "label": ""
+      },
+      {
+        "source": "S2",
+        "target": "S3",
+        "label": ""
+      },
+      {
+        "source": "S3",
+        "target": "S4",
+        "label": ""
+      },
+      {
+        "source": "S4",
+        "target": "S5",
+        "label": ""
+      }
+    ],
+    "source_ids": [
+      "P001",
+      "P002",
+      "P003",
+      "P004",
+      "P005",
+      "P006",
+      "P007",
+      "P008",
+      "P009",
+      "P010",
+      "P011",
+      "P012"
+    ],
+    "png_path": "C:\\Users\\25032\\Desktop\\gongshi\\patent_agent\\output\\demo\\figures\\figure_01.png",
+    "svg_path": "C:\\Users\\25032\\Desktop\\gongshi\\patent_agent\\output\\demo\\figures\\figure_01.svg"
+  },
+  {
+    "id": "FIG-002",
+    "number": 2,
+    "type": "system",
+    "title": "电机状态监测与自适应控制系统结构示意图",
+    "nodes": [
+      {
+        "id": "A",
+        "label": "状态采集单元",
+        "claim_step": null
+      },
+      {
+        "id": "B",
+        "label": "状态估计单元",
+        "claim_step": null
+      },
+      {
+        "id": "C",
+        "label": "控制处理单元",
+        "claim_step": null
+      },
+      {
+        "id": "D",
+        "label": "电机驱动单元",
+        "claim_step": null
+      }
+    ],
+    "edges": [
+      {
+        "source": "A",
+        "target": "B",
+        "label": ""
+      },
+      {
+        "source": "B",
+        "target": "C",
+        "label": ""
+      },
+      {
+        "source": "C",
+        "target": "D",
+        "label": ""
+      }
+    ],
+    "source_ids": [
+      "P001",
+      "P002",
+      "P003",
+      "P004",
+      "P005",
+      "P006",
+      "P007",
+      "P008",
+      "P009",
+      "P010",
+      "P011",
+      "P012"
+    ],
+    "png_path": "C:\\Users\\25032\\Desktop\\gongshi\\patent_agent\\output\\demo\\figures\\figure_02.png",
+    "svg_path": "C:\\Users\\25032\\Desktop\\gongshi\\patent_agent\\output\\demo\\figures\\figure_02.svg"
+  }
+]

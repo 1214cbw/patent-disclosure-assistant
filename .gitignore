@@ -1,0 +1,12 @@
+.env
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+workspace/cache/
+workspace/cases/*
+!workspace/cases/.gitkeep
+~$*.docx
+*.tmp
+output/qa/

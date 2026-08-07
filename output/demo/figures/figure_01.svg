@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="884" viewBox="0 0 900 884">
+<rect width="100%" height="100%" fill="white"/>
+<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="black"/></marker></defs>
+<rect x="120" y="60" width="660" height="108" fill="white" stroke="black" stroke-width="3"/>
+<text text-anchor="middle" font-family="Microsoft YaHei, SimSun" font-size="26"><tspan x="450.0" y="123.0">S1：获取振动、定子电流、转速和温度信号。</tspan></text>
+<rect x="120" y="224" width="660" height="108" fill="white" stroke="black" stroke-width="3"/>
+<text text-anchor="middle" font-family="Microsoft YaHei, SimSun" font-size="26"><tspan x="450.0" y="270.0">S2：对多源信号进行时间同步和归一化，形成多源</tspan><tspan x="450.0" y="304.0">特征向量。</tspan></text>
+<rect x="120" y="388" width="660" height="108" fill="white" stroke="black" stroke-width="3"/>
+<text text-anchor="middle" font-family="Microsoft YaHei, SimSun" font-size="26"><tspan x="450.0" y="434.0">S3：根据各信号的质量指标计算置信度权重，并得</tspan><tspan x="450.0" y="468.0">到融合状态量。</tspan></text>
+<rect x="120" y="552" width="660" height="108" fill="white" stroke="black" stroke-width="3"/>
+<text text-anchor="middle" font-family="Microsoft YaHei, SimSun" font-size="26"><tspan x="450.0" y="615.0">S4：计算目标状态与融合状态量之间的状态偏差。</tspan></text>
+<rect x="120" y="716" width="660" height="108" fill="white" stroke="black" stroke-width="3"/>
+<text text-anchor="middle" font-family="Microsoft YaHei, SimSun" font-size="26"><tspan x="450.0" y="762.0">S5：根据状态偏差和历史偏差生成自适应控制指令</tspan><tspan x="450.0" y="796.0">并输出至电机驱动单元。</tspan></text>
+<line x1="450.0" y1="168" x2="450.0" y2="219" stroke="black" stroke-width="3" marker-end="url(#arrow)"/>
+<line x1="450.0" y1="332" x2="450.0" y2="383" stroke="black" stroke-width="3" marker-end="url(#arrow)"/>
+<line x1="450.0" y1="496" x2="450.0" y2="547" stroke="black" stroke-width="3" marker-end="url(#arrow)"/>
+<line x1="450.0" y1="660" x2="450.0" y2="711" stroke="black" stroke-width="3" marker-end="url(#arrow)"/>
+</svg>

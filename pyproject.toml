@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cn-patent-agent"
+version = "0.1.0"
+description = "Evidence-grounded Chinese Patent Agent with native Word OMML equations"
+requires-python = ">=3.11"
+dependencies = [
+  "pydantic>=2.8",
+  "python-docx>=1.2",
+  "lxml>=5.0",
+  "pypdf>=5.0",
+  "python-pptx>=1.0",
+  "Pillow>=10.0",
+  "fastapi>=0.115",
+  "uvicorn>=0.30",
+  "pywin32>=308; platform_system == 'Windows'",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+patent-agent = "app.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["patent_agent*", "app*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
