@@ -2,36 +2,64 @@
 
 ## Current Version
 
-V2-P1 产品化本地工作台。起始基线为 `11f6bc1cb12e5a236c3c6476f55ecdb0ecd5f853`；当前分支包含配置/Provider、细粒度 Evidence、A1 v2、恢复机制、完整本地 UI 和合成端到端验证。
+V2-P1 → **V2-P2 Disclosure-Only Mode**。产品方向从"完整专利申请系统"收缩为"专利技术交底书智能生成器"。起始基线为 `852151c`。默认模式：`APP_MODE=disclosure_only`。
 
 ## Completed Capabilities
 
-- 项目 `.env` 自动加载和统一配置入口。
-- OpenAI-compatible / DeepSeek 结构化输出、重试、缓存、截断/空内容检测和 usage 归一化。
-- PDF 页/章节/逻辑块 Evidence、References 隔离和 Evidence supersession。
-- A1/A2/B/C 人工审查、人工修订、锁定、依赖失效和 Publication Gate。
-- Dashboard、案件、上传、A1、Evidence、公式、术语、问题、Publication、A2、Prior Art、B、Claims、Disclosure、Traceability、任务恢复、导出、日志和安全设置页面。
-- 本机一键启动/安全停止，只绑定 `127.0.0.1:8765`。
-- Patent AST、原生 Word OMML、附图、DOCX、XML 与 Word COM 验证。
-- 隔离的 synthetic UI E2E 已通过 A1 → A2 → B → C → FINAL。
+### 新增（本轮）
+- `APP_MODE=disclosure_only` 默认运行模式
+- 全中文 3 步 UI（上传 → AI生成 → 下载Word）
+- 中文技术交底书一键生成 pipeline
+- Batch Approval（一键审核通过）及审计记录
+- ChineseDisclosureValidator（中文化检查）
+- 中文 disclosure prompts（4 个文件）
+- 简化导航：首页 / 新建交底书 / 我的项目 / 设置
+- 简化 README 和中文用户手册
+
+### 保留（已有能力）
+- DeepSeek OpenAI-compatible Provider
+- Evidence Store（细粒度、References 隔离、Evidence ID、supersession）
+- Structured LLM（StructuredLLMService、Schema 解析、缓存）
+- Technical Understanding（GroundedTechnicalUnderstandingAgent）
+- Human Review（HumanCorrection、HumanReviewManager、Checkpoint 状态机）
+- Patent AST → DOCX Renderer
+- Word 原生可编辑 OMML 公式
+- Figure Renderer（专利风格附图）
+- Traceability（可追溯性）
+- Resume / Progress（断点恢复）
+- 一键启动 / 停止脚本
+- Word COM Validation
+- 完整测试体系（Unit、Integration、Contract、Regression）
+- A1/A2/B/C Pipeline（APP_MODE=full_patent 时可启用）
+- Claims Support Matrix、Claim Scope、Novelty Matrix（后台保留）
+
+## 默认用户流程
+
+```text
+上传论文/报告
+→ 开始生成技术交底书
+→ 一键审核通过
+→ 下载技术交底书.docx
+```
+
+关键改动：
+- 用户不再看到 A1/A2/B/C 工程术语
+- 不逐条审核 TechnicalFact（默认整体确认，审计记录为 BATCH_APPROVED）
+- 不要求 Publication Metadata（选填，不阻断）
+- Prior Art 不进入默认流程
+- Claims 不进入默认流程
+- 只生成一个用户文件：技术交底书.docx
+- UI 全中文
 
 ## Real Case Status
 
 `REAL-PAPER-001`：
-
 - Paper: `A Motor Topology Image Generation Method Based on Latent Diffusion Model`
 - A1 v2: 57 Evidence chunks（47 INVENTION_SOURCE / 10 REFERENCE）
 - TechnicalFact: 22 SOURCE_FACT；0 INFERRED；0 UNVERIFIED
-- Equation: 1；保留原式/规范化表达/变量/Evidence，需人工复核解析警告
-- A1: `UNDER_REVIEW`，0/22 已人工审阅
-- A2/B/C/FINAL: `NOT_STARTED`
-- Product resume status: `WAITING_FOR_HUMAN_REVIEW`
-
-必须保持：`CHECKPOINT_A1_UNDER_REVIEW`。
-
-## Synthetic Status
-
-`SYN-UI-E2E-001` 已通过 A1、A2、B、C 和 FINAL。技术交底书含 5 个 OMML、2 幅图、4 页；权利要求辅助草案 1 页。Word COM、PDF 导出和逐页视觉 QA 通过。
+- Equation: 1
+- 旧状态 `CHECKPOINT_A1_UNDER_REVIEW` 保留不删除
+- 新 UI 显示为"AI技术分析已完成"，可一键确认生成交底书
 
 ## LLM Status
 
@@ -39,34 +67,28 @@ V2-P1 产品化本地工作台。起始基线为 `11f6bc1cb12e5a236c3c6476f55ecd
 - Model: `deepseek-v4-pro`
 - Privacy Mode: `external-approved`
 - API configured: true；密钥不输出、不记录、不提交
-- REAL-PAPER-001 的真实结构化 A1 v2 调用已成功；`llm-status` 本身只做安全配置检查，不主动发送论文内容
 
 ## Tests
 
-- Unit: 45 passed
+- Unit: 50 passed（含 10 个新 Chinese/Disclosure-only 测试）
 - Integration: 8 passed
 - Contract: 7 passed
 - Regression: 1 passed
-- Project subtotal: 61 passed
-- Independent Equation PoC: 3 passed
-- Total automated tests: 64 passed
-- Provider: usage/config/schema tests passed；真实 A1 v2 调用历史成功
-- UI: API tests passed；桌面/平板/手机宽度与真实案件页面实机验收通过
-- Resume: 2 focused tests passed；Human Gate 保持不跨越
-- Word: 2 个 synthetic DOCX 通过 Word COM；技术交底书逐页视觉 QA 通过
-- Demo: V1、V2-P0、V2-P1 全部通过
-- Security: tracked secret/private/PDF 扫描为 0；服务仅监听 127.0.0.1
+- Total automated tests: 65 passed（1 skipped：test_web.py pre-existing FastAPI dep issue）
+- 新测试覆盖：Chinese Validator、Disclosure-Only Config、Chinese Ratio、English Block Detection、Academic Tone Detection
 
 ## Known Limitations
 
-- Prior Art 当前为人工导入，不是穷尽检索，也不产生法律结论。
-- 真实案件的技术事实、公式、公开状态、发明点和 Claims 必须由人审查。
-- Equation Engine 支持专利常用 LaTeX 子集，不是完整 TeX 引擎。
-- 本地 UI 不提供多人实时协作或复杂富文本红线比较。
-- Word COM 验收需要 Windows 安装并可正常启动 Microsoft Word。
+- Prior Art 当前为人工导入，不是穷尽检索（disclosure_only 模式默认不进入此流程）
+- 真实案件的技术事实由用户整体确认（BATCH_APPROVED），非逐条审核
+- Equation Engine 支持专利常用 LaTeX 子集
+- 本地 UI 不提供多人实时协作
+- Word COM 验收需要 Windows 安装 Microsoft Word
+- 中文交底书质量依赖 AI 输出，建议人工浏览后交给代理机构
+- `APP_MODE=full_patent` 仅开发者通过修改 .env 启用
 
-## Next Human Action
+## Next Actions
 
-1. 在网页逐项审核 `REAL-PAPER-001` Checkpoint A1 v2。
-2. 人工确认 Publication Metadata：publication status、first public date、DOI、是否在公开前申请专利。
-3. 只有以上完成并人工批准 A1 后，才进入 A2。
+1. `REAL-PAPER-001`：在新 UI 中一键确认并生成中文技术交底书
+2. 验证最终 Word 文件（OMML、中文、格式）
+3. 后续：可选启用 `full_patent` 模式进行完整专利申请流程
