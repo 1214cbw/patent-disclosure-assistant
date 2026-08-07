@@ -185,16 +185,19 @@ class DisclosureDepthValidator:
                 f"以下章节内容过少：{', '.join(result.thin_sections)}"
             )
 
-        # 6. Evidence / Source utilization
+        # 6. Evidence Coverage Rate (0-100%) + Reuse Ratio
         if total_evidence_chunks > 0 and used_evidence_ids:
-            result.source_utilization_rate = len(used_evidence_ids) / total_evidence_chunks
-            if result.source_utilization_rate < 0.3:
+            # Coverage: what fraction of available invention-source evidence is used
+            coverage = min(1.0, len(used_evidence_ids) / total_evidence_chunks)
+            result.source_utilization_rate = coverage  # Now 0-100%
+
+            if coverage < 0.25:
                 result.evidence_coverage = "NEEDS_IMPROVEMENT"
                 result.warnings.append(
-                    f"材料利用率偏低（{result.source_utilization_rate:.1%}），"
+                    f"证据覆盖率偏低（{coverage:.1%}），"
                     f"仅使用了{len(used_evidence_ids)}/{total_evidence_chunks}个证据块"
                 )
-            elif result.source_utilization_rate < 0.5:
+            elif coverage < 0.50:
                 result.evidence_coverage = "ADEQUATE"
             else:
                 result.evidence_coverage = "PASS"

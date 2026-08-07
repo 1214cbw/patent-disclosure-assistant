@@ -242,21 +242,35 @@ class DisclosureOnlyPipeline:
         ) as event:
             from patent_agent.agents.section_writer import SectionWriter
 
-            writer = SectionWriter(
-                llm_service=llm if (use_llm and self.provider is not None) else None
-            )
-            disclosure = writer.generate_all_sections(
+            # Build deterministic evidence skeleton
+            skeleton_writer = SectionWriter()
+            skeleton = skeleton_writer.generate_all_sections(
                 content_plan, feature_tree, understanding, evidence_store,
                 inventor_assertions=self.store.load_inventor_assertions(case_id),
             )
 
+            # Convert to Chinese using DeepSeek per-section
+            if use_llm and self.provider is not None:
+                disclosure = self._convert_disclosure_to_chinese(
+                    skeleton, self.provider,
+                )
+                cn_chars = sum(1 for s in disclosure.sections for p in getattr(s, 'paragraphs', []) for ch in getattr(p, 'text', '') if '一' <= ch <= '鿿')
+                total_chars = sum(len(getattr(p, 'text', '')) for s in disclosure.sections for p in getattr(s, 'paragraphs', []))
+                event["output"] = {
+                    "cn_mode": "deepseek_chinese",
+                    "cn_chars": cn_chars,
+                    "total_chars": total_chars,
+                    "cn_ratio": f"{cn_chars/max(1,total_chars):.1%}",
+                }
+            else:
+                disclosure = skeleton
+                event["output"] = {"cn_mode": "deterministic_evidence"}
+
             self.store.save_stage(case_id, "p1_disclosure", disclosure)
-            event["output"] = {
-                "sections": len(disclosure.sections),
-                "paragraphs": sum(
-                    len(section.paragraphs) for section in disclosure.sections
-                ),
-            }
+            event["output"]["sections"] = len(disclosure.sections)
+            event["output"]["paragraphs"] = sum(
+                len(section.paragraphs) for section in disclosure.sections
+            )
 
         # ── Stage 6: Figures ──
         with log.stage("figures", STAGE_LABELS_CN["figures"]) as event:
@@ -429,6 +443,82 @@ class DisclosureOnlyPipeline:
                 target=nodes[i + 1].id,
             ))
         return edges
+
+    @staticmethod
+    def _convert_disclosure_to_chinese(
+        skeleton: "GroundedDisclosure",
+        provider,
+    ) -> "GroundedDisclosure":
+        """Convert English evidence disclosure to Chinese using DeepSeek per-section."""
+        from patent_agent.core.models import GroundedParagraph
+
+        SYSTEM_PROMPT = (
+            "你是中文专利技术交底书撰写专家。请将提供的英文技术材料改写为简体中文专利交底书正文。\n"
+            "要求：\n"
+            "1. 全部使用简体中文输出，禁止输出英文段落\n"
+            "2. 使用专利交底书表达方式，禁止'本文''本研究''我们提出'等学术表达\n"
+            "3. 技术术语首次出现使用'中文全称（English Full Name，缩写）'格式\n"
+            "4. 不编造任何数据、参数或实验结果\n"
+            "5. 缺失信息不编造，保持原文信息量\n"
+            "6. 只输出改写后的中文段落，每段之间用空行分隔\n"
+            "7. 不要输出章节标题"
+        )
+
+        new_sections = []
+        for section in skeleton.sections:
+            title = getattr(section, "title", "")
+            old_paras = getattr(section, "paragraphs", [])
+
+            # Collect English text
+            en_text = "\n\n".join(
+                getattr(p, "text", "") for p in old_paras[:15]
+            )
+            if not en_text.strip():
+                new_sections.append(section)
+                continue
+
+            # Skip if already mostly Chinese
+            cn_check = sum(1 for ch in en_text if "一" <= ch <= "鿿")
+            if cn_check > len(en_text) * 0.6:
+                new_sections.append(section)
+                continue
+
+            # Call DeepSeek for Chinese conversion
+            try:
+                resp = provider.generate_text(
+                    system_prompt=SYSTEM_PROMPT,
+                    user_prompt=f"章节主题：{title}\n\n英文技术材料：\n{en_text[:5000]}",
+                )
+                cn_text = resp.text if hasattr(resp, "text") else str(resp)
+            except Exception:
+                new_sections.append(section)
+                continue
+
+            # Parse Chinese text into paragraphs
+            raw_paras = [
+                p.strip() for p in cn_text.split("\n\n") if len(p.strip()) > 15
+            ]
+            new_paras = []
+            for j, pt in enumerate(raw_paras):
+                # Link to original evidence from skeleton paragraphs
+                src_para = old_paras[min(j, len(old_paras) - 1)] if old_paras else None
+                new_paras.append(GroundedParagraph(
+                    paragraph_id=f"DISC-CN-{getattr(section, 'section_id', 'X')}-P{j + 1:03d}",
+                    section_id=getattr(section, "section_id", ""),
+                    text=pt,
+                    evidence_ids=getattr(src_para, "evidence_ids", [])[:5] if src_para else [],
+                    fact_ids=getattr(src_para, "fact_ids", [])[:5] if src_para else [],
+                    derived_from=getattr(src_para, "fact_ids", [])[:3] if src_para else [],
+                    status=EvidenceStatus.INFERRED,
+                    review_status=ReviewStatus.LOCKED,
+                ))
+
+            if new_paras:
+                new_sections.append(section.model_copy(update={"paragraphs": new_paras}))
+            else:
+                new_sections.append(section)
+
+        return skeleton.model_copy(update={"sections": new_sections})
 
     def _batch_approve_understanding(
         self,
