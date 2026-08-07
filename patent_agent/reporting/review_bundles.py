@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from collections import Counter
 from pathlib import Path
 
 from patent_agent.review.claim_scope import render_scope_comparison, render_scope_review
@@ -23,6 +24,21 @@ class ReviewBundleBuilder:
         (root / "terminology_review.md").write_text("# Terminology Review\n\n" + "\n".join(f"- {term}: UNREVIEWED" for term in terms) + "\n", encoding="utf-8")
         (root / "inventor_questions.md").write_text(_questions(questions), encoding="utf-8")
         (root / "review_objects.json").write_text(json.dumps([item.model_dump(mode="json") for item in understanding.facts], ensure_ascii=False, indent=2), encoding="utf-8")
+        (root / "patent_knowledge.json").write_text(understanding.model_dump_json(indent=2), encoding="utf-8")
+        evidence = evidence_store.all(); scope_counts = Counter(item.scope.value for item in evidence); fact_counts = Counter(item.status.value for item in understanding.facts)
+        referenced = {identifier for item in understanding.facts for identifier in item.evidence_ids}; invalid = sorted(referenced - {item.evidence_id for item in evidence})
+        coverage = ["# Evidence Coverage Report", "", f"- Evidence chunks: {len(evidence)}", f"- Invention-source chunks: {scope_counts.get('INVENTION_SOURCE', 0)}", f"- Reference/prior-art-candidate chunks: {scope_counts.get('REFERENCE', 0)}", f"- Technical facts: {len(understanding.facts)}", f"- SOURCE_FACT: {fact_counts.get('SOURCE_FACT', 0)}", f"- INFERRED: {fact_counts.get('INFERRED', 0)}", f"- UNVERIFIED: {fact_counts.get('UNVERIFIED', 0)}", f"- SOURCE_FACT_WITHOUT_EVIDENCE: {sum(item.status.value == 'SOURCE_FACT' and not item.evidence_ids for item in understanding.facts)}", f"- INVALID_EVIDENCE_REFERENCE: {len(invalid)}", f"- Referenced chunks: {len(referenced)}", "", "References are isolated as `REFERENCE / PRIOR_ART_CANDIDATE` and cannot support facts of the present paper."]
+        (root / "evidence_coverage_report.md").write_text("\n".join(coverage) + "\n", encoding="utf-8")
+        term_lines = ["# Terminology Registry", "", "| Source term | Proposed normalized term | Evidence | Review |", "|---|---|---|---|"]
+        for item in understanding.components: term_lines.append(f"| {item.name} | {item.name} | {', '.join(item.description.evidence_ids)} | UNREVIEWED |")
+        for item in understanding.parameters: term_lines.append(f"| {item.symbol or item.name} | {item.name} | {', '.join(item.evidence_ids)} | UNREVIEWED |")
+        (root / "terminology_registry.md").write_text("\n".join(term_lines) + "\n", encoding="utf-8")
+        equation_lines = ["# Equation Review", ""]
+        for item in understanding.equations: equation_lines += [f"## {item.equation_id}", "", f"- Original: `{item.original_expression}`", f"- Normalized LaTeX: `{item.normalized_latex or 'UNVERIFIED'}`", f"- Status: {item.status.value}", f"- Evidence: {', '.join(item.evidence_ids)}", f"- Symbols: {json.dumps(item.symbols, ensure_ascii=False)}", f"- Review: {item.review_status.value}", ""]
+        (root / "equation_review.md").write_text("\n".join(equation_lines), encoding="utf-8")
+        question_counts = Counter(item.priority for item in questions); role_counts = Counter(item.question_role for item in questions)
+        stats = {"schema_version": "2.0", "evidence_chunk_count": len(evidence), "invention_source_count": scope_counts.get("INVENTION_SOURCE", 0), "reference_count": scope_counts.get("REFERENCE", 0), "source_fact_count": fact_counts.get("SOURCE_FACT", 0), "inferred_count": fact_counts.get("INFERRED", 0), "unverified_count": fact_counts.get("UNVERIFIED", 0), "source_fact_without_evidence": sum(item.status.value == "SOURCE_FACT" and not item.evidence_ids for item in understanding.facts), "invalid_evidence_reference": len(invalid), "equation_count": len(understanding.equations), "p0_questions": question_counts.get("P0", 0), "p1_questions": question_counts.get("P1", 0), "p2_questions": question_counts.get("P2", 0), "question_roles": dict(role_counts), "a1_approved": False}
+        (root / "a1_quality_statistics.json").write_text(json.dumps(stats, ensure_ascii=False, indent=2), encoding="utf-8")
         return root
 
     def a2(self, candidates, questions) -> Path:
@@ -77,5 +93,5 @@ def render_terminology_registry(terms) -> str:
 
 def _questions(questions) -> str:
     lines = ["# Inventor Questions", ""]
-    for item in questions: lines += [f"## {item.question_id}", "", f"- Priority: {item.priority}", f"- Blocking: {item.blocking_stage or 'none'}", f"- Answered: {item.answered}", "", item.text, ""]
+    for item in questions: lines += [f"## {item.question_id}", "", f"- Priority: {item.priority}", f"- Role: {item.question_role}", f"- Blocking: {item.blocking_stage or 'none'}", f"- Answered: {item.answered}", "", item.text, ""]
     return "\n".join(lines)

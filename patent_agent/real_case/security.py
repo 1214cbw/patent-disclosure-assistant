@@ -55,6 +55,25 @@ class RealCaseManager:
         manifest.updated_at = utc_now()
         atomic_write_text(self.manifest_path(manifest.case_id), manifest.model_dump_json(indent=2))
 
+    def update_publication_metadata(self, case_id: str, **values) -> RealCaseManifest:
+        """Update only the explicit, human-reviewable publication metadata."""
+        allowed = {
+            "paper_title",
+            "publication_status",
+            "first_public_date",
+            "doi",
+            "preprint_status",
+            "patent_filed_before_publication",
+            "publication_review_status",
+        }
+        unexpected = set(values) - allowed
+        if unexpected:
+            raise ValueError(f"UNSUPPORTED_PUBLICATION_METADATA: {sorted(unexpected)}")
+        manifest = self.load(case_id).model_copy(update=values)
+        manifest = RealCaseManifest.model_validate(manifest.model_dump())
+        self.save(manifest)
+        return manifest
+
     def ingest(self, case_id: str, source: Path) -> Path:
         manifest = self.load(case_id)
         source = Path(source).resolve()

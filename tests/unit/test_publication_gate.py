@@ -21,3 +21,14 @@ def test_publication_metadata_blocks_real_a2(tmp_path: Path):
     review.machine.save(review.state_path)
     with pytest.raises(ValueError, match="PUBLICATION_STATUS_REQUIRED_BEFORE_A2"):
         RealCaseWorkflow(settings).continue_case("REAL-PUB-1")
+
+
+def test_publication_metadata_update_is_allowlisted(tmp_path: Path):
+    manager = RealCaseManager(tmp_path)
+    manager.create("REAL-PUB-2", authorized=True)
+    manifest = manager.update_publication_metadata(
+        "REAL-PUB-2", paper_title="Explicit title", publication_status="UNKNOWN"
+    )
+    assert manifest.paper_title == "Explicit title"
+    with pytest.raises(ValueError, match="UNSUPPORTED_PUBLICATION_METADATA"):
+        manager.update_publication_metadata("REAL-PUB-2", external_llm_approved=True)

@@ -30,7 +30,13 @@ class RealCaseWorkflow:
     def run_a1(self, case_id: str, *, use_llm: bool = False, auto_approve: bool = False) -> Path:
         if auto_approve: raise PermissionError("AUTO_APPROVE_NOT_ALLOWED_FOR_REAL_CASE")
         manifest = self.manager.load(case_id)
-        sources = sorted(path for path in (self.manager.case_dir(case_id) / "source").rglob("*") if path.is_file())
+        case_dir = self.manager.case_dir(case_id)
+        previous_versions = [item for item in self.store.load(case_id).versions if item.stage == "p1_technical_understanding"]
+        current_bundle = case_dir / "review" / "checkpoint_A1"
+        if previous_versions and current_bundle.exists():
+            archived_bundle = case_dir / "review" / f"checkpoint_A1_v{len(previous_versions)}"
+            if not archived_bundle.exists(): shutil.copytree(current_bundle, archived_bundle)
+        sources = sorted(path for path in (case_dir / "source").rglob("*") if path.is_file())
         if not sources: raise ValueError("REAL_CASE_EXPLICIT_SOURCE_REQUIRED")
         _, chunks, _ = SourceManager(self.store).ingest(case_id, sources)
         evidence = EvidenceStore(self.manager.case_dir(case_id) / "evidence")
@@ -43,11 +49,18 @@ class RealCaseWorkflow:
         else:
             understanding = DeterministicGroundedAnalyzer().run(chunks, evidence)
         questions = generate_inventor_questions(understanding)
-        self.store.save_stage(case_id, "p1_technical_understanding", understanding)
+        stage_path = self.store.save_stage(case_id, "p1_technical_understanding", understanding)
         (self.manager.case_dir(case_id) / "review" / "inventor_questions.json").write_text(json.dumps([item.model_dump(mode="json") for item in questions], ensure_ascii=False, indent=2), encoding="utf-8")
         root = ReviewBundleBuilder(self.manager.case_dir(case_id)).a1(understanding, evidence, questions)
         HumanReviewManager(self.manager.case_dir(case_id)).export_review("A1", [item.model_dump(mode="json") for item in understanding.facts])
         manifest.current_checkpoint = "A1"; manifest.case_state = CaseWorkflowState.A1_REVIEW; self.manager.save(manifest)
+        version = len(previous_versions) + 1
+        versioned_root = case_dir / "review" / f"checkpoint_A1_v{version}"
+        if not versioned_root.exists(): shutil.copytree(root, versioned_root)
+        if previous_versions:
+            from patent_agent.reporting import build_a1_comparison
+            old_evidence = case_dir / "evidence" / "versions" / "v001" / "chunks.jsonl"
+            if old_evidence.exists(): build_a1_comparison(case_dir, Path(previous_versions[-1].path), stage_path, old_evidence, case_dir / "evidence" / "chunks.jsonl")
         return root
 
     def import_review(self, case_id: str, path: Path) -> Path:

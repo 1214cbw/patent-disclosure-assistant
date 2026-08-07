@@ -146,6 +146,12 @@ class EquationKnowledge(StrictSchema):
     human_modified: bool = False
     locked: bool = False
 
+    @model_validator(mode="after")
+    def human_formula_requires_human_edit(self):
+        if self.human_formula is not None and not self.human_modified:
+            raise ValueError("HUMAN_FORMULA_REQUIRES_HUMAN_MODIFICATION")
+        return self
+
 
 class InventorQuestion(StrictSchema):
     question_id: str
