@@ -16,6 +16,41 @@ class LLMResponse(BaseModel):
     raw_metadata: dict[str, Any] = Field(default_factory=dict)
 
 
+class NormalizedLLMUsage(BaseModel):
+    input_tokens: int = 0
+    output_tokens: int = 0
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    total_tokens: int = 0
+    cache_hit_tokens: int = 0
+    cache_miss_tokens: int = 0
+    reasoning_tokens: int = 0
+
+
+def normalize_llm_usage(raw: dict[str, Any] | None) -> dict[str, int]:
+    """Normalize OpenAI/DeepSeek token usage so agents never parse provider payloads."""
+    raw = raw or {}
+    prompt_details = raw.get("prompt_tokens_details") if isinstance(raw.get("prompt_tokens_details"), dict) else {}
+    completion_details = raw.get("completion_tokens_details") if isinstance(raw.get("completion_tokens_details"), dict) else {}
+
+    def number(*values: Any) -> int:
+        return next((int(item) for item in values if isinstance(item, (int, float)) and not isinstance(item, bool)), 0)
+
+    input_tokens = number(raw.get("input_tokens"), raw.get("prompt_tokens"))
+    output_tokens = number(raw.get("output_tokens"), raw.get("completion_tokens"))
+    normalized = NormalizedLLMUsage(**{
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "prompt_tokens": input_tokens,
+        "completion_tokens": output_tokens,
+        "total_tokens": number(raw.get("total_tokens"), input_tokens + output_tokens),
+        "cache_hit_tokens": number(raw.get("cache_hit_tokens"), raw.get("prompt_cache_hit_tokens"), prompt_details.get("cached_tokens")),
+        "cache_miss_tokens": number(raw.get("cache_miss_tokens"), raw.get("prompt_cache_miss_tokens")),
+        "reasoning_tokens": number(raw.get("reasoning_tokens"), completion_details.get("reasoning_tokens")),
+    })
+    return normalized.model_dump()
+
+
 class LLMProvider(ABC):
     """Provider contract. Patent agents consume schemas, never provider payloads."""
 

@@ -8,6 +8,7 @@ from patent_agent.core.models import utc_now
 from patent_agent.core.state import CaseStore
 
 from .models import RealCaseManifest
+from patent_agent.core.atomic import atomic_write_text
 
 
 def effective_llm_mode(global_mode: str, manifest: RealCaseManifest) -> str:
@@ -52,7 +53,7 @@ class RealCaseManager:
 
     def save(self, manifest: RealCaseManifest) -> None:
         manifest.updated_at = utc_now()
-        self.manifest_path(manifest.case_id).write_text(manifest.model_dump_json(indent=2), encoding="utf-8")
+        atomic_write_text(self.manifest_path(manifest.case_id), manifest.model_dump_json(indent=2))
 
     def ingest(self, case_id: str, source: Path) -> Path:
         manifest = self.load(case_id)

@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from .models import InventorAssertion, PatentCase, StageVersion, utc_now
+from .atomic import atomic_write_text, atomic_write_json
 
 
 CASE_DIRS = ("source", "working", "figures", "search", "drafts", "review", "output", "logs", "evidence", "llm_cache", "assertions")
@@ -42,12 +43,12 @@ class CaseStore:
             if not backup.exists():
                 shutil.copy2(path, backup)
             raw["schema_version"] = "2.0"
-            path.write_text(json.dumps(raw, ensure_ascii=False, indent=2), encoding="utf-8")
+            atomic_write_json(path, raw)
         return self.load(case_id)
 
     def save_case(self, case: PatentCase) -> None:
         case.updated_at = utc_now()
-        (self.case_dir(case.case_id) / "case.json").write_text(case.model_dump_json(indent=2), encoding="utf-8")
+        atomic_write_text(self.case_dir(case.case_id) / "case.json", case.model_dump_json(indent=2))
 
     def save_stage(self, case_id: str, stage: str, payload: Any, human_modified: bool = False) -> Path:
         case = self.load(case_id)
@@ -59,7 +60,7 @@ class CaseStore:
             text = payload.model_dump_json(indent=2)
         else:
             text = json.dumps(payload, ensure_ascii=False, indent=2)
-        path.write_text(text, encoding="utf-8")
+        atomic_write_text(path, text)
         case.current_stage = stage
         case.status = "in_progress"
         case.versions.append(StageVersion(stage=stage, version=version, path=str(path), human_modified=human_modified))

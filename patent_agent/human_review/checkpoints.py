@@ -6,6 +6,7 @@ from pathlib import Path
 from patent_agent.core.models import ReviewStatus, utc_now
 
 from .models import CheckpointRecord, CheckpointStatus, ReviewImport
+from patent_agent.core.atomic import atomic_write_json
 
 
 ORDER = ["A1", "A2", "B", "C", "FINAL"]
@@ -49,8 +50,7 @@ class CheckpointStateMachine:
 
     def save(self, path: Path) -> Path:
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps({key: value.model_dump(mode="json") for key, value in self.records.items()}, ensure_ascii=False, indent=2), encoding="utf-8")
-        return path
+        return atomic_write_json(path, {key: value.model_dump(mode="json") for key, value in self.records.items()})
 
     @classmethod
     def load(cls, path: Path) -> "CheckpointStateMachine":
@@ -74,8 +74,8 @@ class HumanReviewManager:
         path = self.review_dir / f"checkpoint_{checkpoint}" / "review_input.json"
         path.parent.mkdir(parents=True, exist_ok=True)
         payload = {"schema_version": "2.0", "case_id": self.case_dir.name, "checkpoint": checkpoint, "corrections": [], "risk_acknowledged": False}
-        path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-        (path.parent / "review_objects.json").write_text(json.dumps(objects, ensure_ascii=False, indent=2), encoding="utf-8")
+        atomic_write_json(path, payload)
+        atomic_write_json(path.parent / "review_objects.json", objects)
         self.machine.save(self.state_path)
         return path
 

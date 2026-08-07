@@ -44,6 +44,8 @@ def main(argv=None):
     p = sub.add_parser("claim-scope"); p.add_argument("case_id")
     p = sub.add_parser("evaluation-report"); p.add_argument("case_id"); p.add_argument("--run-id")
     p = sub.add_parser("real-case-answer"); p.add_argument("case_id"); p.add_argument("question_id"); p.add_argument("statement")
+    p = sub.add_parser("resume-status"); p.add_argument("--case-id")
+    p = sub.add_parser("resume"); p.add_argument("--case-id")
     args = parser.parse_args(argv); settings = Settings.load(); store = CaseStore(settings.workspace_root)
     if args.command == "new": print(store.create(args.case_id, args.title).model_dump_json(indent=2))
     elif args.command == "ingest": print(SourceManager(store).ingest(args.case_id, [Path(p) for p in args.paths])[0])
@@ -141,6 +143,11 @@ def main(argv=None):
     elif args.command == "real-case-answer":
         from patent_agent.workflow import RealCaseWorkflow
         print(RealCaseWorkflow(settings).answer_inventor_question(args.case_id, args.question_id, args.statement))
+    elif args.command in {"resume-status", "resume"}:
+        from patent_agent.progress import ProgressManager
+        manager = ProgressManager(settings.project_root)
+        result = manager.summary(args.case_id) if args.command == "resume-status" else json.loads(manager.resume(args.case_id).model_dump_json())
+        print(json.dumps(result, ensure_ascii=False, indent=2))
 
 
 if __name__ == "__main__": main()

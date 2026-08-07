@@ -1,0 +1,20 @@
+{
+  "schema_version": "2.0",
+  "task": "Patent Agent Long-Run Completion",
+  "phase": "Phase 1",
+  "subphase": "config_provider_progress",
+  "status": "COMPLETED",
+  "last_completed_step": "Phase 1 config, provider usage normalization, atomic writes and resume core",
+  "next_step": "Phase 2 fine-grained evidence and migration",
+  "git_commit": "11f6bc1cb12e5a236c3c6476f55ecdb0ecd5f853",
+  "tests_last_run": "40 Unit+Contract passed; llm-status configured; resume tests passed",
+  "updated_at": "2026-08-07T11:27:08.576741+00:00",
+  "blocking_reason": null,
+  "case_id": null,
+  "error_code": null,
+  "attempts": 1,
+  "stage_states": {
+    "baseline": "COMPLETED",
+    "config_provider_progress": "COMPLETED"
+  }
+}

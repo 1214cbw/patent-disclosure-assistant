@@ -5,6 +5,25 @@ from dataclasses import dataclass
 from pathlib import Path
 
 
+def _load_project_env(path: Path) -> dict[str, str]:
+    """Read exactly one project-local .env without mutating process/global env."""
+    if not path.is_file():
+        return {}
+    values: dict[str, str] = {}
+    for raw in path.read_text(encoding="utf-8-sig").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        name, value = line.split("=", 1)
+        name, value = name.strip(), value.strip()
+        if not name:
+            continue
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
+            value = value[1:-1]
+        values[name] = value
+    return values
+
+
 @dataclass(frozen=True)
 class Settings:
     project_root: Path
@@ -27,7 +46,12 @@ class Settings:
     @classmethod
     def load(cls, project_root: Path | None = None) -> "Settings":
         root = (project_root or Path(__file__).resolve().parents[2]).resolve()
-        mode = os.getenv("PATENT_LLM_MODE", "disabled").strip().lower()
+        file_env = _load_project_env(root / ".env")
+
+        def value(name: str, default: str = "") -> str:
+            return os.environ.get(name, file_env.get(name, default))
+
+        mode = value("PATENT_LLM_MODE", "disabled").strip().lower()
         if mode not in {"disabled", "external-approved", "local"}:
             raise ValueError("PATENT_LLM_MODE must be disabled, external-approved, or local")
         return cls(
@@ -35,17 +59,17 @@ class Settings:
             workspace_root=root / "workspace",
             template_root=root / "templates",
             output_root=root / "output",
-            llm_base_url=os.getenv("LLM_BASE_URL", ""),
-            llm_api_key=os.getenv("LLM_API_KEY", ""),
-            llm_model=os.getenv("LLM_MODEL", ""),
-            llm_provider=os.getenv("LLM_PROVIDER", "openai-compatible"),
-            llm_timeout=float(os.getenv("LLM_TIMEOUT", "120")),
-            llm_max_retries=max(0, int(os.getenv("LLM_MAX_RETRIES", "1"))),
+            llm_base_url=value("LLM_BASE_URL"),
+            llm_api_key=value("LLM_API_KEY"),
+            llm_model=value("LLM_MODEL"),
+            llm_provider=value("LLM_PROVIDER", "openai-compatible"),
+            llm_timeout=float(value("LLM_TIMEOUT", "120")),
+            llm_max_retries=max(0, int(value("LLM_MAX_RETRIES", "1"))),
             patent_llm_mode=mode,
-            llm_cache_enabled=os.getenv("PATENT_LLM_CACHE", "true").lower() == "true",
-            debug_save_llm_payloads=os.getenv("PATENT_DEBUG_SAVE_LLM_PAYLOADS", "false").lower() == "true",
-            llm_input_price_per_million=_optional_float("LLM_INPUT_PRICE_PER_MILLION"),
-            llm_output_price_per_million=_optional_float("LLM_OUTPUT_PRICE_PER_MILLION"),
+            llm_cache_enabled=value("PATENT_LLM_CACHE", "true").lower() == "true",
+            debug_save_llm_payloads=value("PATENT_DEBUG_SAVE_LLM_PAYLOADS", "false").lower() == "true",
+            llm_input_price_per_million=_optional_float_value(value("LLM_INPUT_PRICE_PER_MILLION")),
+            llm_output_price_per_million=_optional_float_value(value("LLM_OUTPUT_PRICE_PER_MILLION")),
             allow_external_llm=mode in {"external-approved", "local"},
         )
 
@@ -64,6 +88,6 @@ class Settings:
         }
 
 
-def _optional_float(name: str) -> float | None:
-    value = os.getenv(name, "").strip()
-    return float(value) if value else None
+def _optional_float_value(raw: str) -> float | None:
+    raw = raw.strip()
+    return float(raw) if raw else None
