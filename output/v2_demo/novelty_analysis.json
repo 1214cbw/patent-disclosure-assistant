@@ -1,0 +1,94 @@
+{
+  "schema_version": "2.0",
+  "assessments": [
+    {
+      "schema_version": "2.0",
+      "feature_id": "NF-001",
+      "feature_text": "获取振动、定子电流、转速和温度信号。",
+      "prior_art_document_id": "DEMO-PA-002",
+      "assessment": "POSSIBLY_DISCLOSED",
+      "prior_art_evidence_ids": [
+        "EV-PA8BBCCD9E08-0001-d8a95166"
+      ],
+      "reasoning": "基于人工导入摘要的确定性词项覆盖率 0.21；需要专利专业人员核对全文。"
+    },
+    {
+      "schema_version": "2.0",
+      "feature_id": "NF-001",
+      "feature_text": "获取振动、定子电流、转速和温度信号。",
+      "prior_art_document_id": "DEMO-PA-001",
+      "assessment": "EXPLICITLY_DISCLOSED",
+      "prior_art_evidence_ids": [
+        "EV-PA8BA24A54CB-0002-09f4b9d3"
+      ],
+      "reasoning": "基于人工导入摘要的确定性词项覆盖率 0.57；需要专利专业人员核对全文。"
+    },
+    {
+      "schema_version": "2.0",
+      "feature_id": "NF-002",
+      "feature_text": "对多源信号进行时间同步和归一化，形成多源特征向量。",
+      "prior_art_document_id": "DEMO-PA-002",
+      "assessment": "NOT_FOUND",
+      "prior_art_evidence_ids": [
+        "EV-PA8BBCCD9E08-0001-d8a95166"
+      ],
+      "reasoning": "基于人工导入摘要的确定性词项覆盖率 0.00；需要专利专业人员核对全文。"
+    },
+    {
+      "schema_version": "2.0",
+      "feature_id": "NF-002",
+      "feature_text": "对多源信号进行时间同步和归一化，形成多源特征向量。",
+      "prior_art_document_id": "DEMO-PA-001",
+      "assessment": "NOT_FOUND",
+      "prior_art_evidence_ids": [
+        "EV-PA8BA24A54CB-0002-09f4b9d3"
+      ],
+      "reasoning": "基于人工导入摘要的确定性词项覆盖率 0.10；需要专利专业人员核对全文。"
+    },
+    {
+      "schema_version": "2.0",
+      "feature_id": "NF-003",
+      "feature_text": "根据各信号的质量指标计算置信度权重，并得到融合状态量。",
+      "prior_art_document_id": "DEMO-PA-002",
+      "assessment": "NOT_FOUND",
+      "prior_art_evidence_ids": [
+        "EV-PA8BBCCD9E08-0001-d8a95166"
+      ],
+      "reasoning": "基于人工导入摘要的确定性词项覆盖率 0.00；需要专利专业人员核对全文。"
+    },
+    {
+      "schema_version": "2.0",
+      "feature_id": "NF-003",
+      "feature_text": "根据各信号的质量指标计算置信度权重，并得到融合状态量。",
+      "prior_art_document_id": "DEMO-PA-001",
+      "assessment": "POSSIBLY_DISCLOSED",
+      "prior_art_evidence_ids": [
+        "EV-PA8BA24A54CB-0002-09f4b9d3"
+      ],
+      "reasoning": "基于人工导入摘要的确定性词项覆盖率 0.29；需要专利专业人员核对全文。"
+    },
+    {
+      "schema_version": "2.0",
+      "feature_id": "NF-004",
+      "feature_text": "计算目标状态与融合状态量之间的状态偏差。",
+      "prior_art_document_id": "DEMO-PA-002",
+      "assessment": "NOT_FOUND",
+      "prior_art_evidence_ids": [
+        "EV-PA8BBCCD9E08-0001-d8a95166"
+      ],
+      "reasoning": "基于人工导入摘要的确定性词项覆盖率 0.00；需要专利专业人员核对全文。"
+    },
+    {
+      "schema_version": "2.0",
+      "feature_id": "NF-004",
+      "feature_text": "计算目标状态与融合状态量之间的状态偏差。",
+      "prior_art_document_id": "DEMO-PA-001",
+      "assessment": "NOT_FOUND",
+      "prior_art_evidence_ids": [
+        "EV-PA8BA24A54CB-0002-09f4b9d3"
+      ],
+      "reasoning": "基于人工导入摘要的确定性词项覆盖率 0.12；需要专利专业人员核对全文。"
+    }
+  ],
+  "legal_notice": "仅为人工导入资料的查新辅助，不构成穷尽性检索或法律意见。"
+}

@@ -109,3 +109,64 @@ python scripts/run_demo.py
 - P0：接入经过保密审查的结构化 LLM、CNIPA/PQAI Provider、Claims 支持矩阵人工编辑。
 - P1：完整本地 Web 章节编辑、版本比较、Checkpoint UI、模板管理。
 - P2：说明书/摘要正式分件、更多专利附图类型和司法辖区格式扩展。
+
+## Structured LLM（V2-P0）
+
+核心阶段通过 `LLMProvider.generate_structured()` 返回严格 Pydantic Schema。V2 内置 OpenAI-compatible Provider、离线 `MockLLMProvider`、有限重试、案例级缓存、Prompt 版本和不保存完整敏感 Prompt 的调用审计。Provider 和模型由 `.env` 中的 `LLM_PROVIDER`、`LLM_BASE_URL`、`LLM_MODEL`、`LLM_TIMEOUT`、`LLM_MAX_RETRIES` 配置，代码不写死模型名。
+
+```powershell
+python -m app.cli llm-status
+python -m app.cli analyze PAT-2026-001 --llm
+```
+
+默认 `PATENT_LLM_MODE=disabled`。只有经过保密审批后才切换为 `external-approved`；本机或内网端点使用 `local`。本地模式允许无 API Key，外部模式要求凭据。CLI 和报告只显示是否配置，不显示 Key。
+
+## Evidence Grounding
+
+V2 在每个案件的 `evidence/` 中保存稳定的 `EvidenceChunk`、索引和来源清单。Evidence ID 由来源身份、逻辑位置及内容哈希构成；相同材料重复 ingest 不会随机改变 ID。`TechnicalFact` 和 `GroundedStatement` 统一区分 `SOURCE_FACT`、`INFERRED`、`AI_SUGGESTION`、`UNVERIFIED`，其中 SOURCE_FACT 无 Evidence 会直接验证失败。
+
+系统使用无需 embedding API 的 BM25 类检索和章节加权，只向 LLM 发送当前任务需要的 Evidence。上传资料被标记为不可信数据，资料中的 “Ignore previous instructions” 等文字不会成为系统指令。
+
+```powershell
+python -m app.cli evidence PAT-2026-001 --query "状态融合"
+```
+
+## Claims Support Matrix
+
+Claims V2 遵循 `Protection Strategy -> Claim Feature Set -> Claim Tree -> Claim Text`，不从完整权利要求反推特征。矩阵建立以下链路：
+
+```text
+Claim -> Claim Feature -> Disclosure Paragraph -> TechnicalFact -> Evidence -> Original Source
+```
+
+独立权利要求中的 mandatory feature 为 `UNSUPPORTED` 时 Gate 4 硬失败。Broad/Conservative Draft 使用相同的支持特征池。
+
+```powershell
+python -m app.cli claims-support PAT-V2-DEMO-001
+```
+
+## Real Case Dry Run
+
+真实案件首次运行必须显式指定材料目录，默认仅执行 ingest、Evidence、Technical Understanding、Invention Mining 和 Checkpoint A preview；不会生成保护策略、Claims 或 Word。
+
+```powershell
+python -m app.cli dry-run-real REAL-CASE-001 D:\explicitly-approved-materials --output D:\safe-review-output
+```
+
+经过明确外部/本地模型授权后可增加 `--llm`；否则运行确定性 grounded fallback。合成 E2E 使用：
+
+```powershell
+python scripts/run_v2_demo.py
+```
+
+## Confidentiality
+
+- `disabled`：默认，不调用 LLM。
+- `external-approved`：用户已明确批准发送最小 Evidence 上下文到配置的外部 Provider。
+- `local`：调用本机/内网 OpenAI-compatible API。
+
+`.env`、`.env.*`、`private_cases/` 和运行时案件目录不提交 Git。真实资料不会复制到 fixture、README 或错误日志；真实模型 Smoke Test 只有设置 `RUN_LLM_SMOKE_TESTS=1` 才运行。
+
+## LLM Limitations
+
+LLM 是推理引擎，不是事实来源、正式查新结论或法律判断。关键词语义验证是轻量第一层，不等于专利专业人员的技术等同/充分公开判断。所有 AI 输出仍需发明人和专利专业人员复核。

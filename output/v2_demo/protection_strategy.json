@@ -1,0 +1,179 @@
+{
+  "schema_version": "2.0",
+  "inventive_concept": "将多源状态融合结果直接用于生成电机控制参数修正量。",
+  "independent_claim_core": [
+    {
+      "schema_version": "2.0",
+      "text": "获取振动、定子电流、转速和温度信号。",
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0007-89a47e37"
+      ],
+      "status": "SOURCE_FACT",
+      "confidence": 0.97
+    },
+    {
+      "schema_version": "2.0",
+      "text": "对多源信号进行时间同步和归一化，形成多源特征向量。",
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0007-89a47e37"
+      ],
+      "status": "SOURCE_FACT",
+      "confidence": 0.97
+    },
+    {
+      "schema_version": "2.0",
+      "text": "根据各信号的质量指标计算置信度权重，并得到融合状态量。",
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0007-89a47e37"
+      ],
+      "status": "SOURCE_FACT",
+      "confidence": 0.97
+    },
+    {
+      "schema_version": "2.0",
+      "text": "计算目标状态与融合状态量之间的状态偏差。",
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0007-89a47e37"
+      ],
+      "status": "SOURCE_FACT",
+      "confidence": 0.97
+    }
+  ],
+  "dependent_claim_features": [
+    {
+      "schema_version": "2.0",
+      "text": "状态采集单元可仅使用振动、电流和温度中的两种信号。",
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0011-3b77a576"
+      ],
+      "status": "SOURCE_FACT",
+      "confidence": 0.97
+    },
+    {
+      "schema_version": "2.0",
+      "text": "置信度权重可由信噪比、缺失率或传感器自检状态确定。",
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0011-3b77a576"
+      ],
+      "status": "SOURCE_FACT",
+      "confidence": 0.97
+    },
+    {
+      "schema_version": "2.0",
+      "text": "控制处理单元可采用PI控制、模型预测控制或其他有来源支持的控制方式。",
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0011-3b77a576"
+      ],
+      "status": "SOURCE_FACT",
+      "confidence": 0.97
+    }
+  ],
+  "optional_features": [
+    {
+      "schema_version": "2.0",
+      "text": "状态采集单元可仅使用振动、电流和温度中的两种信号。",
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0011-3b77a576"
+      ],
+      "status": "SOURCE_FACT",
+      "confidence": 0.97
+    },
+    {
+      "schema_version": "2.0",
+      "text": "置信度权重可由信噪比、缺失率或传感器自检状态确定。",
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0011-3b77a576"
+      ],
+      "status": "SOURCE_FACT",
+      "confidence": 0.97
+    },
+    {
+      "schema_version": "2.0",
+      "text": "控制处理单元可采用PI控制、模型预测控制或其他有来源支持的控制方式。",
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0011-3b77a576"
+      ],
+      "status": "SOURCE_FACT",
+      "confidence": 0.97
+    }
+  ],
+  "broad_terms": [
+    {
+      "schema_version": "2.0",
+      "concept_id": "TERM-001",
+      "selected_term": "状态采集单元",
+      "alternatives": [
+        "多源传感模块"
+      ],
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0003-e67990ad",
+        "EV-DOCD415652CC4-0004-ee8cb4b3",
+        "EV-DOCD415652CC4-0005-b608d283",
+        "EV-DOCD415652CC4-0006-a7c9a369",
+        "EV-DOCD415652CC4-0007-89a47e37",
+        "EV-DOCD415652CC4-0009-0412a654",
+        "EV-DOCD415652CC4-0010-7bfee3fc",
+        "EV-DOCD415652CC4-0011-3b77a576",
+        "EV-DOCD415652CC4-0012-50f769c6"
+      ]
+    },
+    {
+      "schema_version": "2.0",
+      "concept_id": "TERM-002",
+      "selected_term": "控制处理单元",
+      "alternatives": [
+        "控制器"
+      ],
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0003-e67990ad",
+        "EV-DOCD415652CC4-0004-ee8cb4b3",
+        "EV-DOCD415652CC4-0005-b608d283",
+        "EV-DOCD415652CC4-0006-a7c9a369",
+        "EV-DOCD415652CC4-0007-89a47e37",
+        "EV-DOCD415652CC4-0009-0412a654",
+        "EV-DOCD415652CC4-0010-7bfee3fc",
+        "EV-DOCD415652CC4-0011-3b77a576",
+        "EV-DOCD415652CC4-0012-50f769c6"
+      ]
+    }
+  ],
+  "narrow_terms": [
+    {
+      "schema_version": "2.0",
+      "concept_id": "TERM-001",
+      "selected_term": "振动、电流、转速和温度传感器组合",
+      "alternatives": [],
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0003-e67990ad",
+        "EV-DOCD415652CC4-0004-ee8cb4b3",
+        "EV-DOCD415652CC4-0005-b608d283",
+        "EV-DOCD415652CC4-0006-a7c9a369",
+        "EV-DOCD415652CC4-0007-89a47e37",
+        "EV-DOCD415652CC4-0009-0412a654",
+        "EV-DOCD415652CC4-0010-7bfee3fc",
+        "EV-DOCD415652CC4-0011-3b77a576",
+        "EV-DOCD415652CC4-0012-50f769c6"
+      ]
+    }
+  ],
+  "parameters_to_avoid_locking": [
+    "时间窗长度",
+    "权重更新周期",
+    "采样率"
+  ],
+  "alternative_embodiments_needed": [
+    "状态采集单元可仅使用振动、电流和温度中的两种信号。",
+    "置信度权重可由信噪比、缺失率或传感器自检状态确定。",
+    "控制处理单元可采用PI控制、模型预测控制或其他有来源支持的控制方式。"
+  ],
+  "support_gaps": [],
+  "risks": [
+    "查新仅基于人工导入资料，不构成穷尽性检索。",
+    "合成 Demo 参数不得作为真实申请事实。"
+  ],
+  "inventor_questions": [
+    "真实样机的传感器型号、采样精度和通信接口待发明人确认。",
+    "权重约束、控制参数边界和故障安全策略待发明人确认。",
+    "公开日期、发明人和权属信息待确认。"
+  ]
+}

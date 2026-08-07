@@ -13,7 +13,7 @@
       "source": "SYNTHETIC DEMO PRIOR ART",
       "publication_number": "DEMO-CN-002",
       "abstract": "公开通过振动和温度传感器输出故障报警结果，监测结果不参与电机控制参数的在线修正。",
-      "imported_at": "2026-08-07T08:14:52.781105+00:00",
+      "imported_at": "2026-08-07T08:28:05.448644+00:00",
       "synthetic_demo": true
     },
     {
@@ -22,7 +22,7 @@
       "source": "SYNTHETIC DEMO PRIOR ART",
       "publication_number": "DEMO-CN-001",
       "abstract": "公开采集定子电流和转速信号，根据电流偏差调节电机控制参数，但未说明振动、温度信号的同步融合，也未说明按信号置信度动态分配权重。",
-      "imported_at": "2026-08-07T08:14:52.780103+00:00",
+      "imported_at": "2026-08-07T08:28:05.448644+00:00",
       "synthetic_demo": true
     }
   ],

@@ -1,0 +1,278 @@
+{
+  "schema_version": "2.0",
+  "title": "一种基于多源传感信息的电机状态监测与自适应控制方法",
+  "claims": [
+    {
+      "schema_version": "2.0",
+      "claim_number": 1,
+      "claim_type": "method",
+      "parent_claims": [],
+      "features": [
+        {
+          "schema_version": "2.0",
+          "feature_id": "CORE-F001",
+          "text": "获取振动、定子电流、转速和温度信号。",
+          "source_fact_ids": [
+            "FACT-S001",
+            "FACT-S002",
+            "FACT-S003",
+            "FACT-S004",
+            "FACT-S005",
+            "FACT-INF-001"
+          ],
+          "evidence_ids": [
+            "EV-DOCD415652CC4-0007-89a47e37"
+          ],
+          "support_status": "SUPPORTED",
+          "mandatory": true
+        },
+        {
+          "schema_version": "2.0",
+          "feature_id": "CORE-F002",
+          "text": "对多源信号进行时间同步和归一化，形成多源特征向量。",
+          "source_fact_ids": [
+            "FACT-S001",
+            "FACT-S002",
+            "FACT-S003",
+            "FACT-S004",
+            "FACT-S005",
+            "FACT-INF-001"
+          ],
+          "evidence_ids": [
+            "EV-DOCD415652CC4-0007-89a47e37"
+          ],
+          "support_status": "SUPPORTED",
+          "mandatory": true
+        },
+        {
+          "schema_version": "2.0",
+          "feature_id": "CORE-F003",
+          "text": "根据各信号的质量指标计算置信度权重，并得到融合状态量。",
+          "source_fact_ids": [
+            "FACT-S001",
+            "FACT-S002",
+            "FACT-S003",
+            "FACT-S004",
+            "FACT-S005",
+            "FACT-INF-001"
+          ],
+          "evidence_ids": [
+            "EV-DOCD415652CC4-0007-89a47e37"
+          ],
+          "support_status": "SUPPORTED",
+          "mandatory": true
+        },
+        {
+          "schema_version": "2.0",
+          "feature_id": "CORE-F004",
+          "text": "计算目标状态与融合状态量之间的状态偏差。",
+          "source_fact_ids": [
+            "FACT-S001",
+            "FACT-S002",
+            "FACT-S003",
+            "FACT-S004",
+            "FACT-S005",
+            "FACT-INF-001"
+          ],
+          "evidence_ids": [
+            "EV-DOCD415652CC4-0007-89a47e37"
+          ],
+          "support_status": "SUPPORTED",
+          "mandatory": true
+        }
+      ],
+      "rendered_text": "一种电机状态监测与自适应控制方法，其特征在于，包括：获取振动、定子电流、转速和温度信号；对多源信号进行时间同步和归一化，形成多源特征向量；根据各信号的质量指标计算置信度权重，并得到融合状态量；计算目标状态与融合状态量之间的状态偏差。",
+      "draft_strategy": "broad"
+    },
+    {
+      "schema_version": "2.0",
+      "claim_number": 2,
+      "claim_type": "dependent",
+      "parent_claims": [
+        1
+      ],
+      "features": [
+        {
+          "schema_version": "2.0",
+          "feature_id": "DEP-F001",
+          "text": "状态采集单元可仅使用振动、电流和温度中的两种信号。",
+          "source_fact_ids": [
+            "FACT-A001",
+            "FACT-A002",
+            "FACT-A003"
+          ],
+          "evidence_ids": [
+            "EV-DOCD415652CC4-0011-3b77a576"
+          ],
+          "support_status": "SUPPORTED",
+          "mandatory": false
+        }
+      ],
+      "rendered_text": "根据权利要求1所述的方法，其特征在于，包括：状态采集单元可仅使用振动、电流和温度中的两种信号。",
+      "draft_strategy": "conservative"
+    },
+    {
+      "schema_version": "2.0",
+      "claim_number": 3,
+      "claim_type": "dependent",
+      "parent_claims": [
+        1
+      ],
+      "features": [
+        {
+          "schema_version": "2.0",
+          "feature_id": "DEP-F002",
+          "text": "置信度权重可由信噪比、缺失率或传感器自检状态确定。",
+          "source_fact_ids": [
+            "FACT-A001",
+            "FACT-A002",
+            "FACT-A003"
+          ],
+          "evidence_ids": [
+            "EV-DOCD415652CC4-0011-3b77a576"
+          ],
+          "support_status": "SUPPORTED",
+          "mandatory": false
+        }
+      ],
+      "rendered_text": "根据权利要求1所述的方法，其特征在于，包括：置信度权重可由信噪比、缺失率或传感器自检状态确定。",
+      "draft_strategy": "conservative"
+    },
+    {
+      "schema_version": "2.0",
+      "claim_number": 4,
+      "claim_type": "dependent",
+      "parent_claims": [
+        1
+      ],
+      "features": [
+        {
+          "schema_version": "2.0",
+          "feature_id": "DEP-F003",
+          "text": "控制处理单元可采用PI控制、模型预测控制或其他有来源支持的控制方式。",
+          "source_fact_ids": [
+            "FACT-A001",
+            "FACT-A002",
+            "FACT-A003"
+          ],
+          "evidence_ids": [
+            "EV-DOCD415652CC4-0011-3b77a576"
+          ],
+          "support_status": "SUPPORTED",
+          "mandatory": false
+        }
+      ],
+      "rendered_text": "根据权利要求1所述的方法，其特征在于，包括：控制处理单元可采用PI控制、模型预测控制或其他有来源支持的控制方式。",
+      "draft_strategy": "conservative"
+    },
+    {
+      "schema_version": "2.0",
+      "claim_number": 5,
+      "claim_type": "system",
+      "parent_claims": [],
+      "features": [
+        {
+          "schema_version": "2.0",
+          "feature_id": "CORE-F001",
+          "text": "获取振动、定子电流、转速和温度信号。",
+          "source_fact_ids": [
+            "FACT-S001",
+            "FACT-S002",
+            "FACT-S003",
+            "FACT-S004",
+            "FACT-S005",
+            "FACT-INF-001"
+          ],
+          "evidence_ids": [
+            "EV-DOCD415652CC4-0007-89a47e37"
+          ],
+          "support_status": "SUPPORTED",
+          "mandatory": true
+        },
+        {
+          "schema_version": "2.0",
+          "feature_id": "CORE-F002",
+          "text": "对多源信号进行时间同步和归一化，形成多源特征向量。",
+          "source_fact_ids": [
+            "FACT-S001",
+            "FACT-S002",
+            "FACT-S003",
+            "FACT-S004",
+            "FACT-S005",
+            "FACT-INF-001"
+          ],
+          "evidence_ids": [
+            "EV-DOCD415652CC4-0007-89a47e37"
+          ],
+          "support_status": "SUPPORTED",
+          "mandatory": true
+        },
+        {
+          "schema_version": "2.0",
+          "feature_id": "CORE-F003",
+          "text": "根据各信号的质量指标计算置信度权重，并得到融合状态量。",
+          "source_fact_ids": [
+            "FACT-S001",
+            "FACT-S002",
+            "FACT-S003",
+            "FACT-S004",
+            "FACT-S005",
+            "FACT-INF-001"
+          ],
+          "evidence_ids": [
+            "EV-DOCD415652CC4-0007-89a47e37"
+          ],
+          "support_status": "SUPPORTED",
+          "mandatory": true
+        },
+        {
+          "schema_version": "2.0",
+          "feature_id": "CORE-F004",
+          "text": "计算目标状态与融合状态量之间的状态偏差。",
+          "source_fact_ids": [
+            "FACT-S001",
+            "FACT-S002",
+            "FACT-S003",
+            "FACT-S004",
+            "FACT-S005",
+            "FACT-INF-001"
+          ],
+          "evidence_ids": [
+            "EV-DOCD415652CC4-0007-89a47e37"
+          ],
+          "support_status": "SUPPORTED",
+          "mandatory": true
+        }
+      ],
+      "rendered_text": "一种电机状态监测与自适应控制系统，其特征在于，包括：获取振动、定子电流、转速和温度信号；对多源信号进行时间同步和归一化，形成多源特征向量；根据各信号的质量指标计算置信度权重，并得到融合状态量；计算目标状态与融合状态量之间的状态偏差。",
+      "draft_strategy": "conservative"
+    },
+    {
+      "schema_version": "2.0",
+      "claim_number": 6,
+      "claim_type": "dependent",
+      "parent_claims": [
+        5
+      ],
+      "features": [
+        {
+          "schema_version": "2.0",
+          "feature_id": "DEP-F001",
+          "text": "状态采集单元可仅使用振动、电流和温度中的两种信号。",
+          "source_fact_ids": [
+            "FACT-A001",
+            "FACT-A002",
+            "FACT-A003"
+          ],
+          "evidence_ids": [
+            "EV-DOCD415652CC4-0011-3b77a576"
+          ],
+          "support_status": "SUPPORTED",
+          "mandatory": false
+        }
+      ],
+      "rendered_text": "根据权利要求5所述的系统，其特征在于，包括：状态采集单元可仅使用振动、电流和温度中的两种信号。",
+      "draft_strategy": "conservative"
+    }
+  ]
+}

@@ -1,4 +1,6 @@
 .env
+.env.*
+!.env.example
 __pycache__/
 *.py[cod]
 *.egg-info/
@@ -7,6 +9,9 @@ __pycache__/
 workspace/cache/
 workspace/cases/*
 !workspace/cases/.gitkeep
+private_cases/
 ~$*.docx
 *.tmp
 output/qa/
+output/qa_v2/
+output/dry_run_synthetic/

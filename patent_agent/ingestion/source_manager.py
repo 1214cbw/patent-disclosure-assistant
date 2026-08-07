@@ -7,6 +7,7 @@ from pathlib import Path
 
 from patent_agent.core.models import SourceChunk, SourceFileRecord
 from patent_agent.core.state import CaseStore
+from patent_agent.evidence import EvidenceStore
 from .readers import read_docx, read_pdf, read_pptx, read_text
 
 
@@ -62,5 +63,5 @@ class SourceManager:
         case_dir = self.store.case_dir(case_id)
         (case_dir / "working" / "source_chunks.json").write_text(json.dumps([c.model_dump() for c in chunks], ensure_ascii=False, indent=2), encoding="utf-8")
         (case_dir / "figures" / "image_manifest.json").write_text(json.dumps(images, ensure_ascii=False, indent=2), encoding="utf-8")
+        EvidenceStore(case_dir / "evidence").build(records, chunks)
         return records, chunks, images
-

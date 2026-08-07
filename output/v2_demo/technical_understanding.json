@@ -1,0 +1,788 @@
+{
+  "schema_version": "2.0",
+  "technical_field": [
+    {
+      "schema_version": "2.0",
+      "text": "电机状态监测、故障预警与自适应控制，涉及多源传感信息同步、状态融合和闭环控制。",
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0002-1ffcddaa"
+      ],
+      "status": "SOURCE_FACT",
+      "confidence": 0.97
+    }
+  ],
+  "technical_problems": [
+    {
+      "schema_version": "2.0",
+      "text": "如何在不依赖单一传感源的情况下获得可用于闭环控制的电机融合状态量，并根据该融合状态量在线生成自适应控制指令。",
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0005-b608d283"
+      ],
+      "status": "SOURCE_FACT",
+      "confidence": 0.97
+    }
+  ],
+  "system_overview": [
+    {
+      "schema_version": "2.0",
+      "text": "系统由状态采集、时间同步、状态估计、控制处理和电机驱动单元组成。",
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0006-a7c9a369"
+      ],
+      "status": "SOURCE_FACT",
+      "confidence": 0.97
+    }
+  ],
+  "components": [
+    {
+      "schema_version": "2.0",
+      "component_id": "COMP-001",
+      "name": "状态采集单元",
+      "description": {
+        "schema_version": "2.0",
+        "text": "状态采集单元：采集振动、定子电流、转速和温度信号。",
+        "evidence_ids": [
+          "EV-DOCD415652CC4-0006-a7c9a369"
+        ],
+        "status": "SOURCE_FACT",
+        "confidence": 0.97
+      }
+    },
+    {
+      "schema_version": "2.0",
+      "component_id": "COMP-002",
+      "name": "时间同步单元",
+      "description": {
+        "schema_version": "2.0",
+        "text": "时间同步单元：将不同采样频率的信号映射到统一时间窗。",
+        "evidence_ids": [
+          "EV-DOCD415652CC4-0006-a7c9a369"
+        ],
+        "status": "SOURCE_FACT",
+        "confidence": 0.97
+      }
+    },
+    {
+      "schema_version": "2.0",
+      "component_id": "COMP-003",
+      "name": "状态估计单元",
+      "description": {
+        "schema_version": "2.0",
+        "text": "状态估计单元：计算传感信号置信度并形成融合状态量。",
+        "evidence_ids": [
+          "EV-DOCD415652CC4-0006-a7c9a369"
+        ],
+        "status": "SOURCE_FACT",
+        "confidence": 0.97
+      }
+    },
+    {
+      "schema_version": "2.0",
+      "component_id": "COMP-004",
+      "name": "控制处理单元",
+      "description": {
+        "schema_version": "2.0",
+        "text": "控制处理单元：根据目标状态与融合状态量的偏差更新控制参数。",
+        "evidence_ids": [
+          "EV-DOCD415652CC4-0006-a7c9a369"
+        ],
+        "status": "SOURCE_FACT",
+        "confidence": 0.97
+      }
+    },
+    {
+      "schema_version": "2.0",
+      "component_id": "COMP-005",
+      "name": "电机驱动单元",
+      "description": {
+        "schema_version": "2.0",
+        "text": "电机驱动单元：依据自适应控制指令驱动电机。",
+        "evidence_ids": [
+          "EV-DOCD415652CC4-0006-a7c9a369"
+        ],
+        "status": "SOURCE_FACT",
+        "confidence": 0.97
+      }
+    }
+  ],
+  "steps": [
+    {
+      "schema_version": "2.0",
+      "step_id": "S1",
+      "text": {
+        "schema_version": "2.0",
+        "text": "获取振动、定子电流、转速和温度信号。",
+        "evidence_ids": [
+          "EV-DOCD415652CC4-0007-89a47e37"
+        ],
+        "status": "SOURCE_FACT",
+        "confidence": 0.97
+      }
+    },
+    {
+      "schema_version": "2.0",
+      "step_id": "S2",
+      "text": {
+        "schema_version": "2.0",
+        "text": "对多源信号进行时间同步和归一化，形成多源特征向量。",
+        "evidence_ids": [
+          "EV-DOCD415652CC4-0007-89a47e37"
+        ],
+        "status": "SOURCE_FACT",
+        "confidence": 0.97
+      }
+    },
+    {
+      "schema_version": "2.0",
+      "step_id": "S3",
+      "text": {
+        "schema_version": "2.0",
+        "text": "根据各信号的质量指标计算置信度权重，并得到融合状态量。",
+        "evidence_ids": [
+          "EV-DOCD415652CC4-0007-89a47e37"
+        ],
+        "status": "SOURCE_FACT",
+        "confidence": 0.97
+      }
+    },
+    {
+      "schema_version": "2.0",
+      "step_id": "S4",
+      "text": {
+        "schema_version": "2.0",
+        "text": "计算目标状态与融合状态量之间的状态偏差。",
+        "evidence_ids": [
+          "EV-DOCD415652CC4-0007-89a47e37"
+        ],
+        "status": "SOURCE_FACT",
+        "confidence": 0.97
+      }
+    },
+    {
+      "schema_version": "2.0",
+      "step_id": "S5",
+      "text": {
+        "schema_version": "2.0",
+        "text": "根据状态偏差和历史偏差生成自适应控制指令并输出至电机驱动单元。",
+        "evidence_ids": [
+          "EV-DOCD415652CC4-0007-89a47e37"
+        ],
+        "status": "SOURCE_FACT",
+        "confidence": 0.97
+      }
+    }
+  ],
+  "data_flows": [
+    {
+      "schema_version": "2.0",
+      "source": "状态采集单元",
+      "target": "状态估计单元",
+      "relation": {
+        "schema_version": "2.0",
+        "text": "多源传感信号经时间同步后进入状态估计单元。",
+        "evidence_ids": [
+          "EV-DOCD415652CC4-0006-a7c9a369",
+          "EV-DOCD415652CC4-0007-89a47e37"
+        ],
+        "status": "SOURCE_FACT",
+        "confidence": 0.97
+      }
+    }
+  ],
+  "control_flows": [
+    {
+      "schema_version": "2.0",
+      "source": "状态估计单元",
+      "target": "控制处理单元",
+      "relation": {
+        "schema_version": "2.0",
+        "text": "融合状态量用于生成控制参数修正量。",
+        "evidence_ids": [
+          "EV-DOCD415652CC4-0006-a7c9a369",
+          "EV-DOCD415652CC4-0007-89a47e37"
+        ],
+        "status": "SOURCE_FACT",
+        "confidence": 0.97
+      }
+    }
+  ],
+  "inputs": [
+    {
+      "schema_version": "2.0",
+      "text": "振动、定子电流、转速和温度信号",
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0006-a7c9a369"
+      ],
+      "status": "SOURCE_FACT",
+      "confidence": 0.97
+    }
+  ],
+  "outputs": [
+    {
+      "schema_version": "2.0",
+      "text": "电机状态估计结果和自适应控制指令",
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0006-a7c9a369",
+        "EV-DOCD415652CC4-0007-89a47e37"
+      ],
+      "status": "INFERRED",
+      "confidence": 0.85
+    }
+  ],
+  "parameters": [
+    {
+      "schema_version": "2.0",
+      "parameter_id": "PARAM-001",
+      "symbol": null,
+      "name": "时间窗长度",
+      "value": "100",
+      "unit": "ms",
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0008-5e77edd0"
+      ],
+      "status": "SOURCE_FACT"
+    },
+    {
+      "schema_version": "2.0",
+      "parameter_id": "PARAM-002",
+      "symbol": null,
+      "name": "权重更新周期",
+      "value": "20",
+      "unit": "ms",
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0008-5e77edd0"
+      ],
+      "status": "SOURCE_FACT"
+    },
+    {
+      "schema_version": "2.0",
+      "parameter_id": "PARAM-003",
+      "symbol": null,
+      "name": "振动采样率",
+      "value": "12.8",
+      "unit": "kHz",
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0008-5e77edd0"
+      ],
+      "status": "SOURCE_FACT"
+    },
+    {
+      "schema_version": "2.0",
+      "parameter_id": "PARAM-004",
+      "symbol": null,
+      "name": "电流采样率",
+      "value": "10",
+      "unit": "kHz",
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0008-5e77edd0"
+      ],
+      "status": "SOURCE_FACT"
+    },
+    {
+      "schema_version": "2.0",
+      "parameter_id": "PARAM-005",
+      "symbol": null,
+      "name": "温度采样率",
+      "value": "10",
+      "unit": "Hz",
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0008-5e77edd0"
+      ],
+      "status": "SOURCE_FACT"
+    }
+  ],
+  "equations": [
+    {
+      "schema_version": "2.0",
+      "equation_id": "EQ-001",
+      "original_expression": "z_k=\\alpha x_{v,k}+\\beta x_{i,k}+(1-\\alpha-\\beta)x_{T,k}",
+      "normalized_latex": "z_k=\\alpha x_{v,k}+\\beta x_{i,k}+(1-\\alpha-\\beta)x_{T,k}",
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0007-89a47e37"
+      ],
+      "status": "SOURCE_FACT",
+      "symbols": {
+        "z": "融合状态量",
+        "k": "离散时间序号",
+        "\\alpha": "振动特征权重",
+        "\\beta": "电流特征权重",
+        "x": "归一化传感特征",
+        "v": "振动通道标识",
+        "i": "电流通道标识",
+        "T": "温度通道标识",
+        "e": "状态偏差",
+        "r": "目标状态",
+        "u": "控制指令",
+        "K_p": "比例修正系数",
+        "K_i": "积分修正系数",
+        "j": "累计序号",
+        "T_e": "电磁转矩",
+        "L_d": "d轴电感",
+        "L_q": "q轴电感",
+        "i_q": "q轴电流",
+        "p": "电机极对数"
+      }
+    },
+    {
+      "schema_version": "2.0",
+      "equation_id": "EQ-002",
+      "original_expression": "e_k=r_k-z_k",
+      "normalized_latex": "e_k=r_k-z_k",
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0007-89a47e37"
+      ],
+      "status": "SOURCE_FACT",
+      "symbols": {
+        "z": "融合状态量",
+        "k": "离散时间序号",
+        "\\alpha": "振动特征权重",
+        "\\beta": "电流特征权重",
+        "x": "归一化传感特征",
+        "v": "振动通道标识",
+        "i": "电流通道标识",
+        "T": "温度通道标识",
+        "e": "状态偏差",
+        "r": "目标状态",
+        "u": "控制指令",
+        "K_p": "比例修正系数",
+        "K_i": "积分修正系数",
+        "j": "累计序号",
+        "T_e": "电磁转矩",
+        "L_d": "d轴电感",
+        "L_q": "q轴电感",
+        "i_q": "q轴电流",
+        "p": "电机极对数"
+      }
+    },
+    {
+      "schema_version": "2.0",
+      "equation_id": "EQ-003",
+      "original_expression": "u_k=u_{k-1}+K_pe_k+K_i\\sum_{j=1}^{k}e_j",
+      "normalized_latex": "u_k=u_{k-1}+K_pe_k+K_i\\sum_{j=1}^{k}e_j",
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0007-89a47e37"
+      ],
+      "status": "SOURCE_FACT",
+      "symbols": {
+        "z": "融合状态量",
+        "k": "离散时间序号",
+        "\\alpha": "振动特征权重",
+        "\\beta": "电流特征权重",
+        "x": "归一化传感特征",
+        "v": "振动通道标识",
+        "i": "电流通道标识",
+        "T": "温度通道标识",
+        "e": "状态偏差",
+        "r": "目标状态",
+        "u": "控制指令",
+        "K_p": "比例修正系数",
+        "K_i": "积分修正系数",
+        "j": "累计序号",
+        "T_e": "电磁转矩",
+        "L_d": "d轴电感",
+        "L_q": "q轴电感",
+        "i_q": "q轴电流",
+        "p": "电机极对数"
+      }
+    },
+    {
+      "schema_version": "2.0",
+      "equation_id": "EQ-004",
+      "original_expression": "T_e=\\frac{3}{2}p[\\psi_f i_q+(L_d-L_q)i_di_q]",
+      "normalized_latex": "T_e=\\frac{3}{2}p[\\psi_f i_q+(L_d-L_q)i_di_q]",
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0007-89a47e37"
+      ],
+      "status": "SOURCE_FACT",
+      "symbols": {
+        "z": "融合状态量",
+        "k": "离散时间序号",
+        "\\alpha": "振动特征权重",
+        "\\beta": "电流特征权重",
+        "x": "归一化传感特征",
+        "v": "振动通道标识",
+        "i": "电流通道标识",
+        "T": "温度通道标识",
+        "e": "状态偏差",
+        "r": "目标状态",
+        "u": "控制指令",
+        "K_p": "比例修正系数",
+        "K_i": "积分修正系数",
+        "j": "累计序号",
+        "T_e": "电磁转矩",
+        "L_d": "d轴电感",
+        "L_q": "q轴电感",
+        "i_q": "q轴电流",
+        "p": "电机极对数"
+      }
+    }
+  ],
+  "technical_effects": [
+    {
+      "schema_version": "2.0",
+      "text": "将机械、电气和热状态映射为同一融合状态量，为闭环控制提供统一输入。",
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0009-0412a654"
+      ],
+      "status": "SOURCE_FACT",
+      "confidence": 0.97
+    },
+    {
+      "schema_version": "2.0",
+      "text": "通过置信度权重降低单个传感通道异常对控制指令的影响。",
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0009-0412a654"
+      ],
+      "status": "SOURCE_FACT",
+      "confidence": 0.97
+    },
+    {
+      "schema_version": "2.0",
+      "text": "使状态监测结果能够直接参与控制参数修正，缩短监测与控制之间的信息链路。",
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0009-0412a654"
+      ],
+      "status": "SOURCE_FACT",
+      "confidence": 0.97
+    }
+  ],
+  "experiments": [
+    {
+      "schema_version": "2.0",
+      "text": "SYNTHETIC DEMO DATA：在人工构造的传感噪声场景下，与等权融合演示基线相比，状态估计均方误差由0.082降至0.061；该数值仅用于测试证据标记、表述和校验，不得作为真实实验结果或申请事实。",
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0010-7bfee3fc"
+      ],
+      "status": "SOURCE_FACT",
+      "confidence": 0.97
+    }
+  ],
+  "alternatives": [
+    {
+      "schema_version": "2.0",
+      "text": "状态采集单元可仅使用振动、电流和温度中的两种信号。",
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0011-3b77a576"
+      ],
+      "status": "SOURCE_FACT",
+      "confidence": 0.97
+    },
+    {
+      "schema_version": "2.0",
+      "text": "置信度权重可由信噪比、缺失率或传感器自检状态确定。",
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0011-3b77a576"
+      ],
+      "status": "SOURCE_FACT",
+      "confidence": 0.97
+    },
+    {
+      "schema_version": "2.0",
+      "text": "控制处理单元可采用PI控制、模型预测控制或其他有来源支持的控制方式。",
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0011-3b77a576"
+      ],
+      "status": "SOURCE_FACT",
+      "confidence": 0.97
+    }
+  ],
+  "uncertainties": [
+    {
+      "schema_version": "2.0",
+      "question_id": "Q-001",
+      "text": "真实样机的传感器型号、采样精度和通信接口待发明人确认。",
+      "priority": "P1",
+      "related_fact_ids": [],
+      "related_evidence_ids": [
+        "EV-DOCD415652CC4-0012-50f769c6"
+      ]
+    },
+    {
+      "schema_version": "2.0",
+      "question_id": "Q-002",
+      "text": "权重约束、控制参数边界和故障安全策略待发明人确认。",
+      "priority": "P0",
+      "related_fact_ids": [],
+      "related_evidence_ids": [
+        "EV-DOCD415652CC4-0012-50f769c6"
+      ]
+    },
+    {
+      "schema_version": "2.0",
+      "question_id": "Q-003",
+      "text": "公开日期、发明人和权属信息待确认。",
+      "priority": "P1",
+      "related_fact_ids": [],
+      "related_evidence_ids": [
+        "EV-DOCD415652CC4-0012-50f769c6"
+      ]
+    }
+  ],
+  "facts": [
+    {
+      "schema_version": "2.0",
+      "fact_id": "FACT-001",
+      "statement": "如何在不依赖单一传感源的情况下获得可用于闭环控制的电机融合状态量，并根据该融合状态量在线生成自适应控制指令。",
+      "category": "technical_problem",
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0005-b608d283"
+      ],
+      "status": "SOURCE_FACT",
+      "confidence": 0.99,
+      "notes": null
+    },
+    {
+      "schema_version": "2.0",
+      "fact_id": "FACT-002",
+      "statement": "- 现有电机控制器通常以定子电流和转速作为主要反馈量。\n- 独立的振动监测设备可用于机械故障检测，但检测结果通常不直接参与控制参数修正。\n- 温度保护一般采用固定阈值，难以描述负载变化下的连续热状态。",
+      "category": "background",
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0003-e67990ad"
+      ],
+      "status": "SOURCE_FACT",
+      "confidence": 0.98,
+      "notes": null
+    },
+    {
+      "schema_version": "2.0",
+      "fact_id": "FACT-003",
+      "statement": "- 单一电流或转速反馈难以同时反映电气、机械和热状态。\n- 多类传感器的采样时钟和噪声水平不同，直接拼接可能导致状态估计不稳定。\n- 状态监测与控制回路相互独立，检测结果不能及时转化为控制参数修正量。",
+      "category": "limitation",
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0004-ee8cb4b3"
+      ],
+      "status": "SOURCE_FACT",
+      "confidence": 0.98,
+      "notes": null
+    },
+    {
+      "schema_version": "2.0",
+      "fact_id": "FACT-C001",
+      "statement": "状态采集单元：采集振动、定子电流、转速和温度信号。",
+      "category": "component",
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0006-a7c9a369"
+      ],
+      "status": "SOURCE_FACT",
+      "confidence": 0.99,
+      "notes": null
+    },
+    {
+      "schema_version": "2.0",
+      "fact_id": "FACT-C002",
+      "statement": "时间同步单元：将不同采样频率的信号映射到统一时间窗。",
+      "category": "component",
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0006-a7c9a369"
+      ],
+      "status": "SOURCE_FACT",
+      "confidence": 0.99,
+      "notes": null
+    },
+    {
+      "schema_version": "2.0",
+      "fact_id": "FACT-C003",
+      "statement": "状态估计单元：计算传感信号置信度并形成融合状态量。",
+      "category": "component",
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0006-a7c9a369"
+      ],
+      "status": "SOURCE_FACT",
+      "confidence": 0.99,
+      "notes": null
+    },
+    {
+      "schema_version": "2.0",
+      "fact_id": "FACT-C004",
+      "statement": "控制处理单元：根据目标状态与融合状态量的偏差更新控制参数。",
+      "category": "component",
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0006-a7c9a369"
+      ],
+      "status": "SOURCE_FACT",
+      "confidence": 0.99,
+      "notes": null
+    },
+    {
+      "schema_version": "2.0",
+      "fact_id": "FACT-C005",
+      "statement": "电机驱动单元：依据自适应控制指令驱动电机。",
+      "category": "component",
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0006-a7c9a369"
+      ],
+      "status": "SOURCE_FACT",
+      "confidence": 0.99,
+      "notes": null
+    },
+    {
+      "schema_version": "2.0",
+      "fact_id": "FACT-S001",
+      "statement": "获取振动、定子电流、转速和温度信号。",
+      "category": "method_step",
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0007-89a47e37"
+      ],
+      "status": "SOURCE_FACT",
+      "confidence": 0.99,
+      "notes": null
+    },
+    {
+      "schema_version": "2.0",
+      "fact_id": "FACT-S002",
+      "statement": "对多源信号进行时间同步和归一化，形成多源特征向量。",
+      "category": "method_step",
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0007-89a47e37"
+      ],
+      "status": "SOURCE_FACT",
+      "confidence": 0.99,
+      "notes": null
+    },
+    {
+      "schema_version": "2.0",
+      "fact_id": "FACT-S003",
+      "statement": "根据各信号的质量指标计算置信度权重，并得到融合状态量。",
+      "category": "method_step",
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0007-89a47e37"
+      ],
+      "status": "SOURCE_FACT",
+      "confidence": 0.99,
+      "notes": null
+    },
+    {
+      "schema_version": "2.0",
+      "fact_id": "FACT-S004",
+      "statement": "计算目标状态与融合状态量之间的状态偏差。",
+      "category": "method_step",
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0007-89a47e37"
+      ],
+      "status": "SOURCE_FACT",
+      "confidence": 0.99,
+      "notes": null
+    },
+    {
+      "schema_version": "2.0",
+      "fact_id": "FACT-S005",
+      "statement": "根据状态偏差和历史偏差生成自适应控制指令并输出至电机驱动单元。",
+      "category": "method_step",
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0007-89a47e37"
+      ],
+      "status": "SOURCE_FACT",
+      "confidence": 0.99,
+      "notes": null
+    },
+    {
+      "schema_version": "2.0",
+      "fact_id": "FACT-E001",
+      "statement": "将机械、电气和热状态映射为同一融合状态量，为闭环控制提供统一输入。",
+      "category": "technical_effect",
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0009-0412a654"
+      ],
+      "status": "SOURCE_FACT",
+      "confidence": 0.98,
+      "notes": null
+    },
+    {
+      "schema_version": "2.0",
+      "fact_id": "FACT-E002",
+      "statement": "通过置信度权重降低单个传感通道异常对控制指令的影响。",
+      "category": "technical_effect",
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0009-0412a654"
+      ],
+      "status": "SOURCE_FACT",
+      "confidence": 0.98,
+      "notes": null
+    },
+    {
+      "schema_version": "2.0",
+      "fact_id": "FACT-E003",
+      "statement": "使状态监测结果能够直接参与控制参数修正，缩短监测与控制之间的信息链路。",
+      "category": "technical_effect",
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0009-0412a654"
+      ],
+      "status": "SOURCE_FACT",
+      "confidence": 0.98,
+      "notes": null
+    },
+    {
+      "schema_version": "2.0",
+      "fact_id": "FACT-A001",
+      "statement": "状态采集单元可仅使用振动、电流和温度中的两种信号。",
+      "category": "alternative",
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0011-3b77a576"
+      ],
+      "status": "SOURCE_FACT",
+      "confidence": 0.98,
+      "notes": null
+    },
+    {
+      "schema_version": "2.0",
+      "fact_id": "FACT-A002",
+      "statement": "置信度权重可由信噪比、缺失率或传感器自检状态确定。",
+      "category": "alternative",
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0011-3b77a576"
+      ],
+      "status": "SOURCE_FACT",
+      "confidence": 0.98,
+      "notes": null
+    },
+    {
+      "schema_version": "2.0",
+      "fact_id": "FACT-A003",
+      "statement": "控制处理单元可采用PI控制、模型预测控制或其他有来源支持的控制方式。",
+      "category": "alternative",
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0011-3b77a576"
+      ],
+      "status": "SOURCE_FACT",
+      "confidence": 0.98,
+      "notes": null
+    },
+    {
+      "schema_version": "2.0",
+      "fact_id": "FACT-EXP-001",
+      "statement": "SYNTHETIC DEMO DATA：在人工构造的传感噪声场景下，与等权融合演示基线相比，状态估计均方误差由0.082降至0.061；该数值仅用于测试证据标记、表述和校验，不得作为真实实验结果或申请事实。",
+      "category": "synthetic_experiment",
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0010-7bfee3fc"
+      ],
+      "status": "SOURCE_FACT",
+      "confidence": 1.0,
+      "notes": "SYNTHETIC DEMO DATA only"
+    },
+    {
+      "schema_version": "2.0",
+      "fact_id": "FACT-U001",
+      "statement": "- 真实样机的传感器型号、采样精度和通信接口待发明人确认。\n- 权重约束、控制参数边界和故障安全策略待发明人确认。\n- 公开日期、发明人和权属信息待确认。",
+      "category": "uncertainty",
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0012-50f769c6"
+      ],
+      "status": "SOURCE_FACT",
+      "confidence": 1.0,
+      "notes": null
+    },
+    {
+      "schema_version": "2.0",
+      "fact_id": "FACT-INF-001",
+      "statement": "预期输出电机状态估计结果和自适应控制指令。",
+      "category": "inferred_output",
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0006-a7c9a369",
+        "EV-DOCD415652CC4-0007-89a47e37"
+      ],
+      "status": "INFERRED",
+      "confidence": 0.82,
+      "notes": null
+    }
+  ]
+}

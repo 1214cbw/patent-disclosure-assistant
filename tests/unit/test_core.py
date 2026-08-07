@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 from patent_agent.core.models import Claim, ClaimTree
@@ -30,3 +31,13 @@ def test_patent_ast_references_are_resolved():
     ])
     assert ast.nodes[0].target == "EQ-001"
 
+
+def test_v1_case_migration_creates_backup(tmp_path: Path):
+    store = CaseStore(tmp_path)
+    store.create("PAT-MIGRATE", "旧案件")
+    case_path = store.case_dir("PAT-MIGRATE") / "case.json"
+    payload = json.loads(case_path.read_text(encoding="utf-8")); payload.pop("schema_version", None)
+    case_path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+    migrated = store.migrate_to_v2("PAT-MIGRATE")
+    assert migrated.schema_version == "2.0"
+    assert (store.case_dir("PAT-MIGRATE") / "case.v1.backup.json").exists()

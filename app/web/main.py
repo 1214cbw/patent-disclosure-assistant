@@ -96,7 +96,7 @@ def regenerate_section(case_id: str, payload: SectionRevision):
     if payload.section not in draft.sections:
         raise HTTPException(400, "unknown section")
     draft.sections[payload.section] = [payload.text]
-    path = store.save_stage(case_id, "stage_7_disclosure", draft)
+    path = store.save_stage(case_id, "stage_7_disclosure", draft, human_modified=True)
     return {"saved": str(path), "section": payload.section}
 
 
@@ -122,6 +122,42 @@ def list_artifacts(case_id: str):
     for version in case.versions:
         stages.setdefault(version.stage, []).append({"version": version.version, "created_at": version.created_at})
     return {"case": case.model_dump(), "stages": stages, "output_files": output_files}
+
+
+@app.get("/api/llm/status")
+def llm_status():
+    from patent_agent.llm import OpenAICompatibleProvider
+    result = OpenAICompatibleProvider(settings).health_check()
+    result["api_configured"] = bool(settings.llm_api_key)
+    return result
+
+
+@app.get("/api/cases/{case_id}/evidence")
+def list_evidence(case_id: str, query: str = "", top_k: int = 20):
+    from patent_agent.evidence import EvidenceStore
+    _case(case_id)
+    evidence_store = EvidenceStore(store.case_dir(case_id) / "evidence")
+    items = evidence_store.search(query, top_k) if query else evidence_store.all()[:top_k]
+    return [item.model_dump() for item in items]
+
+
+@app.get("/api/cases/{case_id}/evidence/{evidence_id}")
+def get_evidence(case_id: str, evidence_id: str):
+    from patent_agent.evidence import EvidenceStore
+    _case(case_id)
+    try:
+        return EvidenceStore(store.case_dir(case_id) / "evidence").get(evidence_id).model_dump()
+    except KeyError as exc:
+        raise HTTPException(404, "evidence not found") from exc
+
+
+@app.get("/api/cases/{case_id}/claims-support")
+def get_claims_support(case_id: str):
+    _case(case_id)
+    try:
+        return JSONResponse(json.loads(store.latest_stage_path(case_id, "v2_claims_support_matrix").read_text(encoding="utf-8")))
+    except FileNotFoundError as exc:
+        raise HTTPException(404, "claims support matrix not found") from exc
 
 
 @app.get("/api/cases/{case_id}/download/{filename}")
@@ -159,7 +195,8 @@ pre{white-space:pre-wrap;max-height:420px;overflow:auto;background:#f6f8fa;paddi
 <div class="card wide"><h2 id="case-title">请选择案件</h2><div id="case-meta" class="muted">不会自动向外部服务发送资料。</div></div>
 <div class="card"><h2>资料上传</h2><input id="source" type="file"><p><button onclick="upload()">导入并建立索引</button></p><div id="upload-status" class="muted"></div></div>
 <div class="card"><h2>人工 Checkpoint</h2><div class="row"><button onclick="approve('A')">批准 A 发明点</button><button onclick="approve('B')">批准 B 保护策略</button><button onclick="approve('C')">批准 C Claims</button></div><p id="checkpoints" class="muted"></p></div>
-<div class="card"><h2>阶段结果</h2><select id="stage"><option>stage_2_technical_understanding</option><option>stage_3_invention_mining</option><option>stage_5_novelty</option><option>stage_6_protection_strategy</option><option>stage_7_disclosure</option><option>stage_8_claims</option><option>stage_9_figures</option><option>stage_10_consistency_review</option></select><p><button onclick="loadStage()">查看结构化结果</button></p></div>
+<div class="card"><h2>阶段结果</h2><select id="stage"><option>v2_grounded_understanding</option><option>v2_invention_candidates</option><option>v2_protection_strategy</option><option>v2_grounded_disclosure</option><option>v2_grounded_claims</option><option>v2_claims_support_matrix</option><option>stage_2_technical_understanding</option><option>stage_3_invention_mining</option><option>stage_5_novelty</option><option>stage_6_protection_strategy</option><option>stage_7_disclosure</option><option>stage_8_claims</option></select><p><button onclick="loadStage()">查看结构化结果</button></p></div>
+<div class="card"><h2>LLM 与 Evidence</h2><p id="llm-status" class="muted">加载中</p><input id="evidence-query" placeholder="检索技术事实或 EV-ID"><p class="row"><button onclick="loadEvidence()">查看 Evidence</button><button class="secondary" onclick="loadClaimsSupport()">Claims Support</button></p></div>
 <div class="card"><h2>交底书章节重生成</h2><input id="section" placeholder="6. 技术方案"><label>有来源的修订文本</label><textarea id="section-text"></textarea><p><button onclick="revise()">仅保存该章节新版本</button></p></div>
 <div class="card wide"><h2>版本历史与 Word 输出</h2><div id="history"></div><div id="outputs" class="outputs"></div></div>
 <div class="card wide"><h2>内容查看</h2><pre id="viewer">选择一个阶段后查看。</pre></div>
@@ -175,5 +212,7 @@ async function upload(){if(!selected)return alert('请先选择案件');const f=
 async function approve(name){if(!selected)return;await api(`/api/cases/${encodeURIComponent(selected)}/checkpoints/${name}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({decision:'approve',note:'approved in local UI'})});await loadCase()}
 async function loadStage(){if(!selected)return;try{const x=await api(`/api/cases/${encodeURIComponent(selected)}/stages/${document.getElementById('stage').value}`);document.getElementById('viewer').textContent=JSON.stringify(x,null,2)}catch(e){document.getElementById('viewer').textContent=e.message}}
 async function revise(){if(!selected)return;await api(`/api/cases/${encodeURIComponent(selected)}/regenerate-section`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({section:document.getElementById('section').value,text:document.getElementById('section-text').value})});await loadCase()}
-refresh();
+async function loadEvidence(){if(!selected)return;const q=document.getElementById('evidence-query').value.trim();try{const x=q.startsWith('EV-')?await api(`/api/cases/${encodeURIComponent(selected)}/evidence/${encodeURIComponent(q)}`):await api(`/api/cases/${encodeURIComponent(selected)}/evidence?query=${encodeURIComponent(q)}`);document.getElementById('viewer').textContent=JSON.stringify(x,null,2)}catch(e){document.getElementById('viewer').textContent=e.message}}
+async function loadClaimsSupport(){if(!selected)return;const x=await api(`/api/cases/${encodeURIComponent(selected)}/claims-support`);document.getElementById('viewer').textContent=JSON.stringify(x,null,2)}
+api('/api/llm/status').then(x=>document.getElementById('llm-status').textContent=`${x.mode||'disabled'} · ${x.provider} · ${x.model||'未配置'} · API ${x.api_configured?'configured':'not configured'}`);refresh();
 </script></body></html>"""

@@ -1,0 +1,43 @@
+{
+  "schema_version": "2.0",
+  "terms": [
+    {
+      "schema_version": "2.0",
+      "concept_id": "TERM-001",
+      "selected_term": "状态采集单元",
+      "alternatives": [
+        "多源传感模块"
+      ],
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0003-e67990ad",
+        "EV-DOCD415652CC4-0004-ee8cb4b3",
+        "EV-DOCD415652CC4-0005-b608d283",
+        "EV-DOCD415652CC4-0006-a7c9a369",
+        "EV-DOCD415652CC4-0007-89a47e37",
+        "EV-DOCD415652CC4-0009-0412a654",
+        "EV-DOCD415652CC4-0010-7bfee3fc",
+        "EV-DOCD415652CC4-0011-3b77a576",
+        "EV-DOCD415652CC4-0012-50f769c6"
+      ]
+    },
+    {
+      "schema_version": "2.0",
+      "concept_id": "TERM-002",
+      "selected_term": "控制处理单元",
+      "alternatives": [
+        "控制器"
+      ],
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0003-e67990ad",
+        "EV-DOCD415652CC4-0004-ee8cb4b3",
+        "EV-DOCD415652CC4-0005-b608d283",
+        "EV-DOCD415652CC4-0006-a7c9a369",
+        "EV-DOCD415652CC4-0007-89a47e37",
+        "EV-DOCD415652CC4-0009-0412a654",
+        "EV-DOCD415652CC4-0010-7bfee3fc",
+        "EV-DOCD415652CC4-0011-3b77a576",
+        "EV-DOCD415652CC4-0012-50f769c6"
+      ]
+    }
+  ]
+}

@@ -21,7 +21,7 @@ class PatentNode(BaseModel):
 
 
 class PatentDocumentAST(BaseModel):
-    schema_version: str = "1.0"
+    schema_version: str = "2.0"
     document_id: str
     kind: Literal["disclosure", "claims", "specification", "abstract"]
     title: str
@@ -42,4 +42,3 @@ class PatentDocumentAST(BaseModel):
                 walk(node.children)
         walk(self.nodes)
         return self
-

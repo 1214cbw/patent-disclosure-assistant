@@ -1,5 +1,9 @@
 from .claims_support import review_claim_support
 from .hallucination_guard import hallucination_guard
+from .claims_support_matrix import ClaimsSupportMatrixBuilder, render_claims_support_markdown
+from .grounded_review import review_grounding
+from .traceability import build_traceability, render_traceability_markdown
+from .quality_gates import evaluate_quality_gates
+from .inventor_questions import generate_inventor_questions
 from .terminology import review_terminology
 from .symbols import review_symbols
-

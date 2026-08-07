@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="720" viewBox="0 0 900 720">
+<rect width="100%" height="100%" fill="white"/>
+<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="black"/></marker></defs>
+<rect x="120" y="60" width="660" height="108" fill="white" stroke="black" stroke-width="3"/>
+<text text-anchor="middle" font-family="Microsoft YaHei, SimSun" font-size="26"><tspan x="450.0" y="123.0">状态采集单元</tspan></text>
+<rect x="120" y="224" width="660" height="108" fill="white" stroke="black" stroke-width="3"/>
+<text text-anchor="middle" font-family="Microsoft YaHei, SimSun" font-size="26"><tspan x="450.0" y="287.0">状态估计单元</tspan></text>
+<rect x="120" y="388" width="660" height="108" fill="white" stroke="black" stroke-width="3"/>
+<text text-anchor="middle" font-family="Microsoft YaHei, SimSun" font-size="26"><tspan x="450.0" y="451.0">控制处理单元</tspan></text>
+<rect x="120" y="552" width="660" height="108" fill="white" stroke="black" stroke-width="3"/>
+<text text-anchor="middle" font-family="Microsoft YaHei, SimSun" font-size="26"><tspan x="450.0" y="615.0">电机驱动单元</tspan></text>
+<line x1="450.0" y1="168" x2="450.0" y2="219" stroke="black" stroke-width="3" marker-end="url(#arrow)"/>
+<line x1="450.0" y1="332" x2="450.0" y2="383" stroke="black" stroke-width="3" marker-end="url(#arrow)"/>
+<line x1="450.0" y1="496" x2="450.0" y2="547" stroke="black" stroke-width="3" marker-end="url(#arrow)"/>
+</svg>

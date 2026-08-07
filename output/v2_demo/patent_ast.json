@@ -1,0 +1,725 @@
+{
+  "disclosure": {
+    "schema_version": "2.0",
+    "document_id": "PAT-V2-DEMO-001-DISCLOSURE",
+    "kind": "disclosure",
+    "title": "一种基于多源传感信息的电机状态监测与自适应控制方法",
+    "nodes": [
+      {
+        "type": "heading",
+        "value": "一种基于多源传感信息的电机状态监测与自适应控制方法",
+        "level": 0,
+        "latex": "",
+        "number": null,
+        "target": "",
+        "path": "",
+        "children": [],
+        "attrs": {}
+      },
+      {
+        "type": "heading",
+        "value": "1. 发明名称",
+        "level": 1,
+        "latex": "",
+        "number": null,
+        "target": "",
+        "path": "",
+        "children": [],
+        "attrs": {}
+      },
+      {
+        "type": "paragraph",
+        "value": "预期发明名称为：一种基于多源传感信息的电机状态监测与自适应控制方法",
+        "level": null,
+        "latex": "",
+        "number": null,
+        "target": "",
+        "path": "",
+        "children": [],
+        "attrs": {}
+      },
+      {
+        "type": "heading",
+        "value": "2. 技术领域",
+        "level": 1,
+        "latex": "",
+        "number": null,
+        "target": "",
+        "path": "",
+        "children": [],
+        "attrs": {}
+      },
+      {
+        "type": "paragraph",
+        "value": "电机状态监测、故障预警与自适应控制，涉及多源传感信息同步、状态融合和闭环控制。",
+        "level": null,
+        "latex": "",
+        "number": null,
+        "target": "",
+        "path": "",
+        "children": [],
+        "attrs": {}
+      },
+      {
+        "type": "heading",
+        "value": "3. 背景技术",
+        "level": 1,
+        "latex": "",
+        "number": null,
+        "target": "",
+        "path": "",
+        "children": [],
+        "attrs": {}
+      },
+      {
+        "type": "paragraph",
+        "value": "- 现有电机控制器通常以定子电流和转速作为主要反馈量。\n- 独立的振动监测设备可用于机械故障检测，但检测结果通常不直接参与控制参数修正。\n- 温度保护一般采用固定阈值，难以描述负载变化下的连续热状态。",
+        "level": null,
+        "latex": "",
+        "number": null,
+        "target": "",
+        "path": "",
+        "children": [],
+        "attrs": {}
+      },
+      {
+        "type": "heading",
+        "value": "4. 现有技术存在的问题",
+        "level": 1,
+        "latex": "",
+        "number": null,
+        "target": "",
+        "path": "",
+        "children": [],
+        "attrs": {}
+      },
+      {
+        "type": "paragraph",
+        "value": "- 单一电流或转速反馈难以同时反映电气、机械和热状态。\n- 多类传感器的采样时钟和噪声水平不同，直接拼接可能导致状态估计不稳定。\n- 状态监测与控制回路相互独立，检测结果不能及时转化为控制参数修正量。",
+        "level": null,
+        "latex": "",
+        "number": null,
+        "target": "",
+        "path": "",
+        "children": [],
+        "attrs": {}
+      },
+      {
+        "type": "heading",
+        "value": "5. 本发明要解决的技术问题",
+        "level": 1,
+        "latex": "",
+        "number": null,
+        "target": "",
+        "path": "",
+        "children": [],
+        "attrs": {}
+      },
+      {
+        "type": "paragraph",
+        "value": "如何在不依赖单一传感源的情况下获得可用于闭环控制的电机融合状态量，并根据该融合状态量在线生成自适应控制指令。",
+        "level": null,
+        "latex": "",
+        "number": null,
+        "target": "",
+        "path": "",
+        "children": [],
+        "attrs": {}
+      },
+      {
+        "type": "heading",
+        "value": "6. 技术方案",
+        "level": 1,
+        "latex": "",
+        "number": null,
+        "target": "",
+        "path": "",
+        "children": [],
+        "attrs": {}
+      },
+      {
+        "type": "paragraph",
+        "value": "获取振动、定子电流、转速和温度信号。",
+        "level": null,
+        "latex": "",
+        "number": null,
+        "target": "",
+        "path": "",
+        "children": [],
+        "attrs": {}
+      },
+      {
+        "type": "paragraph",
+        "value": "对多源信号进行时间同步和归一化，形成多源特征向量。",
+        "level": null,
+        "latex": "",
+        "number": null,
+        "target": "",
+        "path": "",
+        "children": [],
+        "attrs": {}
+      },
+      {
+        "type": "paragraph",
+        "value": "根据各信号的质量指标计算置信度权重，并得到融合状态量。",
+        "level": null,
+        "latex": "",
+        "number": null,
+        "target": "",
+        "path": "",
+        "children": [],
+        "attrs": {}
+      },
+      {
+        "type": "paragraph",
+        "value": "计算目标状态与融合状态量之间的状态偏差。",
+        "level": null,
+        "latex": "",
+        "number": null,
+        "target": "",
+        "path": "",
+        "children": [],
+        "attrs": {}
+      },
+      {
+        "type": "paragraph",
+        "value": "根据状态偏差和历史偏差生成自适应控制指令并输出至电机驱动单元。",
+        "level": null,
+        "latex": "",
+        "number": null,
+        "target": "",
+        "path": "",
+        "children": [],
+        "attrs": {}
+      },
+      {
+        "type": "paragraph",
+        "value": "",
+        "level": null,
+        "latex": "",
+        "number": null,
+        "target": "",
+        "path": "",
+        "children": [
+          {
+            "type": "text",
+            "value": "在控制过程中，电磁转矩 ",
+            "level": null,
+            "latex": "",
+            "number": null,
+            "target": "",
+            "path": "",
+            "children": [],
+            "attrs": {}
+          },
+          {
+            "type": "inline_math",
+            "value": "",
+            "level": null,
+            "latex": "T_e",
+            "number": null,
+            "target": "",
+            "path": "",
+            "children": [],
+            "attrs": {}
+          },
+          {
+            "type": "text",
+            "value": " 作为状态量参与控制参数修正。",
+            "level": null,
+            "latex": "",
+            "number": null,
+            "target": "",
+            "path": "",
+            "children": [],
+            "attrs": {}
+          }
+        ],
+        "attrs": {}
+      },
+      {
+        "type": "display_equation",
+        "value": "",
+        "level": null,
+        "latex": "z_k=\\alpha x_{v,k}+\\beta x_{i,k}+(1-\\alpha-\\beta)x_{T,k}",
+        "number": 1,
+        "target": "EQ-001",
+        "path": "",
+        "children": [],
+        "attrs": {}
+      },
+      {
+        "type": "display_equation",
+        "value": "",
+        "level": null,
+        "latex": "e_k=r_k-z_k",
+        "number": 2,
+        "target": "EQ-002",
+        "path": "",
+        "children": [],
+        "attrs": {}
+      },
+      {
+        "type": "display_equation",
+        "value": "",
+        "level": null,
+        "latex": "u_k=u_{k-1}+K_pe_k+K_i\\sum_{j=1}^{k}e_j",
+        "number": 3,
+        "target": "EQ-003",
+        "path": "",
+        "children": [],
+        "attrs": {}
+      },
+      {
+        "type": "display_equation",
+        "value": "",
+        "level": null,
+        "latex": "T_e=\\frac{3}{2}p[\\psi_f i_q+(L_d-L_q)i_di_q]",
+        "number": 4,
+        "target": "EQ-004",
+        "path": "",
+        "children": [],
+        "attrs": {}
+      },
+      {
+        "type": "paragraph",
+        "value": "",
+        "level": null,
+        "latex": "",
+        "number": null,
+        "target": "",
+        "path": "",
+        "children": [
+          {
+            "type": "text",
+            "value": "根据",
+            "level": null,
+            "latex": "",
+            "number": null,
+            "target": "",
+            "path": "",
+            "children": [],
+            "attrs": {}
+          },
+          {
+            "type": "equation_reference",
+            "value": "",
+            "level": null,
+            "latex": "",
+            "number": null,
+            "target": "EQ-001",
+            "path": "",
+            "children": [],
+            "attrs": {}
+          },
+          {
+            "type": "text",
+            "value": "计算融合状态量，并据此生成控制参数修正量。",
+            "level": null,
+            "latex": "",
+            "number": null,
+            "target": "",
+            "path": "",
+            "children": [],
+            "attrs": {}
+          }
+        ],
+        "attrs": {}
+      },
+      {
+        "type": "heading",
+        "value": "7. 有益效果",
+        "level": 1,
+        "latex": "",
+        "number": null,
+        "target": "",
+        "path": "",
+        "children": [],
+        "attrs": {}
+      },
+      {
+        "type": "paragraph",
+        "value": "将机械、电气和热状态映射为同一融合状态量，为闭环控制提供统一输入。",
+        "level": null,
+        "latex": "",
+        "number": null,
+        "target": "",
+        "path": "",
+        "children": [],
+        "attrs": {}
+      },
+      {
+        "type": "paragraph",
+        "value": "通过置信度权重降低单个传感通道异常对控制指令的影响。",
+        "level": null,
+        "latex": "",
+        "number": null,
+        "target": "",
+        "path": "",
+        "children": [],
+        "attrs": {}
+      },
+      {
+        "type": "paragraph",
+        "value": "使状态监测结果能够直接参与控制参数修正，缩短监测与控制之间的信息链路。",
+        "level": null,
+        "latex": "",
+        "number": null,
+        "target": "",
+        "path": "",
+        "children": [],
+        "attrs": {}
+      },
+      {
+        "type": "heading",
+        "value": "8. 附图说明",
+        "level": 1,
+        "latex": "",
+        "number": null,
+        "target": "",
+        "path": "",
+        "children": [],
+        "attrs": {}
+      },
+      {
+        "type": "paragraph",
+        "value": "",
+        "level": null,
+        "latex": "",
+        "number": null,
+        "target": "",
+        "path": "",
+        "children": [
+          {
+            "type": "text",
+            "value": "该方法形成从多源信号采集到自适应控制指令输出的闭环流程，如",
+            "level": null,
+            "latex": "",
+            "number": null,
+            "target": "",
+            "path": "",
+            "children": [],
+            "attrs": {}
+          },
+          {
+            "type": "figure_reference",
+            "value": "",
+            "level": null,
+            "latex": "",
+            "number": null,
+            "target": "FIG-001",
+            "path": "",
+            "children": [],
+            "attrs": {}
+          },
+          {
+            "type": "text",
+            "value": "所示。",
+            "level": null,
+            "latex": "",
+            "number": null,
+            "target": "",
+            "path": "",
+            "children": [],
+            "attrs": {}
+          }
+        ],
+        "attrs": {}
+      },
+      {
+        "type": "figure",
+        "value": "电机状态监测与自适应控制方法流程图",
+        "level": null,
+        "latex": "",
+        "number": 1,
+        "target": "FIG-001",
+        "path": "C:\\Users\\25032\\Desktop\\gongshi\\patent_agent\\output\\v2_demo\\figures\\figure_01.png",
+        "children": [],
+        "attrs": {}
+      },
+      {
+        "type": "figure",
+        "value": "电机状态监测与自适应控制系统结构示意图",
+        "level": null,
+        "latex": "",
+        "number": 2,
+        "target": "FIG-002",
+        "path": "C:\\Users\\25032\\Desktop\\gongshi\\patent_agent\\output\\v2_demo\\figures\\figure_02.png",
+        "children": [],
+        "attrs": {}
+      },
+      {
+        "type": "heading",
+        "value": "9. 具体实施方式",
+        "level": 1,
+        "latex": "",
+        "number": null,
+        "target": "",
+        "path": "",
+        "children": [],
+        "attrs": {}
+      },
+      {
+        "type": "paragraph",
+        "value": "预期在合成演示实施例中，依次获取多源信号、完成时间同步与状态融合，并根据状态偏差生成控制参数修正量。",
+        "level": null,
+        "latex": "",
+        "number": null,
+        "target": "",
+        "path": "",
+        "children": [],
+        "attrs": {}
+      },
+      {
+        "type": "paragraph",
+        "value": "SYNTHETIC DEMO DATA：在人工构造的传感噪声场景下，与等权融合演示基线相比，状态估计均方误差由0.082降至0.061；该数值仅用于测试证据标记、表述和校验，不得作为真实实验结果或申请事实。",
+        "level": null,
+        "latex": "",
+        "number": null,
+        "target": "",
+        "path": "",
+        "children": [],
+        "attrs": {}
+      },
+      {
+        "type": "heading",
+        "value": "10. 可替代实施方式",
+        "level": 1,
+        "latex": "",
+        "number": null,
+        "target": "",
+        "path": "",
+        "children": [],
+        "attrs": {}
+      },
+      {
+        "type": "paragraph",
+        "value": "状态采集单元可仅使用振动、电流和温度中的两种信号。",
+        "level": null,
+        "latex": "",
+        "number": null,
+        "target": "",
+        "path": "",
+        "children": [],
+        "attrs": {}
+      },
+      {
+        "type": "paragraph",
+        "value": "置信度权重可由信噪比、缺失率或传感器自检状态确定。",
+        "level": null,
+        "latex": "",
+        "number": null,
+        "target": "",
+        "path": "",
+        "children": [],
+        "attrs": {}
+      },
+      {
+        "type": "paragraph",
+        "value": "控制处理单元可采用PI控制、模型预测控制或其他有来源支持的控制方式。",
+        "level": null,
+        "latex": "",
+        "number": null,
+        "target": "",
+        "path": "",
+        "children": [],
+        "attrs": {}
+      },
+      {
+        "type": "heading",
+        "value": "11. 关键创新点与拟保护点",
+        "level": 1,
+        "latex": "",
+        "number": null,
+        "target": "",
+        "path": "",
+        "children": [],
+        "attrs": {}
+      },
+      {
+        "type": "paragraph",
+        "value": "预期保护的核心组合为：将多源状态融合结果直接用于生成电机控制参数修正量。",
+        "level": null,
+        "latex": "",
+        "number": null,
+        "target": "",
+        "path": "",
+        "children": [],
+        "attrs": {}
+      },
+      {
+        "type": "heading",
+        "value": "12. 需要发明人进一步确认的问题",
+        "level": 1,
+        "latex": "",
+        "number": null,
+        "target": "",
+        "path": "",
+        "children": [],
+        "attrs": {}
+      },
+      {
+        "type": "paragraph",
+        "value": "真实样机的传感器型号、采样精度和通信接口待发明人确认。",
+        "level": null,
+        "latex": "",
+        "number": null,
+        "target": "",
+        "path": "",
+        "children": [],
+        "attrs": {}
+      },
+      {
+        "type": "paragraph",
+        "value": "权重约束、控制参数边界和故障安全策略待发明人确认。",
+        "level": null,
+        "latex": "",
+        "number": null,
+        "target": "",
+        "path": "",
+        "children": [],
+        "attrs": {}
+      },
+      {
+        "type": "paragraph",
+        "value": "公开日期、发明人和权属信息待确认。",
+        "level": null,
+        "latex": "",
+        "number": null,
+        "target": "",
+        "path": "",
+        "children": [],
+        "attrs": {}
+      }
+    ],
+    "metadata": {
+      "case_id": "PAT-V2-DEMO-001",
+      "review_notice": "供发明人及专利专业人员复核"
+    }
+  },
+  "claims": {
+    "schema_version": "2.0",
+    "document_id": "PAT-V2-DEMO-001-CLAIMS",
+    "kind": "claims",
+    "title": "一种基于多源传感信息的电机状态监测与自适应控制方法",
+    "nodes": [
+      {
+        "type": "heading",
+        "value": "权利要求草案",
+        "level": 0,
+        "latex": "",
+        "number": null,
+        "target": "",
+        "path": "",
+        "children": [],
+        "attrs": {}
+      },
+      {
+        "type": "paragraph",
+        "value": "本文件为辅助草案，需由发明人和专利代理师复核。",
+        "level": null,
+        "latex": "",
+        "number": null,
+        "target": "",
+        "path": "",
+        "children": [],
+        "attrs": {}
+      },
+      {
+        "type": "claim",
+        "value": "一种电机状态监测与自适应控制方法，其特征在于，包括：获取振动、定子电流、转速和温度信号；对多源信号进行时间同步和归一化，形成多源特征向量；根据各信号的质量指标计算置信度权重，并得到融合状态量；计算目标状态与融合状态量之间的状态偏差。",
+        "level": null,
+        "latex": "",
+        "number": 1,
+        "target": "",
+        "path": "",
+        "children": [],
+        "attrs": {
+          "depends_on": [],
+          "scope": "broad"
+        }
+      },
+      {
+        "type": "claim",
+        "value": "根据权利要求1所述的方法，其特征在于，包括：状态采集单元可仅使用振动、电流和温度中的两种信号。",
+        "level": null,
+        "latex": "",
+        "number": 2,
+        "target": "",
+        "path": "",
+        "children": [],
+        "attrs": {
+          "depends_on": [
+            1
+          ],
+          "scope": "conservative"
+        }
+      },
+      {
+        "type": "claim",
+        "value": "根据权利要求1所述的方法，其特征在于，包括：置信度权重可由信噪比、缺失率或传感器自检状态确定。",
+        "level": null,
+        "latex": "",
+        "number": 3,
+        "target": "",
+        "path": "",
+        "children": [],
+        "attrs": {
+          "depends_on": [
+            1
+          ],
+          "scope": "conservative"
+        }
+      },
+      {
+        "type": "claim",
+        "value": "根据权利要求1所述的方法，其特征在于，包括：控制处理单元可采用PI控制、模型预测控制或其他有来源支持的控制方式。",
+        "level": null,
+        "latex": "",
+        "number": 4,
+        "target": "",
+        "path": "",
+        "children": [],
+        "attrs": {
+          "depends_on": [
+            1
+          ],
+          "scope": "conservative"
+        }
+      },
+      {
+        "type": "claim",
+        "value": "一种电机状态监测与自适应控制系统，其特征在于，包括：获取振动、定子电流、转速和温度信号；对多源信号进行时间同步和归一化，形成多源特征向量；根据各信号的质量指标计算置信度权重，并得到融合状态量；计算目标状态与融合状态量之间的状态偏差。",
+        "level": null,
+        "latex": "",
+        "number": 5,
+        "target": "",
+        "path": "",
+        "children": [],
+        "attrs": {
+          "depends_on": [],
+          "scope": "conservative"
+        }
+      },
+      {
+        "type": "claim",
+        "value": "根据权利要求5所述的系统，其特征在于，包括：状态采集单元可仅使用振动、电流和温度中的两种信号。",
+        "level": null,
+        "latex": "",
+        "number": 6,
+        "target": "",
+        "path": "",
+        "children": [],
+        "attrs": {
+          "depends_on": [
+            5
+          ],
+          "scope": "conservative"
+        }
+      }
+    ],
+    "metadata": {
+      "case_id": "PAT-V2-DEMO-001"
+    }
+  }
+}

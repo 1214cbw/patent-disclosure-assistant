@@ -1,0 +1,98 @@
+{
+  "schema_version": "2.0",
+  "title": "一种基于多源传感信息的电机状态监测与自适应控制方法",
+  "claims": [
+    {
+      "number": 1,
+      "category": "method",
+      "depends_on": [],
+      "text": "一种电机状态监测与自适应控制方法，其特征在于，包括：获取振动、定子电流、转速和温度信号；对多源信号进行时间同步和归一化，形成多源特征向量；根据各信号的质量指标计算置信度权重，并得到融合状态量；计算目标状态与融合状态量之间的状态偏差。",
+      "feature_ids": [
+        "CORE-F001",
+        "CORE-F002",
+        "CORE-F003",
+        "CORE-F004"
+      ],
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0007-89a47e37"
+      ],
+      "scope": "broad"
+    },
+    {
+      "number": 2,
+      "category": "dependent",
+      "depends_on": [
+        1
+      ],
+      "text": "根据权利要求1所述的方法，其特征在于，包括：状态采集单元可仅使用振动、电流和温度中的两种信号。",
+      "feature_ids": [
+        "DEP-F001"
+      ],
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0011-3b77a576"
+      ],
+      "scope": "conservative"
+    },
+    {
+      "number": 3,
+      "category": "dependent",
+      "depends_on": [
+        1
+      ],
+      "text": "根据权利要求1所述的方法，其特征在于，包括：置信度权重可由信噪比、缺失率或传感器自检状态确定。",
+      "feature_ids": [
+        "DEP-F002"
+      ],
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0011-3b77a576"
+      ],
+      "scope": "conservative"
+    },
+    {
+      "number": 4,
+      "category": "dependent",
+      "depends_on": [
+        1
+      ],
+      "text": "根据权利要求1所述的方法，其特征在于，包括：控制处理单元可采用PI控制、模型预测控制或其他有来源支持的控制方式。",
+      "feature_ids": [
+        "DEP-F003"
+      ],
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0011-3b77a576"
+      ],
+      "scope": "conservative"
+    },
+    {
+      "number": 5,
+      "category": "system",
+      "depends_on": [],
+      "text": "一种电机状态监测与自适应控制系统，其特征在于，包括：获取振动、定子电流、转速和温度信号；对多源信号进行时间同步和归一化，形成多源特征向量；根据各信号的质量指标计算置信度权重，并得到融合状态量；计算目标状态与融合状态量之间的状态偏差。",
+      "feature_ids": [
+        "CORE-F001",
+        "CORE-F002",
+        "CORE-F003",
+        "CORE-F004"
+      ],
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0007-89a47e37"
+      ],
+      "scope": "conservative"
+    },
+    {
+      "number": 6,
+      "category": "dependent",
+      "depends_on": [
+        5
+      ],
+      "text": "根据权利要求5所述的系统，其特征在于，包括：状态采集单元可仅使用振动、电流和温度中的两种信号。",
+      "feature_ids": [
+        "DEP-F001"
+      ],
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0011-3b77a576"
+      ],
+      "scope": "conservative"
+    }
+  ]
+}

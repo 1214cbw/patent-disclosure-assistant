@@ -1,0 +1,44 @@
+[
+  {
+    "schema_version": "2.0",
+    "gate": "Gate 1 Evidence Integrity",
+    "status": "PASS",
+    "errors": [],
+    "warnings": []
+  },
+  {
+    "schema_version": "2.0",
+    "gate": "Gate 2 Technical Understanding",
+    "status": "PASS",
+    "errors": [],
+    "warnings": []
+  },
+  {
+    "schema_version": "2.0",
+    "gate": "Gate 3 Invention Candidate",
+    "status": "PASS",
+    "errors": [],
+    "warnings": []
+  },
+  {
+    "schema_version": "2.0",
+    "gate": "Gate 4 Claim Support",
+    "status": "PASS",
+    "errors": [],
+    "warnings": []
+  },
+  {
+    "schema_version": "2.0",
+    "gate": "Gate 5 Traceability",
+    "status": "PASS",
+    "errors": [],
+    "warnings": []
+  },
+  {
+    "schema_version": "2.0",
+    "gate": "Gate 6 Document Validation",
+    "status": "PASS",
+    "errors": [],
+    "warnings": []
+  }
+]

@@ -1,0 +1,569 @@
+{
+  "schema_version": "2.0",
+  "title": "一种基于多源传感信息的电机状态监测与自适应控制方法",
+  "sections": [
+    {
+      "schema_version": "2.0",
+      "section_id": "01",
+      "title": "1. 发明名称",
+      "paragraphs": [
+        {
+          "schema_version": "2.0",
+          "paragraph_id": "DISC-01-P001",
+          "section_id": "01",
+          "text": "预期发明名称为：一种基于多源传感信息的电机状态监测与自适应控制方法",
+          "evidence_ids": [
+            "EV-DOCD415652CC4-0005-b608d283"
+          ],
+          "fact_ids": [
+            "FACT-001"
+          ],
+          "derived_from": [
+            "FACT-001"
+          ],
+          "status": "AI_SUGGESTION",
+          "human_modified": false
+        }
+      ]
+    },
+    {
+      "schema_version": "2.0",
+      "section_id": "02",
+      "title": "2. 技术领域",
+      "paragraphs": [
+        {
+          "schema_version": "2.0",
+          "paragraph_id": "DISC-02-P001",
+          "section_id": "02",
+          "text": "电机状态监测、故障预警与自适应控制，涉及多源传感信息同步、状态融合和闭环控制。",
+          "evidence_ids": [
+            "EV-DOCD415652CC4-0005-b608d283"
+          ],
+          "fact_ids": [
+            "FACT-001"
+          ],
+          "derived_from": [
+            "FACT-001"
+          ],
+          "status": "SOURCE_FACT",
+          "human_modified": false
+        }
+      ]
+    },
+    {
+      "schema_version": "2.0",
+      "section_id": "03",
+      "title": "3. 背景技术",
+      "paragraphs": [
+        {
+          "schema_version": "2.0",
+          "paragraph_id": "DISC-03-P001",
+          "section_id": "03",
+          "text": "- 现有电机控制器通常以定子电流和转速作为主要反馈量。\n- 独立的振动监测设备可用于机械故障检测，但检测结果通常不直接参与控制参数修正。\n- 温度保护一般采用固定阈值，难以描述负载变化下的连续热状态。",
+          "evidence_ids": [
+            "EV-DOCD415652CC4-0003-e67990ad"
+          ],
+          "fact_ids": [
+            "FACT-002"
+          ],
+          "derived_from": [
+            "FACT-002"
+          ],
+          "status": "SOURCE_FACT",
+          "human_modified": false
+        }
+      ]
+    },
+    {
+      "schema_version": "2.0",
+      "section_id": "04",
+      "title": "4. 现有技术存在的问题",
+      "paragraphs": [
+        {
+          "schema_version": "2.0",
+          "paragraph_id": "DISC-04-P001",
+          "section_id": "04",
+          "text": "- 单一电流或转速反馈难以同时反映电气、机械和热状态。\n- 多类传感器的采样时钟和噪声水平不同，直接拼接可能导致状态估计不稳定。\n- 状态监测与控制回路相互独立，检测结果不能及时转化为控制参数修正量。",
+          "evidence_ids": [
+            "EV-DOCD415652CC4-0004-ee8cb4b3"
+          ],
+          "fact_ids": [
+            "FACT-003"
+          ],
+          "derived_from": [
+            "FACT-003"
+          ],
+          "status": "SOURCE_FACT",
+          "human_modified": false
+        }
+      ]
+    },
+    {
+      "schema_version": "2.0",
+      "section_id": "05",
+      "title": "5. 本发明要解决的技术问题",
+      "paragraphs": [
+        {
+          "schema_version": "2.0",
+          "paragraph_id": "DISC-05-P001",
+          "section_id": "05",
+          "text": "如何在不依赖单一传感源的情况下获得可用于闭环控制的电机融合状态量，并根据该融合状态量在线生成自适应控制指令。",
+          "evidence_ids": [
+            "EV-DOCD415652CC4-0005-b608d283"
+          ],
+          "fact_ids": [
+            "FACT-001"
+          ],
+          "derived_from": [
+            "FACT-001"
+          ],
+          "status": "SOURCE_FACT",
+          "human_modified": false
+        }
+      ]
+    },
+    {
+      "schema_version": "2.0",
+      "section_id": "06",
+      "title": "6. 技术方案",
+      "paragraphs": [
+        {
+          "schema_version": "2.0",
+          "paragraph_id": "DISC-06-P001",
+          "section_id": "06",
+          "text": "获取振动、定子电流、转速和温度信号。",
+          "evidence_ids": [
+            "EV-DOCD415652CC4-0007-89a47e37"
+          ],
+          "fact_ids": [
+            "FACT-S001",
+            "FACT-S002",
+            "FACT-S003",
+            "FACT-S004",
+            "FACT-S005"
+          ],
+          "derived_from": [
+            "FACT-S001",
+            "FACT-S002",
+            "FACT-S003",
+            "FACT-S004",
+            "FACT-S005"
+          ],
+          "status": "SOURCE_FACT",
+          "human_modified": false
+        },
+        {
+          "schema_version": "2.0",
+          "paragraph_id": "DISC-06-P002",
+          "section_id": "06",
+          "text": "对多源信号进行时间同步和归一化，形成多源特征向量。",
+          "evidence_ids": [
+            "EV-DOCD415652CC4-0007-89a47e37"
+          ],
+          "fact_ids": [
+            "FACT-S001",
+            "FACT-S002",
+            "FACT-S003",
+            "FACT-S004",
+            "FACT-S005"
+          ],
+          "derived_from": [
+            "FACT-S001",
+            "FACT-S002",
+            "FACT-S003",
+            "FACT-S004",
+            "FACT-S005"
+          ],
+          "status": "SOURCE_FACT",
+          "human_modified": false
+        },
+        {
+          "schema_version": "2.0",
+          "paragraph_id": "DISC-06-P003",
+          "section_id": "06",
+          "text": "根据各信号的质量指标计算置信度权重，并得到融合状态量。",
+          "evidence_ids": [
+            "EV-DOCD415652CC4-0007-89a47e37"
+          ],
+          "fact_ids": [
+            "FACT-S001",
+            "FACT-S002",
+            "FACT-S003",
+            "FACT-S004",
+            "FACT-S005"
+          ],
+          "derived_from": [
+            "FACT-S001",
+            "FACT-S002",
+            "FACT-S003",
+            "FACT-S004",
+            "FACT-S005"
+          ],
+          "status": "SOURCE_FACT",
+          "human_modified": false
+        },
+        {
+          "schema_version": "2.0",
+          "paragraph_id": "DISC-06-P004",
+          "section_id": "06",
+          "text": "计算目标状态与融合状态量之间的状态偏差。",
+          "evidence_ids": [
+            "EV-DOCD415652CC4-0007-89a47e37"
+          ],
+          "fact_ids": [
+            "FACT-S001",
+            "FACT-S002",
+            "FACT-S003",
+            "FACT-S004",
+            "FACT-S005"
+          ],
+          "derived_from": [
+            "FACT-S001",
+            "FACT-S002",
+            "FACT-S003",
+            "FACT-S004",
+            "FACT-S005"
+          ],
+          "status": "SOURCE_FACT",
+          "human_modified": false
+        },
+        {
+          "schema_version": "2.0",
+          "paragraph_id": "DISC-06-P005",
+          "section_id": "06",
+          "text": "根据状态偏差和历史偏差生成自适应控制指令并输出至电机驱动单元。",
+          "evidence_ids": [
+            "EV-DOCD415652CC4-0007-89a47e37"
+          ],
+          "fact_ids": [
+            "FACT-S001",
+            "FACT-S002",
+            "FACT-S003",
+            "FACT-S004",
+            "FACT-S005"
+          ],
+          "derived_from": [
+            "FACT-S001",
+            "FACT-S002",
+            "FACT-S003",
+            "FACT-S004",
+            "FACT-S005"
+          ],
+          "status": "SOURCE_FACT",
+          "human_modified": false
+        }
+      ]
+    },
+    {
+      "schema_version": "2.0",
+      "section_id": "07",
+      "title": "7. 有益效果",
+      "paragraphs": [
+        {
+          "schema_version": "2.0",
+          "paragraph_id": "DISC-07-P001",
+          "section_id": "07",
+          "text": "将机械、电气和热状态映射为同一融合状态量，为闭环控制提供统一输入。",
+          "evidence_ids": [
+            "EV-DOCD415652CC4-0009-0412a654"
+          ],
+          "fact_ids": [
+            "FACT-E001",
+            "FACT-E002",
+            "FACT-E003"
+          ],
+          "derived_from": [
+            "FACT-E001",
+            "FACT-E002",
+            "FACT-E003"
+          ],
+          "status": "SOURCE_FACT",
+          "human_modified": false
+        },
+        {
+          "schema_version": "2.0",
+          "paragraph_id": "DISC-07-P002",
+          "section_id": "07",
+          "text": "通过置信度权重降低单个传感通道异常对控制指令的影响。",
+          "evidence_ids": [
+            "EV-DOCD415652CC4-0009-0412a654"
+          ],
+          "fact_ids": [
+            "FACT-E001",
+            "FACT-E002",
+            "FACT-E003"
+          ],
+          "derived_from": [
+            "FACT-E001",
+            "FACT-E002",
+            "FACT-E003"
+          ],
+          "status": "SOURCE_FACT",
+          "human_modified": false
+        },
+        {
+          "schema_version": "2.0",
+          "paragraph_id": "DISC-07-P003",
+          "section_id": "07",
+          "text": "使状态监测结果能够直接参与控制参数修正，缩短监测与控制之间的信息链路。",
+          "evidence_ids": [
+            "EV-DOCD415652CC4-0009-0412a654"
+          ],
+          "fact_ids": [
+            "FACT-E001",
+            "FACT-E002",
+            "FACT-E003"
+          ],
+          "derived_from": [
+            "FACT-E001",
+            "FACT-E002",
+            "FACT-E003"
+          ],
+          "status": "SOURCE_FACT",
+          "human_modified": false
+        }
+      ]
+    },
+    {
+      "schema_version": "2.0",
+      "section_id": "08",
+      "title": "8. 附图说明",
+      "paragraphs": [
+        {
+          "schema_version": "2.0",
+          "paragraph_id": "DISC-08-P001",
+          "section_id": "08",
+          "text": "预期附图包括：图1为电机状态监测与自适应控制方法流程图；图2为系统结构示意图。",
+          "evidence_ids": [
+            "EV-DOCD415652CC4-0006-a7c9a369"
+          ],
+          "fact_ids": [
+            "FACT-C001",
+            "FACT-C002",
+            "FACT-C003",
+            "FACT-C004",
+            "FACT-C005"
+          ],
+          "derived_from": [
+            "FACT-C001",
+            "FACT-C002",
+            "FACT-C003",
+            "FACT-C004",
+            "FACT-C005"
+          ],
+          "status": "INFERRED",
+          "human_modified": false
+        }
+      ]
+    },
+    {
+      "schema_version": "2.0",
+      "section_id": "09",
+      "title": "9. 具体实施方式",
+      "paragraphs": [
+        {
+          "schema_version": "2.0",
+          "paragraph_id": "DISC-09-P001",
+          "section_id": "09",
+          "text": "预期在合成演示实施例中，依次获取多源信号、完成时间同步与状态融合，并根据状态偏差生成控制参数修正量。",
+          "evidence_ids": [
+            "EV-DOCD415652CC4-0007-89a47e37"
+          ],
+          "fact_ids": [
+            "FACT-S001",
+            "FACT-S002",
+            "FACT-S003",
+            "FACT-S004",
+            "FACT-S005"
+          ],
+          "derived_from": [
+            "FACT-S001",
+            "FACT-S002",
+            "FACT-S003",
+            "FACT-S004",
+            "FACT-S005"
+          ],
+          "status": "INFERRED",
+          "human_modified": false
+        },
+        {
+          "schema_version": "2.0",
+          "paragraph_id": "DISC-09-P002",
+          "section_id": "09",
+          "text": "SYNTHETIC DEMO DATA：在人工构造的传感噪声场景下，与等权融合演示基线相比，状态估计均方误差由0.082降至0.061；该数值仅用于测试证据标记、表述和校验，不得作为真实实验结果或申请事实。",
+          "evidence_ids": [
+            "EV-DOCD415652CC4-0010-7bfee3fc"
+          ],
+          "fact_ids": [
+            "FACT-EXP-001"
+          ],
+          "derived_from": [
+            "FACT-EXP-001"
+          ],
+          "status": "SOURCE_FACT",
+          "human_modified": false
+        }
+      ]
+    },
+    {
+      "schema_version": "2.0",
+      "section_id": "10",
+      "title": "10. 可替代实施方式",
+      "paragraphs": [
+        {
+          "schema_version": "2.0",
+          "paragraph_id": "DISC-10-P001",
+          "section_id": "10",
+          "text": "状态采集单元可仅使用振动、电流和温度中的两种信号。",
+          "evidence_ids": [
+            "EV-DOCD415652CC4-0011-3b77a576"
+          ],
+          "fact_ids": [
+            "FACT-A001",
+            "FACT-A002",
+            "FACT-A003"
+          ],
+          "derived_from": [
+            "FACT-A001",
+            "FACT-A002",
+            "FACT-A003"
+          ],
+          "status": "SOURCE_FACT",
+          "human_modified": false
+        },
+        {
+          "schema_version": "2.0",
+          "paragraph_id": "DISC-10-P002",
+          "section_id": "10",
+          "text": "置信度权重可由信噪比、缺失率或传感器自检状态确定。",
+          "evidence_ids": [
+            "EV-DOCD415652CC4-0011-3b77a576"
+          ],
+          "fact_ids": [
+            "FACT-A001",
+            "FACT-A002",
+            "FACT-A003"
+          ],
+          "derived_from": [
+            "FACT-A001",
+            "FACT-A002",
+            "FACT-A003"
+          ],
+          "status": "SOURCE_FACT",
+          "human_modified": false
+        },
+        {
+          "schema_version": "2.0",
+          "paragraph_id": "DISC-10-P003",
+          "section_id": "10",
+          "text": "控制处理单元可采用PI控制、模型预测控制或其他有来源支持的控制方式。",
+          "evidence_ids": [
+            "EV-DOCD415652CC4-0011-3b77a576"
+          ],
+          "fact_ids": [
+            "FACT-A001",
+            "FACT-A002",
+            "FACT-A003"
+          ],
+          "derived_from": [
+            "FACT-A001",
+            "FACT-A002",
+            "FACT-A003"
+          ],
+          "status": "SOURCE_FACT",
+          "human_modified": false
+        }
+      ]
+    },
+    {
+      "schema_version": "2.0",
+      "section_id": "11",
+      "title": "11. 关键创新点与拟保护点",
+      "paragraphs": [
+        {
+          "schema_version": "2.0",
+          "paragraph_id": "DISC-11-P001",
+          "section_id": "11",
+          "text": "预期保护的核心组合为：将多源状态融合结果直接用于生成电机控制参数修正量。",
+          "evidence_ids": [
+            "EV-DOCD415652CC4-0007-89a47e37"
+          ],
+          "fact_ids": [
+            "FACT-S001",
+            "FACT-S002",
+            "FACT-S003",
+            "FACT-S004",
+            "FACT-S005"
+          ],
+          "derived_from": [
+            "FACT-S001",
+            "FACT-S002",
+            "FACT-S003",
+            "FACT-S004",
+            "FACT-S005"
+          ],
+          "status": "INFERRED",
+          "human_modified": false
+        }
+      ]
+    },
+    {
+      "schema_version": "2.0",
+      "section_id": "12",
+      "title": "12. 需要发明人进一步确认的问题",
+      "paragraphs": [
+        {
+          "schema_version": "2.0",
+          "paragraph_id": "DISC-12-P001",
+          "section_id": "12",
+          "text": "真实样机的传感器型号、采样精度和通信接口待发明人确认。",
+          "evidence_ids": [
+            "EV-DOCD415652CC4-0012-50f769c6"
+          ],
+          "fact_ids": [
+            "FACT-U001"
+          ],
+          "derived_from": [
+            "FACT-U001"
+          ],
+          "status": "SOURCE_FACT",
+          "human_modified": false
+        },
+        {
+          "schema_version": "2.0",
+          "paragraph_id": "DISC-12-P002",
+          "section_id": "12",
+          "text": "权重约束、控制参数边界和故障安全策略待发明人确认。",
+          "evidence_ids": [
+            "EV-DOCD415652CC4-0012-50f769c6"
+          ],
+          "fact_ids": [
+            "FACT-U001"
+          ],
+          "derived_from": [
+            "FACT-U001"
+          ],
+          "status": "SOURCE_FACT",
+          "human_modified": false
+        },
+        {
+          "schema_version": "2.0",
+          "paragraph_id": "DISC-12-P003",
+          "section_id": "12",
+          "text": "公开日期、发明人和权属信息待确认。",
+          "evidence_ids": [
+            "EV-DOCD415652CC4-0012-50f769c6"
+          ],
+          "fact_ids": [
+            "FACT-U001"
+          ],
+          "derived_from": [
+            "FACT-U001"
+          ],
+          "status": "SOURCE_FACT",
+          "human_modified": false
+        }
+      ]
+    }
+  ]
+}
