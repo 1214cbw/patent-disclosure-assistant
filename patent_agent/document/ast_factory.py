@@ -23,7 +23,11 @@ def disclosure_to_ast(case_id: str, draft: DisclosureDraft) -> PatentDocumentAST
         if heading.startswith("8.") and not inserted_figures:
             if figure_nodes:
                 nodes.append(PatentNode(type="paragraph", children=[PatentNode(type="text", value="该方法形成从多源信号采集到自适应控制指令输出的闭环流程，如"), PatentNode(type="figure_reference", target=figure_nodes[0].target), PatentNode(type="text", value="所示。")]))
-            nodes.extend(figure_nodes); inserted_figures = True
+            for index, figure_node in enumerate(figure_nodes):
+                if index:
+                    nodes.append(PatentNode(type="page_break"))
+                nodes.append(figure_node)
+            inserted_figures = True
     return PatentDocumentAST(document_id=f"{case_id}-DISCLOSURE", kind="disclosure", title=draft.title, nodes=nodes, metadata={"case_id": case_id, "review_notice": "供发明人及专利专业人员复核"})
 
 

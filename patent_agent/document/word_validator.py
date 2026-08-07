@@ -32,11 +32,15 @@ class PatentDocxValidator:
 
     def inspect_word(self, path: Path, export_pdf: bool = True) -> dict:
         try:
+            import pythoncom
             import win32com.client
         except ImportError:
             return {"available": False, "error": "pywin32 unavailable"}
         word = document = None
+        com_initialized = False
         try:
+            pythoncom.CoInitialize()
+            com_initialized = True
             word = win32com.client.DispatchEx("Word.Application"); word.Visible = False; word.DisplayAlerts = 0
             document = word.Documents.Open(str(path.resolve()), ReadOnly=False, AddToRecentFiles=False)
             result = {"available": True, "omaths_count": int(document.OMaths.Count), "tables_count": int(document.Tables.Count), "inline_shapes_count": int(document.InlineShapes.Count), "pages": int(document.ComputeStatistics(2))}
@@ -50,9 +54,9 @@ class PatentDocxValidator:
         finally:
             if document is not None: document.Close(SaveChanges=False)
             if word is not None: word.Quit()
+            if com_initialized: pythoncom.CoUninitialize()
 
     def validate(self, path: Path, export_pdf: bool = True) -> dict:
         word = self.inspect_word(path, export_pdf=export_pdf)
         xml = self.inspect_xml(path)
         return {"xml": xml, "word": word, "pass": xml["xml_pass"] and word.get("omaths_count") == xml["omml_count"]}
-
