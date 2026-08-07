@@ -81,9 +81,9 @@ class FigurePlanner:
         flow_nodes = [
             FigureNode(id="N01", label="电机转子\n参数化设计变量", claim_step=""),
             FigureNode(id="N02", label="转子拓扑结构\n→RGB三通道图像", claim_step=""),
-            FigureNode(id="N03", label="VAE编码器\n图像→潜在变量z₀", claim_step=""),
+            FigureNode(id="N03", label="VAE编码器\n图像x→潜在变量z₀", claim_step=""),
             FigureNode(id="N04", label="前向扩散\nz₀→z₁→...→zN\n(逐步加噪)", claim_step=""),
-            FigureNode(id="N05", label="时间条件U-Net\n预测并去除噪声", claim_step=""),
+            FigureNode(id="N05", label="时间条件U-Net\nεθ(zt, t)\n预测噪声ε", claim_step=""),
             FigureNode(id="N06", label="反向去噪\nzN→...→z₁→z₀\n(逐步恢复结构)", claim_step=""),
             FigureNode(id="N07", label="VAE解码器\n潜在变量→RGB图像", claim_step=""),
             FigureNode(id="N08", label="生成电机\n转子拓扑图像", claim_step=""),
@@ -106,9 +106,9 @@ class FigurePlanner:
         # Figure 2: Design variable annotation
         design_nodes = [
             FigureNode(id="D01", label="转子冲片三层\n磁障结构", claim_step=""),
-            FigureNode(id="D02", label="第一层(4变量)\n磁障距离hc₁\n中间磁障厚度hbm₁\n侧磁障厚度hbs₁\n开口角度α₁", claim_step=""),
-            FigureNode(id="D03", label="第二层(4变量)\n磁障距离hc₂\n中间磁障厚度hbm₂\n侧磁障厚度hbs₂\n开口角度α₂", claim_step=""),
-            FigureNode(id="D04", label="第三层(4变量)\n磁障距离hc₃\n中间磁障厚度hbm₃\n侧磁障厚度hbs₃\n开口角度α₃", claim_step=""),
+            FigureNode(id="D02", label="第一层(4变量)\n磁障距离 h_c\n中间磁障厚度 h_bm\n侧磁障厚度 h_bs\n开口角度 α", claim_step=""),
+            FigureNode(id="D03", label="第二层(4变量)\n磁障距离 h_c\n中间磁障厚度 h_bm\n侧磁障厚度 h_bs\n开口角度 α", claim_step=""),
+            FigureNode(id="D04", label="第三层(4变量)\n磁障距离 h_c\n中间磁障厚度 h_bm\n侧磁障厚度 h_bs\n开口角度 α", claim_step=""),
             FigureNode(id="D05", label="共12个设计变量\n均匀随机采样\n→生成转子拓扑结构", claim_step=""),
         ]
         design_edges = [
@@ -127,13 +127,13 @@ class FigurePlanner:
 
         # Figure 3: LDM architecture
         ldm_nodes = [
-            FigureNode(id="L01", label="RGB拓扑图像x\n(高维像素空间)", claim_step=""),
-            FigureNode(id="L02", label="VAE编码器E\nx→z₀\n(低维潜在空间)", claim_step=""),
-            FigureNode(id="L03", label="前向扩散过程\nz₀→z₁→...→zN\n逐步加高斯噪声", claim_step=""),
-            FigureNode(id="L04", label="时间条件U-Net\nϵθ(zt, t)\n预测噪声ϵ", claim_step=""),
-            FigureNode(id="L05", label="反向去噪过程\nzN→...→z₁→z₀\n逐步去除噪声", claim_step=""),
-            FigureNode(id="L06", label="VAE解码器D\nz₀→x'\n(重建高维图像)", claim_step=""),
-            FigureNode(id="L07", label="生成拓扑图像x'\n(高分辨率RGB)", claim_step=""),
+            FigureNode(id="L01", label="RGB拓扑图像 x\n(高维像素空间)", claim_step=""),
+            FigureNode(id="L02", label="VAE编码器 E\nx → z₀\n(低维潜在空间)", claim_step=""),
+            FigureNode(id="L03", label="前向扩散过程\nz₀ → z₁ → ... → zN\n逐步加高斯噪声", claim_step=""),
+            FigureNode(id="L04", label="时间条件U-Net\nεθ(zt, t)\n预测噪声 ε", claim_step=""),
+            FigureNode(id="L05", label="反向去噪过程\nzN → ... → z₁ → z₀\n逐步去除噪声", claim_step=""),
+            FigureNode(id="L06", label="VAE解码器 D\nz₀ → x'\n(重建高维图像)", claim_step=""),
+            FigureNode(id="L07", label="生成拓扑图像 x'\n(高分辨率RGB)", claim_step=""),
         ]
         ldm_edges = [
             FigureEdge(source="L01", target="L02"),
@@ -154,7 +154,7 @@ class FigurePlanner:
             FigureNode(id="I01", label="转子拓扑A\n→VAE编码→Z₁", claim_step=""),
             FigureNode(id="I02", label="潜在空间线性插值\nZ=(1-λ)Z₁+λZ₂\nλ∈[0,1]", claim_step=""),
             FigureNode(id="I03", label="转子拓扑B\n→VAE编码→Z₂", claim_step=""),
-            FigureNode(id="I04", label="解码中间潜在变量\n→平滑过渡的\n转子拓扑结构序列", claim_step=""),
+            FigureNode(id="I04", label="解码中间潜在变量 Z\n→平滑过渡的\n转子拓扑结构序列", claim_step=""),
         ]
         interp_edges = [
             FigureEdge(source="I01", target="I02"),

@@ -30,10 +30,11 @@ class MathSpanDetector:
     def _build_patterns(self):
         """Build regex patterns for math token detection.
 
-        IMPORTANT: Expressions and longer forms MUST come first in the alternation
-        to prevent partial matches. E.g., 'z_{t-1}' must match before 't'.
+        CRITICAL: Uses CJK-aware boundaries instead of \\b.
+        \\b fails at Chinese character boundaries (e.g., '变量z0输入' won't match \\bz0\\b).
+        Uses (?<![a-zA-Z]) and (?![a-zA-Z]) for Latin token boundaries,
+        and (?<![a-zA-Z\\u4e00-\\u9fff]) for Greek characters.
         """
-        # Sort by: 1) kind priority, 2) length descending
         _kind_priority = {"expression": 0, "subscript": 1, "greek": 2, "variable": 3}
         def _sort_key(s: MathSymbol) -> tuple[int, int]:
             return (_kind_priority.get(s.kind, 4), -len(s.plain_form))
@@ -42,10 +43,14 @@ class MathSpanDetector:
         patterns = []
         for s in self.sorted_symbols:
             form = re.escape(s.plain_form)
-            if s.kind == "expression" or s.kind in ("greek",):
+            if s.kind == "expression":
                 patterns.append(form)
+            elif s.kind in ("greek",):
+                # Greek chars: use Unicode-aware boundary
+                patterns.append(r'(?<![a-zA-Z一-鿿])' + form + r'(?![a-zA-Z一-鿿])')
             else:
-                patterns.append(r'\b' + form + r'\b')
+                # Latin variables: CJK-aware boundary (NOT \b which fails on Chinese)
+                patterns.append(r'(?<![a-zA-Z0-9])' + form + r'(?![a-zA-Z0-9])')
         self.detect_pattern = re.compile('|'.join(patterns))
 
     def convert_paragraph(

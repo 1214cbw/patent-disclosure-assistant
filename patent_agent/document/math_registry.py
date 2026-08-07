@@ -51,13 +51,22 @@ REAL_PAPER_001_SYMBOLS: list[MathSymbol] = [
     ),
 
     # ── Latent Variables ──
+    # Plain form aliases (both "z0" and "z_0" covered)
     MathSymbol(
         plain_form="z0", latex="z_0", kind="subscript",
         context_words=["潜在", "变量", "表示", "latent", "variable"],
-        exclude_words=["FID"],  # Don't match "z0" inside other words
+        exclude_words=["FID"],
+    ),
+    MathSymbol(
+        plain_form="z_0", latex="z_0", kind="subscript",
+        context_words=["潜在", "变量", "latent"],
     ),
     MathSymbol(
         plain_form="zt", latex="z_t", kind="subscript",
+        context_words=["潜在", "变量", "时间", "加噪", "latent", "timestep"],
+    ),
+    MathSymbol(
+        plain_form="z_t", latex="z_t", kind="subscript",
         context_words=["潜在", "变量", "时间", "加噪", "latent", "timestep"],
     ),
     MathSymbol(
@@ -65,8 +74,8 @@ REAL_PAPER_001_SYMBOLS: list[MathSymbol] = [
         context_words=["潜在", "变量", "噪声", "noise", "latent"],
     ),
     MathSymbol(
-        plain_form="z_t", latex="z_t", kind="subscript",
-        context_words=["潜在", "变量", "时间", "加噪", "latent", "timestep"],
+        plain_form="z_N", latex="z_N", kind="subscript",
+        context_words=["潜在", "变量", "噪声", "noise", "latent"],
     ),
     MathSymbol(
         plain_form="z_{t-1}", latex="z_{t-1}", kind="expression",
@@ -79,8 +88,20 @@ REAL_PAPER_001_SYMBOLS: list[MathSymbol] = [
         context_words=["潜在", "变量", "第一个", "latent", "first"],
     ),
     MathSymbol(
+        plain_form="Z_1", latex="Z_1", kind="subscript",
+        context_words=["潜在", "变量", "第一个", "latent", "first"],
+    ),
+    MathSymbol(
         plain_form="Z2", latex="Z_2", kind="subscript",
         context_words=["潜在", "变量", "第二个", "latent", "second"],
+    ),
+    MathSymbol(
+        plain_form="Z_2", latex="Z_2", kind="subscript",
+        context_words=["潜在", "变量", "第二个", "latent", "second"],
+    ),
+    MathSymbol(
+        plain_form="Z_t", latex="Z_t", kind="subscript",
+        context_words=["潜在", "变量", "latent"],
     ),
 
     # ── Scalar Variables ──
