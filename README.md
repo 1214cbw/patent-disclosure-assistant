@@ -1,148 +1,110 @@
-# Patent Agent
+# 专利技术交底书智能生成器
 
-Patent Agent 是一个本机运行、证据约束、人工决策的中文专利辅助工作台。它把论文、技术报告和研发材料转换为可审阅的技术理解、发明候选、保护策略、权利要求辅助草案和 Word 文档；所有真实案件都受 A1/A2/B/C 人工 Checkpoint 约束。
+上传论文、项目报告或技术资料，自动整理为中文专利技术交底书。
+
+```text
+上传材料 → AI理解技术 → 一键确认 → 下载技术交底书.docx
+```
+
+最终得到一份高质量中文《技术交底书》，可直接交给专利代理机构。
 
 > 本系统不提供可专利性、侵权或授权保证。AI 输出必须由发明人和专利专业人员复核。
 
+## 它能做什么
+
+1. **上传材料**：支持 PDF、DOCX、PPTX、TXT、MD、PNG、JPG 格式
+2. **AI 理解技术**：自动提取技术事实、步骤、公式、模块关系
+3. **一键生成**：整体确认后，自动生成中文技术交底书
+4. **导出 Word**：含原生 OMML 公式、中文附图、完整章节
+
 ## 一键启动
 
-在项目目录双击 `start_patent_agent.bat`。程序只监听本机 `127.0.0.1:8765`，就绪后自动打开：
+在项目目录双击 `start_patent_agent.bat`。程序只监听本机 `127.0.0.1:8765`，就绪后自动打开浏览器。
 
-```text
-http://127.0.0.1:8765
-```
+关闭时双击 `stop_patent_agent.bat`。
 
-关闭时双击 `stop_patent_agent.bat`。停止脚本只终止由本项目记录的确切服务进程。
+## 使用步骤
 
-## 第一次使用
+### 第一步：启动
+双击 `start_patent_agent.bat`，浏览器自动打开首页。
 
-1. 双击启动脚本，进入“案件总览”。
-2. 新建 PRIVATE 真实案件，或选择现有案件。
-3. 只上传已明确授权处理的 PDF、DOCX、PPTX、TXT、MD 或图片。
-4. 检查“设置与隐私”中的 Provider、Model 和 Privacy Mode。
-5. 运行 A1，在“技术理解审阅”逐项接受、编辑或拒绝。
-6. 人工确认公开信息后，才按 A2 → B → C 顺序继续。
-7. 最终从“产物与导出”下载 DOCX 和审阅报告。
+### 第二步：新建技术交底书
+点击"新建技术交底书"，填写项目名称，上传论文或技术资料。
 
-普通用户请阅读 [用户使用手册](docs/用户使用手册.md)；中断或故障恢复请阅读 [RECOVERY](docs/RECOVERY.md)。
+### 第三步：开始生成
+点击"开始生成技术交底书"，AI 将自动：
+- 解析材料
+- 理解技术方案
+- 提取关键技术事实
+- 生成中文技术交底书
+- 生成公式和附图
+- 导出 Word 文档
+
+### 第四步：确认并下载
+查看生成的技术交底书预览，点击"下载技术交底书"。
+
+如对结果不满意，可以点击"重新生成"或"修改内容"。
 
 ## DeepSeek 配置
 
-项目根目录 `.env` 是 CLI、Web 和 Provider 的唯一配置入口，启动时自动读取，无需修改 Windows 全局环境变量。示例：
+项目根目录 `.env` 是唯一配置入口，启动时自动读取：
 
 ```dotenv
 LLM_PROVIDER=openai-compatible
-LLM_BASE_URL=https://example.invalid/v1
+LLM_BASE_URL=https://api.deepseek.com
 LLM_API_KEY=your-key
-LLM_MODEL=your-model
-PATENT_LLM_MODE=disabled
+LLM_MODEL=deepseek-v4-pro
+PATENT_LLM_MODE=external-approved
+APP_MODE=disclosure_only
 ```
 
-隐私模式：
-
-- `disabled`：不调用 LLM。
-- `local`：仅调用本机或内网 OpenAI-compatible 服务。
-- `external-approved`：只有案件 Manifest 同时明确批准外部 LLM 时才可发送最小 Evidence 上下文。
-
-仅配置 API Key 不构成外部发送授权。状态检查不会显示密钥：
-
-```powershell
-python -m app.cli llm-status
-```
-
-## 创建案件与上传资料
-
-Web 是推荐入口。真实案件使用 Git 隔离的 `workspace/private_cases/REAL-*`，只接收用户明确选择的文件，不扫描其他目录。上传端限制文件类型、大小与文件签名，并清理文件名。
-
-CLI 仍可用于自动化：
-
-```powershell
-python -m app.cli real-case-create REAL-2026-001 --title "一种……方法" --authorized
-python -m app.cli real-case-ingest REAL-2026-001 D:\approved-materials
-python -m app.cli real-case-a1 REAL-2026-001
-python -m app.cli checkpoint REAL-2026-001
-```
-
-详细命令见 [真实案件工作流](docs/real_case_workflow.md)。
-
-## A1 / A2 / B / C 审阅
-
-- A1：核对技术事实、Evidence、公式、术语和不确定内容。
-- A2：审核发明候选；学术贡献不会自动变成发明点。
-- B：审核保护策略、必要/可选特征、范围和支持缺口。
-- C：同时审核 Claim 文本、Feature Graph、支持矩阵和范围风险。
-
-真实案件禁止自动批准。所有必审对象必须脱离 `UNREVIEWED`，P0 问题及公开信息 Gate 必须人工处理，系统才允许进入下一阶段。批量审阅和批准均有显式确认。
-
-## 人工修改与自动保存
-
-人工修改写入结构化审查数据和审计链，而不是只修改 Markdown。人工新增但没有原始证据完整支持的内容不会冒充 `SOURCE_FACT`；锁定对象不会被后续模型覆盖。网页保存后显示成功或错误状态。
-
-## Evidence
-
-Evidence Store 按文档、页、章节、段落/逻辑块建立稳定 ID。事实区分 `SOURCE_FACT`、`HUMAN_CONFIRMED`、`INFERRED`、`AI_SUGGESTION` 和 `UNVERIFIED`。References 被隔离为 `REFERENCE`，不能作为本论文发明事实。
-
-## Claims Support Matrix
-
-支持链为：
-
-```text
-Claim → Claim Feature → Disclosure Paragraph → TechnicalFact → Evidence → Source
-```
-
-独立权利要求必要特征为 `UNSUPPORTED` 时，系统会阻止继续。Broad、Balanced、Conservative 版本使用同一个有证据的 Feature Pool。
-
-## Word 与 OMML
-
-文档路线为：
-
-```text
-Structured Patent AST → deterministic renderer → DOCX → Word COM validation
-```
-
-公式由确定性的 Equation Engine 写成 Word 原生 OMML，可继续编辑，不是图片。附图来自结构化 `FigureSpec`。XML 验证检查公式、空运算主体、残余 LaTeX、引用、变量和媒体；Word COM 再检查 OMaths、图片和页数。
+- `APP_MODE=disclosure_only`：默认模式，仅生成技术交底书
+- `APP_MODE=full_patent`：（开发者）启用完整专利申请流程
 
 ## 中断恢复
 
-进度保存在 `runtime/progress/`，任务记录保存在 `runtime/jobs/`。网页“任务与恢复”可查看当前阶段并恢复；CLI 等效命令：
+生成过程中关闭页面？再次启动后，首页会显示未完成的任务。点击项目可直接继续。
 
-```powershell
-python -m app.cli resume-status
-python -m app.cli resume
-```
+## 隐私与安全
 
-恢复不会越过 Human Checkpoint，也不会重复已成功且仍有效的阶段。完整步骤见 [RECOVERY](docs/RECOVERY.md)。
+- 服务只绑定 `127.0.0.1`，不对局域网或公网开放
+- 数据和 API Key 不会离开本机（LLM 调用使用已配置的 DeepSeek API）
+- `.env`、API Key、真实材料均被 Git 排除
+- 所有 LLM 调用需用户明确授权
 
-## 隐私、安全与备份
+## 用户手册
 
-- 服务只绑定 `127.0.0.1`，不对局域网或公网开放。
-- `.env`、API Key、真实材料、私有案件、LLM 缓存和真实输出均被 Git 排除。
-- Manifest 只记录必要的相对身份/哈希，不公开原始外部绝对路径。
-- 不绕过验证码、登录或访问控制；先前技术只处理人工显式导入资料。
-- 备份时复制整个 `workspace/private_cases/<CASE-ID>` 到受控加密位置；不要把真实案件加入 Git。
+详细操作说明请阅读 [用户使用手册](docs/用户使用手册.md)。
 
-## 开发与测试
+---
+
+## 高级功能（开发者）
+
+以下能力已保留但默认隐藏，可通过 `APP_MODE=full_patent` 启用：
+
+- A1/A2/B/C 人工审阅流程
+- Claims Support Matrix（权利要求支持矩阵）
+- Patent AST（专利抽象语法树）
+- Prior Art Search（现有技术检索）
+- Novelty Matrix（新颖性矩阵）
+- Claim Scope Review（权利要求范围审核）
+- Traceability（可追溯性链）
+- Model Evaluation（模型评估）
+
+### 开发与测试
 
 ```powershell
 python -m pip install -e .
-python -m pytest tests/unit tests/integration tests/contract tests/regression -q
+python -m pytest tests/ -q
 python scripts/run_demo.py
-python scripts/run_v2_demo.py
-python scripts/run_v2_p1_demo.py
 ```
 
-合成 Web E2E：
+### 故障排查
 
-```powershell
-python scripts/run_synthetic_ui_e2e.py
-```
+- 页面打不开：检查 `runtime/patent_agent_server.log`，运行停止脚本后重新启动
+- LLM 不可用：检查 `.env` 中的 API Key 和 Base URL 配置
+- Word 校验失败：确认 Microsoft Word 可正常启动
 
-真实 LLM smoke test 默认跳过，仅在明确允许时设置 `RUN_LLM_SMOKE_TESTS=1`。当前能力和已知限制见 [PROJECT_STATUS](PROJECT_STATUS.md)。
+---
 
-## 故障排查
-
-- 页面打不开：检查 `runtime/patent_agent_server.log`，然后运行停止脚本再启动。
-- LLM 不可用：运行 `python -m app.cli llm-status`，核对 `.env` 与案件隐私授权。
-- 无法继续：检查 A1/A2/B/C 未审对象、P0 问题和 Publication Metadata。
-- Word 校验失败：确认 Microsoft Word 可启动且没有遗留弹窗，再重试导出。
-- 任务中断：进入“任务与恢复”，或按 [RECOVERY](docs/RECOVERY.md) 操作。
+*当前版本专注于"论文/技术资料 → 中文技术交底书"这一核心流程。*

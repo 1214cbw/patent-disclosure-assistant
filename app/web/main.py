@@ -385,6 +385,156 @@ def approve_checkpoint(case_id: str, checkpoint: str, payload: Approval):
     return real_case_status(case_id)
 
 
+# ── Disclosure-Only API ──────────────────────────────────────────
+
+@app.get("/api/real-cases/{case_id}/disclosure-status")
+def disclosure_status(case_id: str):
+    """Simplified Chinese status for disclosure-only mode."""
+    manifest = _real_manifest(case_id)
+    case_dir = real_cases.case_dir(case_id)
+
+    # Determine simplified status
+    status_cn = "未开始"
+    try:
+        understanding_path = real_cases.case_store.latest_stage_path(case_id, "p1_technical_understanding")
+        understanding = TechnicalUnderstandingResult.model_validate_json(understanding_path.read_text(encoding="utf-8"))
+        facts_count = len(understanding.facts)
+        equations_count = len(understanding.equations)
+        steps_count = len(understanding.steps)
+        uncertainties_count = len(understanding.uncertainties)
+
+        # Check disclosure status
+        try:
+            disclosure_path = real_cases.case_store.latest_stage_path(case_id, "p1_disclosure")
+            status_cn = "已完成"
+        except FileNotFoundError:
+            # Check if A1 facts are reviewed
+            reviewed = sum(1 for f in understanding.facts if f.review_status.value != "UNREVIEWED")
+            if reviewed > 0:
+                status_cn = "待确认"
+            else:
+                status_cn = "AI分析中"
+    except FileNotFoundError:
+        # Check if materials exist
+        sources = list((case_dir / "source").rglob("*")) if (case_dir / "source").exists() else []
+        if sources:
+            status_cn = "材料处理中"
+
+    # Check output
+    output_docx = settings.output_root / "real_case" / case_id / "技术交底书.docx"
+    if output_docx.exists():
+        status_cn = "已完成"
+
+    # Check batch approval
+    batch_path = case_dir / "review" / "batch_approval.json"
+    batch_info = None
+    if batch_path.exists():
+        batch_info = json.loads(batch_path.read_text(encoding="utf-8"))
+
+    return {
+        "case_id": case_id,
+        "title": manifest.paper_title,
+        "title_cn": _auto_chinese_title(manifest),
+        "status_cn": status_cn,
+        "facts_count": facts_count if 'facts_count' in dir() else 0,
+        "equations_count": equations_count if 'equations_count' in dir() else 0,
+        "steps_count": steps_count if 'steps_count' in dir() else 0,
+        "uncertainties_count": uncertainties_count if 'uncertainties_count' in dir() else 0,
+        "batch_approved": batch_info is not None,
+        "batch_info": batch_info,
+        "disclosure_ready": output_docx.exists(),
+        "download_url": f"/api/real-cases/{case_id}/download-disclosure" if output_docx.exists() else None,
+    }
+
+
+@app.post("/api/real-cases/{case_id}/batch-approve")
+def batch_approve(case_id: str):
+    """一键审核通过：整体确认AI技术理解结果。"""
+    _real_manifest(case_id)
+    try:
+        from patent_agent.workflow.disclosure_only_pipeline import DisclosureOnlyPipeline
+        pipeline = DisclosureOnlyPipeline(settings)
+        result = pipeline.batch_approve(case_id, review_mode="BATCH_APPROVED", approved_by="local_user")
+        return {
+            "status": "已确认",
+            "message": f"已整体确认 {result['approved_facts']}/{result['total_facts']} 项技术事实。",
+            "review_mode": "BATCH_APPROVED",
+            **result,
+        }
+    except (ValueError, FileNotFoundError) as exc:
+        raise HTTPException(409, str(exc)) from exc
+
+
+@app.post("/api/real-cases/{case_id}/generate-disclosure")
+def generate_disclosure(case_id: str, use_llm: bool = True, auto_approve: str = "none"):
+    """生成中文技术交底书。"""
+    manifest = _real_manifest(case_id)
+    if use_llm and manifest.llm_mode == "disabled":
+        raise HTTPException(403, "案件未授权使用 LLM")
+
+    def operation():
+        from patent_agent.llm import OpenAICompatibleProvider
+        from patent_agent.workflow.disclosure_only_pipeline import DisclosureOnlyPipeline
+
+        provider = OpenAICompatibleProvider(settings) if use_llm else None
+        pipeline = DisclosureOnlyPipeline(settings, provider)
+        return pipeline.generate(
+            case_id,
+            use_llm=use_llm,
+            auto_approve=auto_approve,
+        )
+
+    return jobs.submit("GENERATE_DISCLOSURE", case_id, operation)
+
+
+@app.get("/api/real-cases/{case_id}/download-disclosure")
+def download_disclosure(case_id: str):
+    """下载技术交底书。"""
+    output_dir = settings.output_root / "real_case" / case_id
+    docx_path = output_dir / "技术交底书.docx"
+    if not docx_path.exists():
+        raise HTTPException(404, "技术交底书尚未生成，请先点击"生成技术交底书"。")
+    return FileResponse(
+        docx_path,
+        filename="技术交底书.docx",
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    )
+
+
+@app.get("/api/real-cases/{case_id}/disclosure-summary")
+def disclosure_summary(case_id: str):
+    """AI分析完成后显示的中文摘要。"""
+    _real_manifest(case_id)
+    try:
+        understanding = _understanding(case_id)
+        facts = understanding.facts
+        source_facts = [f for f in facts if f.status.value == "SOURCE_FACT"]
+        inferred = [f for f in facts if f.status.value == "INFERRED"]
+        equations = understanding.equations
+        steps = understanding.steps
+        components = understanding.components
+        uncertainties = understanding.uncertainties
+
+        # Determine suggested figures
+        figure_suggestions = min(len(components), 2)
+
+        return {
+            "fact_count": len(facts),
+            "source_fact_count": len(source_facts),
+            "inferred_count": len(inferred),
+            "step_count": len(steps),
+            "component_count": len(components),
+            "equation_count": len(equations),
+            "uncertainty_count": len(uncertainties),
+            "suggested_figures": figure_suggestions,
+            "summary_cn": f"AI已完成技术理解，共识别：\n{len(facts)}项核心技术事实\n{len(steps)}个主要技术步骤\n{len(equations)}个关键公式\n{len(components)}个技术模块\n{len(uncertainties)}个待确认问题",
+        }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(500, f"获取技术分析摘要失败：{exc}") from exc
+
+
 @app.post("/api/real-cases/{case_id}/continue")
 def continue_case(case_id: str, payload: ContinueRequest):
     case_dir = real_cases.case_dir(case_id)
@@ -475,6 +625,7 @@ def safe_settings():
         "cache_enabled": settings.llm_cache_enabled,
         "max_upload_mb": MAX_UPLOAD_BYTES // 1024 // 1024,
         "privacy": "本地单用户；仅显式授权案件可调用外部 LLM。",
+        "app_mode": settings.app_mode,
     }
 
 
@@ -555,6 +706,29 @@ def _generic_correction(case_id: str, checkpoint: str, payload: ReviewAction) ->
         )
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
+
+
+def _auto_chinese_title(manifest) -> str:
+    """Generate a Chinese project title from the manifest."""
+    title = getattr(manifest, "paper_title", "") or ""
+    # If already has Chinese characters, return as-is
+    if any("一" <= ch <= "鿿" for ch in title):
+        return title
+    # Simple heuristics for common English tech terms
+    mappings = {
+        "Motor Topology": "电机拓扑",
+        "Image Generation": "图像生成",
+        "Latent Diffusion Model": "潜在扩散模型",
+        "Based on": "基于",
+        "Method": "方法",
+        "A": "一种",
+    }
+    cn = title
+    for eng, chi in mappings.items():
+        cn = cn.replace(eng, chi)
+    if not any("一" <= ch <= "鿿" for ch in cn):
+        cn = f"基于{title}的技术方案"
+    return cn
 
 
 def _apply_review(case_id: str, checkpoint: str, corrections: list[HumanCorrection]):

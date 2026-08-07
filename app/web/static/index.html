@@ -3,87 +3,216 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Patent Agent · 本地审阅工作台</title>
+  <title>专利技术交底书智能生成器</title>
   <link rel="stylesheet" href="/static/styles.css">
+  <style>
+    :root{--nav:#0c1f2d;--ink:#142431;--muted:#667783;--line:#d9e1e6;--bg:#f3f6f7;--panel:#fff;--teal:#087c78;--teal2:#e1f4f1;--amber:#b76a00;--red:#a43434;--blue:#235e88;font-family:"Microsoft YaHei UI","Microsoft YaHei",system-ui,sans-serif;color:var(--ink);background:var(--bg)}
+    *{box-sizing:border-box}body{margin:0}
+    .topbar{height:88px;background:linear-gradient(120deg,var(--nav),#173e52);color:#fff;display:flex;align-items:center;justify-content:space-between;padding:16px 30px;border-bottom:3px solid #2d8a83}
+    .topbar h1{font:600 24px "Microsoft YaHei",system-ui,sans-serif;letter-spacing:.03em;margin:1px 0}
+    .topbar p{margin:0;color:#b9cbd5;font-size:13px}
+    .system{background:#ffffff12;border:1px solid #ffffff26;border-radius:99px;padding:8px 12px;font-size:12px;display:flex;align-items:center;gap:8px}
+    .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#d59642;flex-shrink:0}.dot.ok{background:#45c58b}
+    .shell{display:grid;grid-template-columns:220px 1fr;min-height:calc(100vh - 88px)}
+    .sidebar{background:var(--nav);color:#d4e0e6;padding:16px 12px;display:flex;flex-direction:column;gap:2px}
+    .sidebar a,.sidebar button.nav-btn{display:block;text-decoration:none;background:transparent;color:#c8d7df;border:0;border-left:3px solid transparent;padding:10px 14px;cursor:pointer;border-radius:3px;font-size:13px;text-align:left}
+    .sidebar a:hover,.sidebar button.nav-btn:hover,.sidebar button.nav-btn.active{background:#ffffff0d;color:#fff;border-left-color:#4bc1b3}
+    .sidebar .brand-btn{color:#fff;font-weight:700;background:#ffffff0b;margin-bottom:4px;font-size:14px}
+    .sidebar nav p{color:#718d9d;font-size:10px;letter-spacing:.14em;margin:14px 14px 4px;text-transform:uppercase}
+    .sidebar-foot{margin-top:auto;padding:14px 12px;border-top:1px solid #ffffff18;color:#7894a3;font-size:11px;line-height:1.7}
+    main{padding:26px;min-width:0}
+    .view{display:none}.view.active{display:block}
+    .page-head{margin-bottom:20px}.page-head h2{font:600 23px "Microsoft YaHei",system-ui,sans-serif;margin:3px 0 5px}.page-head p{margin:0;color:var(--muted);font-size:13px}
+    button{font:inherit;border:1px solid #b9c7cf;background:#fff;color:#314955;border-radius:6px;padding:9px 16px;cursor:pointer;font-size:13px}
+    button:hover{border-color:var(--teal);color:var(--teal)}
+    button.primary{background:var(--teal);border-color:var(--teal);color:#fff;font-weight:600;padding:11px 22px;font-size:14px}
+    button.primary:hover{background:#09706b;color:#fff}
+    button.secondary{background:#fff;border-color:var(--teal);color:var(--teal)}
+    button.large{padding:14px 36px;font-size:16px}
+    input,select,textarea{font:inherit;border:1px solid #bdc9d0;border-radius:5px;background:#fff;padding:10px 12px;color:var(--ink);width:100%}
+    input:focus,select:focus,textarea:focus{outline:2px solid #4db8ad35;border-color:var(--teal)}
+    label{display:block;color:#4d626f;font-size:13px;margin:14px 0 5px;font-weight:600}
+    .panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:20px;box-shadow:0 2px 7px #1732470a;margin-bottom:14px}
+    .panel h3{font-size:15px;margin:0 0 10px}
+    .metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:16px}
+    .metric{background:#fff;border:1px solid var(--line);border-top:3px solid var(--teal);padding:14px;border-radius:6px;text-align:center}
+    .metric strong{display:block;font:600 22px Georgia,serif}.metric span{font-size:11px;color:var(--muted)}
+    .case-list{display:grid;gap:10px}.case-card{border:1px solid var(--line);border-left:4px solid var(--blue);border-radius:6px;padding:14px;cursor:pointer}.case-card:hover{background:#f7fbfb;border-left-color:var(--teal)}.case-card h4{margin:0 0 4px;font-size:14px}.case-card p{margin:2px 0;color:var(--muted);font-size:12px}
+    .pill{display:inline-block;border-radius:99px;background:#e6edf1;color:#445b69;padding:3px 8px;font-size:10px;font-weight:700;margin-left:6px}
+    .pill.ok{background:#e1f4f1;color:#087c78}.pill.warn{background:#fff3e0;color:#b76a00}.pill.err{background:#ffeaea;color:#a43434}
+    .progress-bar{background:#e5eaed;border-radius:99px;height:10px;overflow:hidden;margin:10px 0}
+    .progress-fill{background:linear-gradient(90deg,var(--teal),#4bc1b3);height:100%;border-radius:99px;transition:width .3s}
+    .stage-list{display:grid;gap:6px;margin:12px 0}.stage-item{display:flex;align-items:center;gap:10px;padding:8px 12px;background:#fafcfc;border-radius:5px;font-size:13px}.stage-item.done{color:#087c78}.stage-item.current{color:var(--blue);font-weight:600;background:#ebf4fa}
+    .stage-item .icon{width:18px;text-align:center;flex-shrink:0}
+    .summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:16px 0}
+    .summary-item{background:#f8fafb;border:1px solid var(--line);border-radius:6px;padding:14px;text-align:center}.summary-item strong{display:block;font-size:24px;color:var(--teal)}.summary-item span{font-size:12px;color:var(--muted)}
+    .disclosure-preview{max-height:70vh;overflow:auto;background:#fff;border:1px solid var(--line);border-radius:8px;padding:24px;line-height:1.8;font-size:14px}
+    .disclosure-preview h2{font-size:18px;text-align:center;margin:20px 0}.disclosure-preview h3{font-size:15px;margin:18px 0 10px;border-bottom:1px solid #eee;padding-bottom:6px}
+    .notice{position:sticky;top:8px;z-index:5;padding:12px 16px;border-radius:6px;margin-bottom:14px;background:#e7f5f2;border:1px solid #78b9ad;color:#155f58;font-size:13px}
+    .notice.error{background:#fff0f0;border-color:#d18c8c;color:#8a3232}
+    .hidden{display:none}
+    .hint{color:var(--muted);font-size:12px;line-height:1.6}
+    .file-list{display:grid;gap:6px}.file-item{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:#f8fafb;border-radius:5px;font-size:13px}
+    .actions-row{display:flex;gap:10px;margin:18px 0;flex-wrap:wrap}
+    .form-row{max-width:600px}
+    .two-col{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+    @media(max-width:900px){.shell{grid-template-columns:1fr}.sidebar{flex-direction:row;overflow:auto;padding:8px}.sidebar nav{display:none}.sidebar-foot{display:none}.sidebar button.nav-btn{min-width:max-content}.two-col{grid-template-columns:1fr}}
+  </style>
 </head>
 <body>
   <header class="topbar">
-    <div><span class="eyebrow">PRIVATE · LOCAL</span><h1>Patent Agent</h1><p>证据驱动的论文—专利人工审阅工作台</p></div>
+    <div><h1>专利技术交底书智能生成器</h1><p>上传论文、项目报告或技术资料，自动整理为中文专利技术交底书</p></div>
     <div class="system"><span id="system-dot" class="dot"></span><span id="system-text">正在检查系统…</span></div>
   </header>
+
   <div class="shell">
     <aside class="sidebar">
-      <button class="brand-button" data-view="dashboard">总览</button>
-      <nav id="nav">
-        <p>案件</p>
-        <button data-view="case">案件工作台</button>
-        <button data-view="a1">A1 技术理解</button>
-        <button data-view="evidence">Evidence 证据</button>
-        <button data-view="equations">公式核查</button>
-        <button data-view="terms">术语登记</button>
-        <button data-view="questions">发明人问题</button>
-        <button data-view="publication">公开状态</button>
-        <p>专利流程</p>
-        <button data-view="candidates">A2 发明候选</button>
-        <button data-view="strategy">B 保护策略</button>
-        <button data-view="priorart">先前技术 / 新颖性</button>
-        <button data-view="claims">C 权利要求</button>
-        <button data-view="disclosure">技术交底书</button>
-        <button data-view="traceability">支持与可追溯性</button>
-        <p>运行</p>
-        <button data-view="jobs">任务与恢复</button>
-        <button data-view="artifacts">产物与导出</button>
-        <button data-view="logs">模型日志</button>
-        <button data-view="settings">设置与隐私</button>
+      <button class="nav-btn brand-btn active" data-view="home">🏠 首页</button>
+      <button class="nav-btn" data-view="new-project">📝 新建交底书</button>
+      <nav>
+        <p>项目管理</p>
+        <button class="nav-btn" data-view="projects">📂 我的项目</button>
+        <button class="nav-btn" data-view="settings">⚙️ 设置</button>
       </nav>
-      <div class="sidebar-foot">仅监听 <code>127.0.0.1</code><br>不提供云端或多用户功能</div>
+      <div class="sidebar-foot">仅监听 <code>127.0.0.1</code><br>数据和API Key不会离开本机</div>
     </aside>
+
     <main>
       <div id="notice" class="notice hidden"></div>
-      <section id="view-dashboard" class="view active">
-        <div class="page-head"><div><span class="kicker">WORKSPACE</span><h2>案件总览</h2><p>从证据摄取到人工 Checkpoint，一处查看所有状态。</p></div><button class="primary" id="refresh-dashboard">刷新</button></div>
-        <div id="metrics" class="metrics"></div>
-        <div class="two-col">
-          <article class="panel"><div class="panel-head"><h3>真实案件</h3><span class="pill private">PRIVATE</span></div><div id="real-case-list" class="case-list"></div></article>
-          <article class="panel"><div class="panel-head"><h3>新建案件</h3><span class="pill">向导</span></div>
-            <label>案件编号</label><input id="new-case-id" placeholder="REAL-PAPER-002">
-            <label>论文标题</label><input id="new-case-title" placeholder="UNKNOWN">
-            <label>LLM 隐私模式</label><select id="new-case-mode"><option value="disabled">禁用外部 LLM</option><option value="external-approved">已授权外部 LLM</option><option value="local">本地模型</option></select>
-            <label class="check"><input type="checkbox" id="new-case-authorized"> 我确认已获授权处理这些资料</label>
-            <label class="check"><input type="checkbox" id="new-case-external"> 我明确授权本案件使用外部 LLM</label>
-            <button class="primary full" id="create-real-case">创建 PRIVATE 案件</button>
-          </article>
+
+      <!-- 首页 -->
+      <section id="view-home" class="view active">
+        <div class="page-head">
+          <div><h2>欢迎使用专利技术交底书智能生成器</h2><p>上传论文、项目报告或技术资料，自动整理为中文专利技术交底书，方便后续交给专利代理机构。</p></div>
+        </div>
+        <div class="actions-row">
+          <button class="primary large" data-view="new-project">新建技术交底书</button>
+        </div>
+        <div class="panel" style="margin-top:16px">
+          <h3>最近项目</h3>
+          <div id="recent-projects" class="case-list"><p class="hint">暂无项目</p></div>
+        </div>
+        <div class="metrics" id="home-metrics" style="margin-top:16px"></div>
+      </section>
+
+      <!-- 新建交底书 -->
+      <section id="view-new-project" class="view">
+        <div class="page-head"><div><h2>新建技术交底书</h2><p>上传技术资料，AI将自动理解并生成中文交底书</p></div></div>
+        <div class="form-row">
+          <div class="panel">
+            <h3>📋 项目信息</h3>
+            <label>项目名称（可选，留空将自动生成）</label>
+            <input id="new-title" placeholder="例如：基于深度学习的电机故障诊断方法">
+            <label>项目编号（可选）</label>
+            <input id="new-case-id" placeholder="例如：REAL-PAPER-002">
+          </div>
+
+          <div class="panel">
+            <h3>📎 上传材料</h3>
+            <p class="hint">支持 PDF、DOCX、PPTX、TXT、MD、PNG、JPG 格式，单个文件上限50MB。</p>
+            <input id="source-upload" type="file" multiple accept=".pdf,.docx,.pptx,.txt,.md,.png,.jpg,.jpeg">
+            <div id="uploaded-files" class="file-list"></div>
+            <button class="primary" id="btn-upload" style="margin-top:8px">上传材料</button>
+          </div>
+
+          <div class="panel">
+            <h3>💬 补充说明（选填）</h3>
+            <p class="hint">如有希望重点描述的技术创新、项目背景或其他说明，可在此填写；没有可以留空。</p>
+            <textarea id="new-notes" rows="3" placeholder="例如：本文提出了一种新的电机拓扑图像生成方法，核心创新在于……"></textarea>
+          </div>
+
+          <div class="panel">
+            <h3>🤖 AI 模型</h3>
+            <div id="ai-status-card"><p class="hint">正在检查AI连接……</p></div>
+          </div>
+
+          <div class="panel">
+            <h3>⚡ 生成选项</h3>
+            <label style="display:flex;align-items:center;gap:10px;font-weight:400">
+              <input type="checkbox" id="auto-approve" style="width:auto">
+              生成完成后自动生成Word（跳过手动确认步骤）
+            </label>
+            <p class="hint">开启后：上传 → AI分析 → 自动确认 → 直接生成Word。（审计记录将标记为AUTO_BATCH_APPROVED）</p>
+          </div>
+
+          <button class="primary large full" id="btn-start-generate">开始生成技术交底书</button>
         </div>
       </section>
 
-      <section id="view-case" class="view"><div class="page-head"><div><span class="kicker">CASE</span><h2 id="case-heading">案件工作台</h2><p id="case-subtitle">请从总览选择案件。</p></div><span id="case-state" class="status-badge">未选择</span></div>
-        <div id="checkpoint-strip" class="checkpoint-strip"></div>
-        <div class="two-col"><article class="panel"><h3>源文件摄取</h3><p class="hint">仅摄取你显式选择的文件。文件名会净化，大小上限 50 MB。</p><input id="source-upload" type="file"><button class="primary" id="upload-source">上传到当前案件</button><div id="source-result" class="result"></div></article>
-        <article class="panel"><h3>运行 A1</h3><p class="hint">真实案件不会自动批准。外部模型仅在案件授权与全局配置同时允许时使用。</p><label class="check"><input type="checkbox" id="run-use-llm"> 使用已配置 LLM</label><button class="primary" id="run-a1">启动 Evidence → Technical Understanding</button></article></div>
+      <!-- 我的项目 -->
+      <section id="view-projects" class="view">
+        <div class="page-head"><div><h2>我的项目</h2><p>管理已创建的技术交底书项目</p></div><button class="secondary" data-view="new-project">新建项目</button></div>
+        <div id="all-projects" class="case-list"><p class="hint">暂无项目</p></div>
       </section>
 
-      <section id="view-a1" class="view"><div class="page-head"><div><span class="kicker">CHECKPOINT A1</span><h2>技术理解审阅</h2><p>逐项接受、编辑或拒绝；未经人工审阅无法批准 A1。</p></div><button class="danger-outline" id="approve-a1">批准 A1</button></div><div id="a1-stats" class="metrics"></div><div class="toolbar"><input id="fact-filter" placeholder="搜索事实、类别或 Evidence ID"><select id="fact-status-filter"><option value="">全部状态</option><option>UNREVIEWED</option><option>LOCKED</option><option>REJECTED</option></select><button id="bulk-accept">批量接受筛选项</button></div><div id="facts" class="review-list"></div><article class="panel"><h3>A1 v1 / v2 对比</h3><pre id="a1-comparison" class="markdown"></pre></article></section>
+      <!-- 项目详情 / 生成进度 -->
+      <section id="view-project-detail" class="view">
+        <div class="page-head">
+          <div><h2 id="project-title">项目详情</h2><p id="project-subtitle"></p></div>
+          <div><span id="project-status-pill" class="pill">未开始</span></div>
+        </div>
 
-      <section id="view-evidence" class="view"><div class="page-head"><div><span class="kicker">EVIDENCE STORE</span><h2>证据查看器</h2><p>页码、章节、逻辑块、作用域与稳定 Evidence ID 保持可追踪。</p></div></div><div class="toolbar"><input id="evidence-search" placeholder="搜索内容或 Evidence ID"><select id="evidence-scope"><option value="">全部作用域</option><option>INVENTION_SOURCE</option><option>REFERENCE</option></select><button id="search-evidence">检索</button></div><div class="evidence-layout"><div id="evidence-list" class="evidence-list"></div><article id="evidence-detail" class="panel sticky"><h3>选择一个证据块</h3></article></div></section>
+        <div id="project-materials" class="panel hidden">
+          <h3>已上传材料</h3>
+          <div id="project-files" class="file-list"></div>
+        </div>
 
-      <section id="view-equations" class="view"><div class="page-head"><div><span class="kicker">FORMULA QA</span><h2>公式核查</h2><p>原式、规范化 LaTeX、变量、证据与人工状态并列显示。</p></div></div><div id="equation-list" class="review-list"></div></section>
-      <section id="view-terms" class="view"><div class="page-head"><div><span class="kicker">TERMINOLOGY</span><h2>术语登记表</h2><p>源术语、拟规范术语与支持证据。</p></div></div><div id="term-list" class="table-wrap"></div></section>
-      <section id="view-questions" class="view"><div class="page-head"><div><span class="kicker">INVENTOR INPUT</span><h2>发明人问题</h2><p>区分 Claim 阻断、充分公开、实施细节和可选细节。</p></div></div><div id="question-list" class="review-list"></div></section>
-      <section id="view-publication" class="view"><div class="page-head"><div><span class="kicker">PUBLICATION GATE</span><h2>公开与申请状态</h2><p>UNKNOWN 保持为 UNKNOWN；A2 前必须由人工确认。</p></div></div><article class="panel form-grid" id="publication-form"></article></section>
+        <!-- 生成进度 -->
+        <div id="generation-progress" class="panel hidden">
+          <h3>生成进度</h3>
+          <div class="progress-bar"><div id="progress-fill" class="progress-fill" style="width:0%"></div></div>
+          <p id="progress-text" class="hint">准备中……</p>
+          <div id="stage-list" class="stage-list"></div>
+        </div>
 
-      <section id="view-candidates" class="view stage-view" data-stage="candidates"><div class="page-head"><div><span class="kicker">CHECKPOINT A2</span><h2>发明候选</h2><p>学术贡献不自动等于专利发明点。</p></div></div><div class="stage-content"></div></section>
-      <section id="view-strategy" class="view stage-view" data-stage="strategy"><div class="page-head"><div><span class="kicker">CHECKPOINT B</span><h2>保护策略</h2><p>必要特征、可选特征、术语与范围风险。</p></div></div><div class="stage-content"></div></section>
-      <section id="view-priorart" class="view stage-view" data-stage="novelty"><div class="page-head"><div><span class="kicker">PRIOR ART</span><h2>先前技术与新颖性</h2><p>只处理人工显式导入的材料，不声称完成穷尽检索。</p></div></div><article class="panel"><h3>人工导入先前技术</h3><input id="prior-art-upload" type="file"><div class="actions"><button id="upload-prior-art">上传</button><button class="primary" id="continue-case">从当前 Checkpoint 继续</button></div><p id="prior-art-result" class="hint"></p></article><div class="stage-content"></div></section>
-      <section id="view-claims" class="view stage-view" data-stage="claims"><div class="page-head"><div><span class="kicker">CHECKPOINT C</span><h2>权利要求审阅</h2><p>逐特征查看支持状态与范围风险。</p></div></div><div class="stage-content"></div></section>
-      <section id="view-disclosure" class="view stage-view" data-stage="disclosure"><div class="page-head"><div><span class="kicker">DISCLOSURE</span><h2>技术交底书</h2><p>结构化内容、图、公式和实施方式。</p></div></div><div class="stage-content"></div></section>
-      <section id="view-traceability" class="view"><div class="page-head"><div><span class="kicker">TRACEABILITY</span><h2>支持与可追溯性</h2><p>Claims Support、Scope、证据链、评估与变更影响。</p></div></div><div class="three-actions"><button data-load-stage="support">Claims Support</button><button data-load-stage="scope">Scope Review</button><button id="load-artifacts-trace">审阅报告</button></div><pre id="trace-content" class="json-view"></pre></section>
-      <section id="view-jobs" class="view"><div class="page-head"><div><span class="kicker">RECOVERY</span><h2>任务与恢复</h2><p>运行记录持久化；应用重启后可识别中断状态。</p></div><button id="resume-task">恢复当前任务</button></div><div id="progress-card" class="panel"></div><div id="job-list" class="review-list"></div></section>
-      <section id="view-artifacts" class="view"><div class="page-head"><div><span class="kicker">OUTPUTS</span><h2>产物与导出</h2><p>审阅包、结构化 JSON、报告、DOCX 与验证结果。</p></div></div><div id="artifact-list" class="table-wrap"></div></section>
-      <section id="view-logs" class="view"><div class="page-head"><div><span class="kicker">AUDIT</span><h2>模型调用日志</h2><p>Provider、Model、Prompt、Token、缓存与错误；不显示密钥。</p></div></div><div id="log-list" class="table-wrap"></div></section>
-      <section id="view-settings" class="view"><div class="page-head"><div><span class="kicker">LOCAL SETTINGS</span><h2>设置与隐私</h2><p>只显示安全配置摘要，不读取或输出 API Key。</p></div></div><div id="settings-card" class="panel"></div></section>
+        <!-- AI分析摘要 -->
+        <div id="analysis-summary" class="panel hidden">
+          <h3>AI技术分析摘要</h3>
+          <div id="summary-grid" class="summary-grid"></div>
+          <div class="actions-row">
+            <button class="primary large" id="btn-batch-approve">一键审核通过并生成交底书</button>
+            <button class="secondary" id="btn-view-details">查看详细分析</button>
+          </div>
+          <div id="detailed-analysis" class="hidden"></div>
+        </div>
+
+        <!-- 交底书预览 -->
+        <div id="disclosure-preview-section" class="panel hidden">
+          <h3>技术交底书预览</h3>
+          <div id="disclosure-preview-content" class="disclosure-preview"></div>
+          <div class="actions-row">
+            <button class="primary large" id="btn-download">下载技术交底书</button>
+            <button class="secondary" id="btn-regenerate">重新生成</button>
+            <button class="secondary" id="btn-edit-content">修改内容</button>
+          </div>
+        </div>
+
+        <!-- 错误信息 -->
+        <div id="error-section" class="panel hidden">
+          <h3>生成失败</h3>
+          <p id="error-message" style="color:var(--red)"></p>
+          <button class="primary" id="btn-retry">重试</button>
+        </div>
+      </section>
+
+      <!-- 设置 -->
+      <section id="view-settings" class="view">
+        <div class="page-head"><div><h2>设置</h2><p>查看AI模型状态和系统配置</p></div></div>
+        <div id="settings-card" class="panel"></div>
+      </section>
     </main>
   </div>
-  <dialog id="edit-dialog"><form method="dialog"><h3>编辑技术事实</h3><p id="edit-id" class="mono"></p><textarea id="edit-text"></textarea><label>修改原因</label><input id="edit-reason"><div class="dialog-actions"><button value="cancel">取消</button><button value="default" id="save-edit" class="primary">保存并锁定</button></div></form></dialog>
+
+  <dialog id="edit-dialog"><form method="dialog">
+    <h3>修改交底书内容</h3>
+    <p id="edit-id" style="font-size:11px;color:var(--muted)"></p>
+    <textarea id="edit-text" rows="5"></textarea>
+    <div class="dialog-actions" style="margin-top:12px">
+      <button value="cancel">取消</button>
+      <button value="default" id="save-edit" class="primary">保存</button>
+    </div>
+  </form></dialog>
+
   <script src="/static/app.js" defer></script>
 </body>
 </html>

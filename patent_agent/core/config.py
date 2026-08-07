@@ -42,6 +42,7 @@ class Settings:
     llm_input_price_per_million: float | None = None
     llm_output_price_per_million: float | None = None
     allow_external_llm: bool = False
+    app_mode: str = "disclosure_only"  # "disclosure_only" | "full_patent"
 
     @classmethod
     def load(cls, project_root: Path | None = None) -> "Settings":
@@ -71,6 +72,7 @@ class Settings:
             llm_input_price_per_million=_optional_float_value(value("LLM_INPUT_PRICE_PER_MILLION")),
             llm_output_price_per_million=_optional_float_value(value("LLM_OUTPUT_PRICE_PER_MILLION")),
             allow_external_llm=mode in {"external-approved", "local"},
+            app_mode=value("APP_MODE", "disclosure_only").strip().lower(),
         )
 
     def safe_summary(self) -> dict:
@@ -85,6 +87,7 @@ class Settings:
             "llm_cache_enabled": self.llm_cache_enabled,
             "debug_save_llm_payloads": self.debug_save_llm_payloads,
             "allow_external_llm": self.allow_external_llm,
+            "app_mode": self.app_mode,
         }
 
 
