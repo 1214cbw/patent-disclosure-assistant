@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
@@ -12,10 +13,19 @@ from .template_manager import TemplateManager
 
 
 class DocumentRenderer:
-    """Deterministic AST-to-DOCX renderer. It never invokes an LLM."""
+    """Deterministic AST-to-DOCX renderer with inline OMML math support."""
     def __init__(self, template_root: Path):
         self.templates = TemplateManager(template_root)
         self.equations = EquationEngine()
+        # Lazy-init math detector
+        self._math_detector = None
+
+    @property
+    def math_detector(self):
+        if self._math_detector is None:
+            from .math_detector import MathSpanDetector
+            self._math_detector = MathSpanDetector()
+        return self._math_detector
 
     def render(self, ast: PatentDocumentAST, output_path: Path, template_path: Path | None = None) -> Path:
         template = template_path or self.templates.ensure_default()
@@ -39,7 +49,8 @@ class DocumentRenderer:
             if node.children:
                 for child in node.children: self._render_inline(paragraph, child)
             else:
-                set_run_font(paragraph.add_run(node.value))
+                # Use MathSpanDetector to render text with inline OMML
+                self._render_text_with_math(paragraph, node.value)
         elif node.type == "display_equation":
             if node.number is not None: self.equations.insert_numbered(document, node.latex, node.number)
             else: self.equations.insert_display(document, node.latex)
@@ -68,6 +79,29 @@ class DocumentRenderer:
         elif node.type == "equation_reference": set_run_font(paragraph.add_run(f"式（{self._ref_number(node.target)}）"))
         elif node.type == "figure_reference": set_run_font(paragraph.add_run(f"图{self._ref_number(node.target)}"))
         elif node.type == "source_citation": set_run_font(paragraph.add_run(node.value), size=9)
+
+    def _render_text_with_math(self, paragraph, text: str):
+        """Render paragraph text with automatic inline OMML math detection.
+
+        Scans the text for registered math symbols and renders them
+        as proper OMML inline equations, while keeping Chinese text as-is.
+        """
+        if not text.strip():
+            return
+
+        spans = self.math_detector.convert_paragraph(text)
+
+        for span in spans:
+            if span["type"] == "text":
+                set_run_font(paragraph.add_run(span["value"]))
+            elif span["type"] == "inline_math":
+                try:
+                    self.equations.insert_inline(paragraph, span["latex"])
+                except Exception:
+                    # Fallback: render as italic text
+                    run = paragraph.add_run(span["latex"])
+                    run.italic = True
+                    set_run_font(run)
 
     @staticmethod
     def _ref_number(target: str) -> int:
