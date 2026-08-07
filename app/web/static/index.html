@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Patent Agent · 本地审阅工作台</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div><span class="eyebrow">PRIVATE · LOCAL</span><h1>Patent Agent</h1><p>证据驱动的论文—专利人工审阅工作台</p></div>
+    <div class="system"><span id="system-dot" class="dot"></span><span id="system-text">正在检查系统…</span></div>
+  </header>
+  <div class="shell">
+    <aside class="sidebar">
+      <button class="brand-button" data-view="dashboard">总览</button>
+      <nav id="nav">
+        <p>案件</p>
+        <button data-view="case">案件工作台</button>
+        <button data-view="a1">A1 技术理解</button>
+        <button data-view="evidence">Evidence 证据</button>
+        <button data-view="equations">公式核查</button>
+        <button data-view="terms">术语登记</button>
+        <button data-view="questions">发明人问题</button>
+        <button data-view="publication">公开状态</button>
+        <p>专利流程</p>
+        <button data-view="candidates">A2 发明候选</button>
+        <button data-view="strategy">B 保护策略</button>
+        <button data-view="priorart">先前技术 / 新颖性</button>
+        <button data-view="claims">C 权利要求</button>
+        <button data-view="disclosure">技术交底书</button>
+        <button data-view="traceability">支持与可追溯性</button>
+        <p>运行</p>
+        <button data-view="jobs">任务与恢复</button>
+        <button data-view="artifacts">产物与导出</button>
+        <button data-view="logs">模型日志</button>
+        <button data-view="settings">设置与隐私</button>
+      </nav>
+      <div class="sidebar-foot">仅监听 <code>127.0.0.1</code><br>不提供云端或多用户功能</div>
+    </aside>
+    <main>
+      <div id="notice" class="notice hidden"></div>
+      <section id="view-dashboard" class="view active">
+        <div class="page-head"><div><span class="kicker">WORKSPACE</span><h2>案件总览</h2><p>从证据摄取到人工 Checkpoint，一处查看所有状态。</p></div><button class="primary" id="refresh-dashboard">刷新</button></div>
+        <div id="metrics" class="metrics"></div>
+        <div class="two-col">
+          <article class="panel"><div class="panel-head"><h3>真实案件</h3><span class="pill private">PRIVATE</span></div><div id="real-case-list" class="case-list"></div></article>
+          <article class="panel"><div class="panel-head"><h3>新建案件</h3><span class="pill">向导</span></div>
+            <label>案件编号</label><input id="new-case-id" placeholder="REAL-PAPER-002">
+            <label>论文标题</label><input id="new-case-title" placeholder="UNKNOWN">
+            <label>LLM 隐私模式</label><select id="new-case-mode"><option value="disabled">禁用外部 LLM</option><option value="external-approved">已授权外部 LLM</option><option value="local">本地模型</option></select>
+            <label class="check"><input type="checkbox" id="new-case-authorized"> 我确认已获授权处理这些资料</label>
+            <label class="check"><input type="checkbox" id="new-case-external"> 我明确授权本案件使用外部 LLM</label>
+            <button class="primary full" id="create-real-case">创建 PRIVATE 案件</button>
+          </article>
+        </div>
+      </section>
+
+      <section id="view-case" class="view"><div class="page-head"><div><span class="kicker">CASE</span><h2 id="case-heading">案件工作台</h2><p id="case-subtitle">请从总览选择案件。</p></div><span id="case-state" class="status-badge">未选择</span></div>
+        <div id="checkpoint-strip" class="checkpoint-strip"></div>
+        <div class="two-col"><article class="panel"><h3>源文件摄取</h3><p class="hint">仅摄取你显式选择的文件。文件名会净化，大小上限 50 MB。</p><input id="source-upload" type="file"><button class="primary" id="upload-source">上传到当前案件</button><div id="source-result" class="result"></div></article>
+        <article class="panel"><h3>运行 A1</h3><p class="hint">真实案件不会自动批准。外部模型仅在案件授权与全局配置同时允许时使用。</p><label class="check"><input type="checkbox" id="run-use-llm"> 使用已配置 LLM</label><button class="primary" id="run-a1">启动 Evidence → Technical Understanding</button></article></div>
+      </section>
+
+      <section id="view-a1" class="view"><div class="page-head"><div><span class="kicker">CHECKPOINT A1</span><h2>技术理解审阅</h2><p>逐项接受、编辑或拒绝；未经人工审阅无法批准 A1。</p></div><button class="danger-outline" id="approve-a1">批准 A1</button></div><div id="a1-stats" class="metrics"></div><div class="toolbar"><input id="fact-filter" placeholder="搜索事实、类别或 Evidence ID"><select id="fact-status-filter"><option value="">全部状态</option><option>UNREVIEWED</option><option>LOCKED</option><option>REJECTED</option></select><button id="bulk-accept">批量接受筛选项</button></div><div id="facts" class="review-list"></div><article class="panel"><h3>A1 v1 / v2 对比</h3><pre id="a1-comparison" class="markdown"></pre></article></section>
+
+      <section id="view-evidence" class="view"><div class="page-head"><div><span class="kicker">EVIDENCE STORE</span><h2>证据查看器</h2><p>页码、章节、逻辑块、作用域与稳定 Evidence ID 保持可追踪。</p></div></div><div class="toolbar"><input id="evidence-search" placeholder="搜索内容或 Evidence ID"><select id="evidence-scope"><option value="">全部作用域</option><option>INVENTION_SOURCE</option><option>REFERENCE</option></select><button id="search-evidence">检索</button></div><div class="evidence-layout"><div id="evidence-list" class="evidence-list"></div><article id="evidence-detail" class="panel sticky"><h3>选择一个证据块</h3></article></div></section>
+
+      <section id="view-equations" class="view"><div class="page-head"><div><span class="kicker">FORMULA QA</span><h2>公式核查</h2><p>原式、规范化 LaTeX、变量、证据与人工状态并列显示。</p></div></div><div id="equation-list" class="review-list"></div></section>
+      <section id="view-terms" class="view"><div class="page-head"><div><span class="kicker">TERMINOLOGY</span><h2>术语登记表</h2><p>源术语、拟规范术语与支持证据。</p></div></div><div id="term-list" class="table-wrap"></div></section>
+      <section id="view-questions" class="view"><div class="page-head"><div><span class="kicker">INVENTOR INPUT</span><h2>发明人问题</h2><p>区分 Claim 阻断、充分公开、实施细节和可选细节。</p></div></div><div id="question-list" class="review-list"></div></section>
+      <section id="view-publication" class="view"><div class="page-head"><div><span class="kicker">PUBLICATION GATE</span><h2>公开与申请状态</h2><p>UNKNOWN 保持为 UNKNOWN；A2 前必须由人工确认。</p></div></div><article class="panel form-grid" id="publication-form"></article></section>
+
+      <section id="view-candidates" class="view stage-view" data-stage="candidates"><div class="page-head"><div><span class="kicker">CHECKPOINT A2</span><h2>发明候选</h2><p>学术贡献不自动等于专利发明点。</p></div></div><div class="stage-content"></div></section>
+      <section id="view-strategy" class="view stage-view" data-stage="strategy"><div class="page-head"><div><span class="kicker">CHECKPOINT B</span><h2>保护策略</h2><p>必要特征、可选特征、术语与范围风险。</p></div></div><div class="stage-content"></div></section>
+      <section id="view-priorart" class="view stage-view" data-stage="novelty"><div class="page-head"><div><span class="kicker">PRIOR ART</span><h2>先前技术与新颖性</h2><p>只处理人工显式导入的材料，不声称完成穷尽检索。</p></div></div><article class="panel"><h3>人工导入先前技术</h3><input id="prior-art-upload" type="file"><div class="actions"><button id="upload-prior-art">上传</button><button class="primary" id="continue-case">从当前 Checkpoint 继续</button></div><p id="prior-art-result" class="hint"></p></article><div class="stage-content"></div></section>
+      <section id="view-claims" class="view stage-view" data-stage="claims"><div class="page-head"><div><span class="kicker">CHECKPOINT C</span><h2>权利要求审阅</h2><p>逐特征查看支持状态与范围风险。</p></div></div><div class="stage-content"></div></section>
+      <section id="view-disclosure" class="view stage-view" data-stage="disclosure"><div class="page-head"><div><span class="kicker">DISCLOSURE</span><h2>技术交底书</h2><p>结构化内容、图、公式和实施方式。</p></div></div><div class="stage-content"></div></section>
+      <section id="view-traceability" class="view"><div class="page-head"><div><span class="kicker">TRACEABILITY</span><h2>支持与可追溯性</h2><p>Claims Support、Scope、证据链、评估与变更影响。</p></div></div><div class="three-actions"><button data-load-stage="support">Claims Support</button><button data-load-stage="scope">Scope Review</button><button id="load-artifacts-trace">审阅报告</button></div><pre id="trace-content" class="json-view"></pre></section>
+      <section id="view-jobs" class="view"><div class="page-head"><div><span class="kicker">RECOVERY</span><h2>任务与恢复</h2><p>运行记录持久化；应用重启后可识别中断状态。</p></div><button id="resume-task">恢复当前任务</button></div><div id="progress-card" class="panel"></div><div id="job-list" class="review-list"></div></section>
+      <section id="view-artifacts" class="view"><div class="page-head"><div><span class="kicker">OUTPUTS</span><h2>产物与导出</h2><p>审阅包、结构化 JSON、报告、DOCX 与验证结果。</p></div></div><div id="artifact-list" class="table-wrap"></div></section>
+      <section id="view-logs" class="view"><div class="page-head"><div><span class="kicker">AUDIT</span><h2>模型调用日志</h2><p>Provider、Model、Prompt、Token、缓存与错误；不显示密钥。</p></div></div><div id="log-list" class="table-wrap"></div></section>
+      <section id="view-settings" class="view"><div class="page-head"><div><span class="kicker">LOCAL SETTINGS</span><h2>设置与隐私</h2><p>只显示安全配置摘要，不读取或输出 API Key。</p></div></div><div id="settings-card" class="panel"></div></section>
+    </main>
+  </div>
+  <dialog id="edit-dialog"><form method="dialog"><h3>编辑技术事实</h3><p id="edit-id" class="mono"></p><textarea id="edit-text"></textarea><label>修改原因</label><input id="edit-reason"><div class="dialog-actions"><button value="cancel">取消</button><button value="default" id="save-edit" class="primary">保存并锁定</button></div></form></dialog>
+  <script src="/static/app.js" defer></script>
+</body>
+</html>

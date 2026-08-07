@@ -82,13 +82,13 @@ class HumanReviewManager:
     def import_review(self, path: Path) -> ReviewImport:
         review = ReviewImport.model_validate_json(Path(path).read_text(encoding="utf-8"))
         record = self.machine.records[review.checkpoint]
-        reviewed = sorted({item.target_id for item in review.corrections})
+        reviewed = sorted(set(record.reviewed_object_ids) | {item.target_id for item in review.corrections})
         changed = any(item.action.value not in {"ACCEPT"} for item in review.corrections)
         if record.status == CheckpointStatus.GENERATED:
             self.machine.transition(review.checkpoint, CheckpointStatus.UNDER_REVIEW, reviewed_ids=reviewed, risk_acknowledged=review.risk_acknowledged)
         else:
             self.machine.records[review.checkpoint] = record.model_copy(update={"reviewed_object_ids": reviewed, "risk_acknowledged": review.risk_acknowledged})
-        if changed:
+        if changed and self.machine.records[review.checkpoint].status != CheckpointStatus.CHANGES_REQUIRED:
             self.machine.transition(review.checkpoint, CheckpointStatus.CHANGES_REQUIRED, reviewed_ids=reviewed, risk_acknowledged=review.risk_acknowledged)
         self.machine.save(self.state_path)
         return review

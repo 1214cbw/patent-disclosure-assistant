@@ -1,25 +1,51 @@
 from __future__ import annotations
 
 import json
+import uuid
+from collections import Counter
 from pathlib import Path
+from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
-from pydantic import BaseModel
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel, Field
 
+from patent_agent.core.atomic import atomic_write_bytes, atomic_write_json
 from patent_agent.core.config import Settings
-from patent_agent.core.models import DisclosureDraft
+from patent_agent.core.models import TechnicalUnderstandingResult
 from patent_agent.core.state import CaseStore
-from patent_agent.ingestion import SourceManager
-from patent_agent.human_review.models import ReviewImport
+from patent_agent.evidence import EvidenceStore
+from patent_agent.human_review import HumanCorrection, HumanReviewManager, ReviewImport
+from patent_agent.progress import ProgressManager
 from patent_agent.real_case import RealCaseManager
+from patent_agent.workflow import RealCaseWorkflow
+
+from .jobs import JobManager
 
 
-app = FastAPI(title="Patent Agent Local UI API", version="0.1.0")
 settings = Settings.load()
 store = CaseStore(settings.workspace_root)
 real_cases = RealCaseManager(settings.project_root)
-ALLOWED_UPLOADS = {".txt", ".md", ".docx", ".pdf", ".pptx", ".png", ".jpg", ".jpeg"}
+progress = ProgressManager(settings.project_root)
+jobs = JobManager(settings.project_root)
+static_root = Path(__file__).with_name("static")
+
+app = FastAPI(title="Patent Agent 本地工作台", version="2.0.0", docs_url="/api/docs", redoc_url=None)
+app.mount("/static", StaticFiles(directory=static_root), name="static")
+
+ALLOWED_UPLOADS = {".txt", ".md", ".json", ".csv", ".docx", ".pdf", ".pptx", ".png", ".jpg", ".jpeg"}
+MAX_UPLOAD_BYTES = 50 * 1024 * 1024
+STAGE_ALIASES = {
+    "technical": "p1_technical_understanding",
+    "candidates": "p1_invention_candidates",
+    "novelty": "p1_novelty",
+    "strategy": "p1_protection_strategy",
+    "disclosure": "p1_disclosure",
+    "claims": "p1_claims",
+    "support": "p1_claim_support",
+    "scope": "p1_claim_scope",
+}
 
 
 class CaseCreate(BaseModel):
@@ -27,241 +53,518 @@ class CaseCreate(BaseModel):
     title: str = ""
 
 
-class CheckpointDecision(BaseModel):
-    decision: str = "approve"
-    note: str = ""
+class RealCaseCreate(CaseCreate):
+    authorized: bool = False
+    llm_mode: str = "disabled"
+    external_llm_approved: bool = False
+    synthetic: bool = False
 
 
-class SectionRevision(BaseModel):
-    section: str
-    text: str
+class PublicationMetadata(BaseModel):
+    paper_title: str = "UNKNOWN"
+    publication_status: str = "UNKNOWN"
+    first_public_date: str = "UNKNOWN"
+    doi: str = "UNKNOWN"
+    preprint_status: str = "UNKNOWN"
+    patent_filed_before_publication: str = "UNKNOWN"
+    publication_review_status: str = "UNREVIEWED"
 
 
-@app.get("/", response_class=HTMLResponse)
+class ReviewAction(BaseModel):
+    target_id: str
+    action: str = "ACCEPT"
+    corrected_value: Any = None
+    reason: str = ""
+    lock_after_apply: bool = True
+    confirmed_by_user: bool = True
+
+
+class BulkReview(BaseModel):
+    target_ids: list[str] = Field(min_length=1)
+    action: str = "ACCEPT"
+    confirmed_all: bool = False
+
+
+class Approval(BaseModel):
+    risk_acknowledged: bool = False
+
+
+class QuestionAnswer(BaseModel):
+    statement: str = Field(min_length=1)
+
+
+class RunRequest(BaseModel):
+    use_llm: bool = False
+
+
+class ContinueRequest(BaseModel):
+    prior_art_filename: str | None = None
+
+
+@app.middleware("http")
+async def local_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; frame-src 'self'"
+    return response
+
+
+@app.get("/")
 def home():
-    return HTMLResponse(_HOME)
+    return FileResponse(static_root / "index.html")
+
+
+@app.get("/api/system/status")
+def system_status():
+    from patent_agent.llm import OpenAICompatibleProvider
+
+    llm = OpenAICompatibleProvider(settings).health_check()
+    llm["api_configured"] = bool(settings.llm_api_key)
+    return {
+        "app": "READY",
+        "bind_recommendation": "127.0.0.1",
+        "llm": llm,
+        "progress": progress.summary(),
+        "jobs": jobs.list()[:10],
+    }
+
+
+@app.get("/api/dashboard")
+def dashboard():
+    real = []
+    for path in sorted(real_cases.root.iterdir()) if real_cases.root.exists() else []:
+        if not (path / "real_case_manifest.json").exists():
+            continue
+        manifest = real_cases.load(path.name)
+        records = HumanReviewManager(path).machine.records
+        real.append({
+            **manifest.model_dump(mode="json"),
+            "checkpoints": {name: record.status.value for name, record in records.items()},
+            "progress": progress.summary(path.name),
+        })
+    standard = [store.load(path.name).model_dump(mode="json") for path in sorted(store.root.iterdir()) if (path / "case.json").exists()]
+    return {"real_cases": real, "synthetic_cases": standard, "counts": {"real": len(real), "synthetic": len(standard)}}
 
 
 @app.get("/api/cases")
 def list_cases():
-    return [store.load(path.name).model_dump() for path in sorted(store.root.iterdir()) if (path / "case.json").exists()]
+    return dashboard()["synthetic_cases"]
 
 
 @app.post("/api/cases")
 def create_case(payload: CaseCreate):
     if (store.case_dir(payload.case_id) / "case.json").exists():
-        raise HTTPException(409, "case exists")
-    return store.create(payload.case_id, payload.title).model_dump()
+        raise HTTPException(409, "案件已存在")
+    return store.create(payload.case_id, payload.title).model_dump(mode="json")
 
 
 @app.get("/api/cases/{case_id}")
 def get_case(case_id: str):
+    return _standard_case(case_id).model_dump(mode="json")
+
+
+@app.post("/api/real-cases")
+def create_real_case(payload: RealCaseCreate):
+    if not payload.authorized:
+        raise HTTPException(400, "必须明确确认已获授权处理资料")
     try:
-        return store.load(case_id).model_dump()
-    except FileNotFoundError as exc:
-        raise HTTPException(404, "case not found") from exc
-
-
-@app.put("/api/cases/{case_id}/sources/{filename}")
-async def upload_source(case_id: str, filename: str, request: Request):
-    _case(case_id)
-    safe_name = Path(filename).name
-    if not safe_name or Path(safe_name).suffix.lower() not in ALLOWED_UPLOADS:
-        raise HTTPException(400, "unsupported source type")
-    body = await request.body()
-    if not body or len(body) > 50 * 1024 * 1024:
-        raise HTTPException(400, "file must be between 1 byte and 50 MB")
-    source_dir = store.case_dir(case_id) / "source"
-    target = source_dir / safe_name
-    target.write_bytes(body)
-    records, chunks, images = SourceManager(store).ingest(case_id, [source_dir])
-    return {"file": safe_name, "files": len(records), "chunks": len(chunks), "images": len(images)}
-
-
-@app.post("/api/cases/{case_id}/checkpoints/{name}")
-def decide_checkpoint(case_id: str, name: str, payload: CheckpointDecision):
-    _case(case_id)
-    if name not in {"A", "B", "C"}:
-        raise HTTPException(400, "checkpoint must be A, B, or C")
-    if payload.decision not in {"approve", "edit", "regenerate", "back"}:
-        raise HTTPException(400, "invalid checkpoint decision")
-    store.approve_checkpoint(case_id, name, payload.decision, payload.note)
-    return store.load(case_id).checkpoints[name]
-
-
-@app.post("/api/cases/{case_id}/regenerate-section")
-def regenerate_section(case_id: str, payload: SectionRevision):
-    _case(case_id)
-    try:
-        draft = DisclosureDraft.model_validate_json(store.latest_stage_path(case_id, "stage_7_disclosure").read_text(encoding="utf-8"))
-    except FileNotFoundError as exc:
-        raise HTTPException(409, "disclosure draft does not exist") from exc
-    if payload.section not in draft.sections:
-        raise HTTPException(400, "unknown section")
-    draft.sections[payload.section] = [payload.text]
-    path = store.save_stage(case_id, "stage_7_disclosure", draft, human_modified=True)
-    return {"saved": str(path), "section": payload.section}
-
-
-@app.get("/api/cases/{case_id}/stages/{stage}")
-def latest_stage(case_id: str, stage: str):
-    _case(case_id)
-    try:
-        payload = json.loads(store.latest_stage_path(case_id, stage).read_text(encoding="utf-8"))
-    except FileNotFoundError as exc:
-        raise HTTPException(404, "stage artifact not found") from exc
-    return JSONResponse(payload)
-
-
-@app.get("/api/cases/{case_id}/artifacts")
-def list_artifacts(case_id: str):
-    case = _case(case_id)
-    root = store.case_dir(case_id)
-    output_files = [
-        {"name": path.name, "path": str(path.relative_to(root)), "size": path.stat().st_size}
-        for path in sorted((root / "output").glob("*")) if path.is_file()
-    ]
-    stages = {}
-    for version in case.versions:
-        stages.setdefault(version.stage, []).append({"version": version.version, "created_at": version.created_at})
-    return {"case": case.model_dump(), "stages": stages, "output_files": output_files}
-
-
-@app.get("/api/llm/status")
-def llm_status():
-    from patent_agent.llm import OpenAICompatibleProvider
-    result = OpenAICompatibleProvider(settings).health_check()
-    result["api_configured"] = bool(settings.llm_api_key)
-    return result
-
-
-@app.get("/api/cases/{case_id}/evidence")
-def list_evidence(case_id: str, query: str = "", top_k: int = 20):
-    from patent_agent.evidence import EvidenceStore
-    _case(case_id)
-    evidence_store = EvidenceStore(store.case_dir(case_id) / "evidence")
-    items = evidence_store.search(query, top_k) if query else evidence_store.all()[:top_k]
-    return [item.model_dump() for item in items]
-
-
-@app.get("/api/cases/{case_id}/evidence/{evidence_id}")
-def get_evidence(case_id: str, evidence_id: str):
-    from patent_agent.evidence import EvidenceStore
-    _case(case_id)
-    try:
-        return EvidenceStore(store.case_dir(case_id) / "evidence").get(evidence_id).model_dump()
-    except KeyError as exc:
-        raise HTTPException(404, "evidence not found") from exc
-
-
-@app.get("/api/cases/{case_id}/claims-support")
-def get_claims_support(case_id: str):
-    _case(case_id)
-    try:
-        return JSONResponse(json.loads(store.latest_stage_path(case_id, "v2_claims_support_matrix").read_text(encoding="utf-8")))
-    except FileNotFoundError as exc:
-        raise HTTPException(404, "claims support matrix not found") from exc
+        manifest = real_cases.create(
+            payload.case_id,
+            authorized=True,
+            llm_mode=payload.llm_mode,
+            external_llm_approved=payload.external_llm_approved,
+            synthetic=payload.synthetic,
+            title=payload.title,
+        )
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    return manifest.model_dump(mode="json")
 
 
 @app.get("/api/real-cases")
 def list_real_cases():
-    return [real_cases.load(path.name).model_dump() for path in sorted(real_cases.root.iterdir()) if (path / "real_case_manifest.json").exists()]
+    return dashboard()["real_cases"]
 
 
 @app.get("/api/real-cases/{case_id}/status")
 def real_case_status(case_id: str):
-    from patent_agent.human_review import HumanReviewManager
+    manifest = _real_manifest(case_id)
+    records = HumanReviewManager(real_cases.case_dir(case_id)).machine.records
+    return {
+        "manifest": manifest.model_dump(mode="json"),
+        "checkpoints": {key: value.model_dump(mode="json") for key, value in records.items()},
+        "progress": progress.summary(case_id),
+        "jobs": jobs.list(case_id),
+    }
+
+
+@app.put("/api/real-cases/{case_id}/sources/{filename}")
+async def upload_real_source(case_id: str, filename: str, request: Request):
+    _real_manifest(case_id)
+    safe_name = _safe_filename(filename)
+    body = await request.body()
+    _validate_upload(safe_name, body)
+    target = real_cases.case_dir(case_id) / "source" / safe_name
+    atomic_write_bytes(target, body)
+    real_cases.ingest(case_id, target)
+    return {"file": safe_name, "size": len(body), "status": "INGESTED"}
+
+
+@app.put("/api/real-cases/{case_id}/prior-art/{filename}")
+async def upload_prior_art(case_id: str, filename: str, request: Request):
+    _real_manifest(case_id)
+    safe_name = _safe_filename(filename)
+    body = await request.body()
+    _validate_upload(safe_name, body)
+    target = real_cases.case_dir(case_id) / "search" / "manual_uploads" / safe_name
+    atomic_write_bytes(target, body)
+    return {"file": safe_name, "size": len(body), "status": "MANUALLY_IMPORTED_PRIOR_ART"}
+
+
+@app.put("/api/cases/{case_id}/sources/{filename}")
+async def upload_source(case_id: str, filename: str, request: Request):
+    from patent_agent.ingestion import SourceManager
+
+    _standard_case(case_id)
+    safe_name = _safe_filename(filename)
+    body = await request.body()
+    _validate_upload(safe_name, body)
+    source_dir = store.case_dir(case_id) / "source"
+    atomic_write_bytes(source_dir / safe_name, body)
+    records, chunks, images = SourceManager(store).ingest(case_id, [source_dir])
+    return {"file": safe_name, "files": len(records), "chunks": len(chunks), "images": len(images)}
+
+
+@app.get("/api/real-cases/{case_id}/source/{filename}")
+def preview_source(case_id: str, filename: str):
+    root = (real_cases.case_dir(case_id) / "source").resolve()
+    target = (root / _safe_filename(filename)).resolve()
+    if not target.is_relative_to(root) or not target.is_file():
+        raise HTTPException(404, "源文件不存在")
+    return FileResponse(target, filename=target.name, content_disposition_type="inline")
+
+
+@app.post("/api/real-cases/{case_id}/run-a1")
+def run_a1(case_id: str, payload: RunRequest):
+    manifest = _real_manifest(case_id)
+    if payload.use_llm and manifest.llm_mode == "disabled":
+        raise HTTPException(403, "案件未授权使用 LLM")
+
+    def operation():
+        provider = None
+        if payload.use_llm:
+            from patent_agent.llm import OpenAICompatibleProvider
+
+            provider = OpenAICompatibleProvider(settings)
+        return RealCaseWorkflow(settings, provider).run_a1(case_id, use_llm=payload.use_llm)
+
+    return jobs.submit("RUN_A1", case_id, operation)
+
+
+@app.get("/api/jobs")
+def list_jobs(case_id: str | None = None):
+    return jobs.list(case_id)
+
+
+@app.get("/api/jobs/{job_id}")
+def get_job(job_id: str):
+    record = jobs.get(job_id)
+    if record is None:
+        raise HTTPException(404, "任务不存在")
+    return record
+
+
+@app.get("/api/real-cases/{case_id}/a1")
+def get_a1(case_id: str):
+    case_dir = real_cases.case_dir(case_id)
+    understanding = _understanding(case_id)
+    evidence = EvidenceStore(case_dir / "evidence").all()
+    questions_path = case_dir / "review" / "inventor_questions.json"
+    questions = json.loads(questions_path.read_text(encoding="utf-8")) if questions_path.exists() else []
+    stats_path = case_dir / "review" / "checkpoint_A1" / "a1_quality_statistics.json"
+    comparison = case_dir / "review" / "a1_version_comparison.md"
+    terms = [
+        {"source": item.name, "normalized": item.name, "evidence_ids": item.description.evidence_ids, "review_status": "UNREVIEWED"}
+        for item in understanding.components
+    ]
+    return {
+        "understanding": understanding.model_dump(mode="json"),
+        "statistics": json.loads(stats_path.read_text(encoding="utf-8")) if stats_path.exists() else {},
+        "evidence_scope": dict(Counter(item.scope.value for item in evidence)),
+        "questions": questions,
+        "terminology": terms,
+        "comparison_markdown": comparison.read_text(encoding="utf-8") if comparison.exists() else "",
+        "checkpoint": HumanReviewManager(case_dir).machine.records["A1"].model_dump(mode="json"),
+    }
+
+
+@app.get("/api/real-cases/{case_id}/evidence")
+def list_real_evidence(case_id: str, query: str = "", top_k: int = 100):
+    evidence = EvidenceStore(real_cases.case_dir(case_id) / "evidence")
+    items = evidence.search(query, min(top_k, 500)) if query else evidence.all()[: min(top_k, 500)]
+    return [item.model_dump(mode="json") for item in items]
+
+
+@app.get("/api/real-cases/{case_id}/evidence/{evidence_id}")
+def get_real_evidence(case_id: str, evidence_id: str):
     try:
-        manifest = real_cases.load(case_id)
+        return EvidenceStore(real_cases.case_dir(case_id) / "evidence").get(evidence_id).model_dump(mode="json")
+    except KeyError as exc:
+        raise HTTPException(404, "Evidence ID 不存在") from exc
+
+
+@app.post("/api/real-cases/{case_id}/a1/review")
+def review_a1_fact(case_id: str, payload: ReviewAction):
+    if not payload.confirmed_by_user:
+        raise HTTPException(400, "必须明确确认人工操作")
+    correction = _correction(case_id, payload)
+    return _apply_review(case_id, "A1", [correction])
+
+
+@app.post("/api/real-cases/{case_id}/a1/review-bulk")
+def review_a1_bulk(case_id: str, payload: BulkReview):
+    if not payload.confirmed_all:
+        raise HTTPException(400, "批量操作需要再次确认")
+    if payload.action not in {"ACCEPT", "REJECT"}:
+        raise HTTPException(400, "批量操作仅支持 ACCEPT 或 REJECT")
+    corrections = [
+        _correction(case_id, ReviewAction(target_id=identifier, action=payload.action))
+        for identifier in payload.target_ids
+    ]
+    return _apply_review(case_id, "A1", corrections)
+
+
+@app.post("/api/real-cases/{case_id}/review/{checkpoint}")
+def review_checkpoint_object(case_id: str, checkpoint: str, payload: ReviewAction):
+    if checkpoint not in {"A2", "B", "C"}:
+        raise HTTPException(400, "该接口仅支持 A2、B、C")
+    if not payload.confirmed_by_user:
+        raise HTTPException(400, "必须明确确认人工操作")
+    return _apply_review(case_id, checkpoint, [_generic_correction(case_id, checkpoint, payload)])
+
+
+@app.post("/api/real-cases/{case_id}/review/{checkpoint}/bulk")
+def review_checkpoint_bulk(case_id: str, checkpoint: str, payload: BulkReview):
+    if checkpoint not in {"A2", "B", "C"} or not payload.confirmed_all:
+        raise HTTPException(400, "批量操作需要有效 Checkpoint 和再次确认")
+    corrections = [
+        _generic_correction(case_id, checkpoint, ReviewAction(target_id=identifier, action=payload.action))
+        for identifier in payload.target_ids
+    ]
+    return _apply_review(case_id, checkpoint, corrections)
+
+
+@app.post("/api/real-cases/{case_id}/questions/{question_id}/answer")
+def answer_question(case_id: str, question_id: str, payload: QuestionAnswer):
+    try:
+        path = RealCaseWorkflow(settings).answer_inventor_question(case_id, question_id, payload.statement)
+    except KeyError as exc:
+        raise HTTPException(404, "问题不存在") from exc
+    return {"status": "ANSWERED", "assertion": path.name}
+
+
+@app.put("/api/real-cases/{case_id}/publication")
+def update_publication(case_id: str, payload: PublicationMetadata):
+    try:
+        return real_cases.update_publication_metadata(case_id, **payload.model_dump()).model_dump(mode="json")
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
+@app.post("/api/real-cases/{case_id}/checkpoints/{checkpoint}/approve")
+def approve_checkpoint(case_id: str, checkpoint: str, payload: Approval):
+    if checkpoint not in {"A1", "A2", "B", "C"}:
+        raise HTTPException(400, "无效 Checkpoint")
+    try:
+        RealCaseWorkflow(settings).approve(case_id, checkpoint, risk_acknowledged=payload.risk_acknowledged)
+    except (ValueError, KeyError, FileNotFoundError) as exc:
+        raise HTTPException(409, str(exc)) from exc
+    return real_case_status(case_id)
+
+
+@app.post("/api/real-cases/{case_id}/continue")
+def continue_case(case_id: str, payload: ContinueRequest):
+    case_dir = real_cases.case_dir(case_id)
+    prior_art = None
+    if payload.prior_art_filename:
+        candidate = (case_dir / "search" / "manual_uploads" / _safe_filename(payload.prior_art_filename)).resolve()
+        if not candidate.is_file():
+            raise HTTPException(404, "先前技术文件不存在")
+        prior_art = candidate
+    return jobs.submit("CONTINUE_CASE", case_id, lambda: RealCaseWorkflow(settings).continue_case(case_id, prior_art))
+
+
+@app.get("/api/real-cases/{case_id}/stage/{alias}")
+def get_real_stage(case_id: str, alias: str):
+    stage = STAGE_ALIASES.get(alias, alias)
+    try:
+        path = real_cases.case_store.latest_stage_path(case_id, stage)
     except FileNotFoundError as exc:
-        raise HTTPException(404, "real case not found") from exc
-    checkpoints = HumanReviewManager(real_cases.case_dir(case_id)).machine.records
-    return {"manifest": manifest.model_dump(), "checkpoints": {key: value.model_dump() for key, value in checkpoints.items()}}
+        raise HTTPException(404, "阶段产物尚未生成") from exc
+    return JSONResponse(json.loads(path.read_text(encoding="utf-8")))
 
 
-@app.post("/api/real-cases/{case_id}/review")
-def import_real_case_review(case_id: str, payload: ReviewImport):
-    if payload.case_id != case_id:
-        raise HTTPException(400, "case mismatch")
-    from patent_agent.workflow import RealCaseWorkflow
-    path = real_cases.case_dir(case_id) / "review" / f"web_review_{payload.checkpoint}.json"
-    path.write_text(payload.model_dump_json(indent=2), encoding="utf-8")
+@app.get("/api/real-cases/{case_id}/artifacts")
+def real_artifacts(case_id: str):
+    case_dir = real_cases.case_dir(case_id)
+    files = []
+    roots = {
+        "review": case_dir / "review",
+        "case-output": case_dir / "output",
+        "final-output": settings.output_root / "real_case" / case_id,
+    }
+    for group, root in roots.items():
+        if not root.exists():
+            continue
+        for path in sorted(root.rglob("*")):
+            if path.is_file():
+                relative = path.relative_to(root).as_posix()
+                files.append({"name": path.name, "group": group, "size": path.stat().st_size, "relative": relative, "download_url": f"/api/real-cases/{case_id}/download/{group}/{relative}"})
+    return files
+
+
+@app.get("/api/real-cases/{case_id}/download/{group}/{relative_path:path}")
+def download_real_artifact(case_id: str, group: str, relative_path: str):
+    case_dir = real_cases.case_dir(case_id)
+    roots = {
+        "review": case_dir / "review",
+        "case-output": case_dir / "output",
+        "final-output": settings.output_root / "real_case" / case_id,
+    }
+    root = roots.get(group)
+    if root is None:
+        raise HTTPException(400, "无效产物分组")
+    root = root.resolve()
+    target = (root / relative_path).resolve()
+    if not target.is_relative_to(root) or not target.is_file():
+        raise HTTPException(404, "产物不存在")
+    return FileResponse(target, filename=target.name)
+
+
+@app.get("/api/real-cases/{case_id}/logs")
+def real_logs(case_id: str):
+    path = real_cases.case_dir(case_id) / "logs" / "llm_calls.jsonl"
+    if not path.exists():
+        return []
+    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+
+
+@app.get("/api/resume-status")
+def resume_status(case_id: str | None = None):
+    return progress.summary(case_id)
+
+
+@app.post("/api/resume")
+def resume(case_id: str | None = None):
+    try:
+        return progress.resume(case_id).model_dump(mode="json")
+    except FileNotFoundError as exc:
+        raise HTTPException(404, str(exc)) from exc
+
+
+@app.get("/api/settings")
+def safe_settings():
+    return {
+        "provider": settings.llm_provider,
+        "model": settings.llm_model,
+        "mode": settings.patent_llm_mode,
+        "api_configured": bool(settings.llm_api_key),
+        "cache_enabled": settings.llm_cache_enabled,
+        "max_upload_mb": MAX_UPLOAD_BYTES // 1024 // 1024,
+        "privacy": "本地单用户；仅显式授权案件可调用外部 LLM。",
+    }
+
+
+def _standard_case(case_id: str):
+    try:
+        return store.load(case_id)
+    except FileNotFoundError as exc:
+        raise HTTPException(404, "案件不存在") from exc
+
+
+def _real_manifest(case_id: str):
+    try:
+        return real_cases.load(case_id)
+    except FileNotFoundError as exc:
+        raise HTTPException(404, "真实案件不存在") from exc
+
+
+def _understanding(case_id: str) -> TechnicalUnderstandingResult:
+    _real_manifest(case_id)
+    try:
+        path = real_cases.case_store.latest_stage_path(case_id, "p1_technical_understanding")
+    except FileNotFoundError as exc:
+        raise HTTPException(404, "A1 尚未生成") from exc
+    return TechnicalUnderstandingResult.model_validate_json(path.read_text(encoding="utf-8"))
+
+
+def _safe_filename(filename: str) -> str:
+    safe = Path(filename).name
+    if not safe or safe != filename or Path(safe).suffix.lower() not in ALLOWED_UPLOADS:
+        raise HTTPException(400, "文件名或类型不受支持")
+    return safe
+
+
+def _validate_upload(filename: str, body: bytes) -> None:
+    if not body or len(body) > MAX_UPLOAD_BYTES:
+        raise HTTPException(400, "文件必须为 1 字节至 50 MB")
+    suffix = Path(filename).suffix.lower()
+    if suffix == ".pdf" and not body.startswith(b"%PDF-"):
+        raise HTTPException(400, "PDF 文件签名无效")
+    if suffix in {".docx", ".pptx"} and not body.startswith(b"PK"):
+        raise HTTPException(400, "Office 文件签名无效")
+
+
+def _correction(case_id: str, payload: ReviewAction) -> HumanCorrection:
+    severity = "NONE" if payload.action == "ACCEPT" else ("REJECT" if payload.action in {"REJECT", "DELETE"} else "MAJOR")
+    try:
+        return HumanCorrection(
+            correction_id=f"HC-WEB-{uuid.uuid4().hex[:12].upper()}",
+            case_id=case_id,
+            target_type="fact",
+            target_id=payload.target_id,
+            corrected_value=payload.corrected_value,
+            action=payload.action,
+            severity=severity,
+            reason=payload.reason or "本地 UI 人工审阅",
+            confirmed_by_user=payload.confirmed_by_user,
+            lock_after_apply=payload.lock_after_apply,
+        )
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
+def _generic_correction(case_id: str, checkpoint: str, payload: ReviewAction) -> HumanCorrection:
+    target_type = {"A2": "candidate", "B": "strategy", "C": "claim_feature"}[checkpoint]
+    severity = "NONE" if payload.action == "ACCEPT" else ("REJECT" if payload.action in {"REJECT", "DELETE"} else "MAJOR")
+    try:
+        return HumanCorrection(
+            correction_id=f"HC-WEB-{uuid.uuid4().hex[:12].upper()}",
+            case_id=case_id,
+            target_type=target_type,
+            target_id=payload.target_id,
+            corrected_value=payload.corrected_value,
+            action=payload.action,
+            severity=severity,
+            reason=payload.reason or "本地 UI 人工审阅",
+            confirmed_by_user=True,
+            lock_after_apply=payload.lock_after_apply,
+        )
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
+def _apply_review(case_id: str, checkpoint: str, corrections: list[HumanCorrection]):
+    _real_manifest(case_id)
+    review = ReviewImport(case_id=case_id, checkpoint=checkpoint, corrections=corrections)
+    root = real_cases.case_dir(case_id) / "review" / "web_imports"
+    path = root / f"{corrections[0].correction_id}.json"
+    atomic_write_json(path, review.model_dump(mode="json"))
     try:
         saved = RealCaseWorkflow(settings).import_review(case_id, path)
     except (ValueError, KeyError, PermissionError) as exc:
         raise HTTPException(409, str(exc)) from exc
-    return {"saved": str(saved), "checkpoint": payload.checkpoint}
-
-
-@app.get("/api/real-cases/{case_id}/claim-scope")
-def real_case_claim_scope(case_id: str):
-    try:
-        path = real_cases.case_store.latest_stage_path(case_id, "p1_claim_scope")
-    except FileNotFoundError as exc:
-        raise HTTPException(404, "claim scope review not found") from exc
-    return JSONResponse(json.loads(path.read_text(encoding="utf-8")))
-
-
-@app.get("/api/real-cases/{case_id}/evaluation")
-def real_case_evaluation(case_id: str):
-    root = real_cases.case_dir(case_id) / "evaluation_runs"
-    runs = sorted(path for path in root.iterdir() if path.is_dir()) if root.exists() else []
-    return [{"run_id": path.name, "summary": json.loads((path / "evaluation_summary.json").read_text(encoding="utf-8"))} for path in runs if (path / "evaluation_summary.json").exists()]
-
-
-@app.get("/api/cases/{case_id}/download/{filename}")
-def download_output(case_id: str, filename: str):
-    _case(case_id)
-    output_root = (store.case_dir(case_id) / "output").resolve()
-    target = (output_root / Path(filename).name).resolve()
-    if not target.is_relative_to(output_root) or not target.is_file():
-        raise HTTPException(404, "output not found")
-    return FileResponse(target, filename=target.name)
-
-
-def _case(case_id: str):
-    try:
-        return store.load(case_id)
-    except FileNotFoundError as exc:
-        raise HTTPException(404, "case not found") from exc
-
-
-_HOME = """<!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Patent Agent</title>
-<style>
-:root{font-family:"Microsoft YaHei",system-ui,sans-serif;color:#17202a;background:#eef2f5}*{box-sizing:border-box}
-body{margin:0}header{padding:24px 32px;background:#132b3f;color:white}header h1{margin:0 0 6px;font-size:25px}header p{margin:0;color:#bfd0dc}
-main{display:grid;grid-template-columns:300px 1fr;gap:18px;padding:18px;max-width:1400px;margin:auto}.card{background:white;border:1px solid #d8e0e6;border-radius:10px;padding:18px;box-shadow:0 2px 8px #0b243510}
-h2{font-size:18px;margin:0 0 14px}label{display:block;font-size:13px;color:#4e6473;margin:9px 0 5px}input,textarea,select,button{font:inherit}input,textarea,select{width:100%;padding:9px;border:1px solid #b9c6cf;border-radius:6px}textarea{min-height:92px}
-button{border:0;border-radius:6px;padding:9px 13px;background:#176b87;color:white;cursor:pointer}button.secondary{background:#526976}.case{padding:10px;border:1px solid #dae2e7;border-radius:7px;margin:8px 0;cursor:pointer}.case:hover,.case.active{border-color:#176b87;background:#edf8fb}
-.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}.wide{grid-column:1/-1}.muted{color:#667b88;font-size:13px}.badge{display:inline-block;padding:3px 8px;border-radius:99px;background:#e5f2f5;color:#15566c;margin:2px;font-size:12px}
-pre{white-space:pre-wrap;max-height:420px;overflow:auto;background:#f6f8fa;padding:12px;border-radius:6px;border:1px solid #e0e5e8}.row{display:flex;gap:8px;flex-wrap:wrap}.row>*{flex:1}.outputs a{display:block;margin:7px 0;color:#176b87}@media(max-width:850px){main{grid-template-columns:1fr}.grid{grid-template-columns:1fr}}
-</style></head><body>
-<header><h1>Patent Agent</h1><p>案件、证据、Checkpoint、版本和 Word 输出的本地控制台</p></header>
-<main><aside class="card"><h2>案件</h2><div id="cases"></div><hr><label>案件编号</label><input id="new-id" placeholder="PAT-2026-001"><label>发明名称</label><input id="new-title"><p><button onclick="createCase()">新建案件</button></p></aside>
-<section class="grid">
-<div class="card wide"><h2 id="case-title">请选择案件</h2><div id="case-meta" class="muted">不会自动向外部服务发送资料。</div></div>
-<div class="card"><h2>资料上传</h2><input id="source" type="file"><p><button onclick="upload()">导入并建立索引</button></p><div id="upload-status" class="muted"></div></div>
-<div class="card"><h2>人工 Checkpoint</h2><div class="row"><button onclick="approve('A')">批准 A 发明点</button><button onclick="approve('B')">批准 B 保护策略</button><button onclick="approve('C')">批准 C Claims</button></div><p id="checkpoints" class="muted"></p></div>
-<div class="card"><h2>阶段结果</h2><select id="stage"><option>v2_grounded_understanding</option><option>v2_invention_candidates</option><option>v2_protection_strategy</option><option>v2_grounded_disclosure</option><option>v2_grounded_claims</option><option>v2_claims_support_matrix</option><option>stage_2_technical_understanding</option><option>stage_3_invention_mining</option><option>stage_5_novelty</option><option>stage_6_protection_strategy</option><option>stage_7_disclosure</option><option>stage_8_claims</option></select><p><button onclick="loadStage()">查看结构化结果</button></p></div>
-<div class="card"><h2>LLM 与 Evidence</h2><p id="llm-status" class="muted">加载中</p><input id="evidence-query" placeholder="检索技术事实或 EV-ID"><p class="row"><button onclick="loadEvidence()">查看 Evidence</button><button class="secondary" onclick="loadClaimsSupport()">Claims Support</button></p></div>
-<div class="card"><h2>交底书章节重生成</h2><input id="section" placeholder="6. 技术方案"><label>有来源的修订文本</label><textarea id="section-text"></textarea><p><button onclick="revise()">仅保存该章节新版本</button></p></div>
-<div class="card wide"><h2>版本历史与 Word 输出</h2><div id="history"></div><div id="outputs" class="outputs"></div></div>
-<div class="card wide"><h2>内容查看</h2><pre id="viewer">选择一个阶段后查看。</pre></div>
-</section></main>
-<script>
-let selected=""; const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
-async function api(url,opt={}){const r=await fetch(url,opt);if(!r.ok)throw new Error(await r.text());return r.json()}
-async function refresh(){const items=await api('/api/cases');document.getElementById('cases').innerHTML=items.map(x=>`<div class="case ${x.case_id===selected?'active':''}" onclick="selectCase('${esc(x.case_id)}')"><b>${esc(x.case_id)}</b><br><span class="muted">${esc(x.title||'未命名')} · ${esc(x.status)}</span></div>`).join('')||'<span class="muted">暂无案件</span>'}
-async function createCase(){const case_id=document.getElementById('new-id').value.trim(),title=document.getElementById('new-title').value.trim();if(!case_id)return;await api('/api/cases',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({case_id,title})});selected=case_id;await refresh();await loadCase()}
-async function selectCase(id){selected=id;await refresh();await loadCase()}
-async function loadCase(){if(!selected)return;const a=await api(`/api/cases/${encodeURIComponent(selected)}/artifacts`),c=a.case;document.getElementById('case-title').textContent=`${c.case_id} · ${c.title||'未命名'}`;document.getElementById('case-meta').innerHTML=`状态 <span class="badge">${esc(c.status)}</span> 当前阶段 <span class="badge">${esc(c.current_stage)}</span> 来源文件 ${c.source_files.length}`;document.getElementById('checkpoints').textContent=JSON.stringify(c.checkpoints);document.getElementById('history').innerHTML=Object.entries(a.stages).map(([k,v])=>`<p><b>${esc(k)}</b> ${v.map(x=>`<span class="badge">v${String(x.version).padStart(3,'0')}</span>`).join('')}</p>`).join('')||'<span class="muted">尚无阶段版本</span>';document.getElementById('outputs').innerHTML=a.output_files.map(x=>`<a href="/api/cases/${encodeURIComponent(selected)}/download/${encodeURIComponent(x.name)}">导出 ${esc(x.name)} (${Math.round(x.size/1024)} KB)</a>`).join('')}
-async function upload(){if(!selected)return alert('请先选择案件');const f=document.getElementById('source').files[0];if(!f)return;const x=await api(`/api/cases/${encodeURIComponent(selected)}/sources/${encodeURIComponent(f.name)}`,{method:'PUT',headers:{'Content-Type':'application/octet-stream'},body:f});document.getElementById('upload-status').textContent=`已导入：${x.files} 个文件，${x.chunks} 个文本块，${x.images} 张图片`;await loadCase()}
-async function approve(name){if(!selected)return;await api(`/api/cases/${encodeURIComponent(selected)}/checkpoints/${name}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({decision:'approve',note:'approved in local UI'})});await loadCase()}
-async function loadStage(){if(!selected)return;try{const x=await api(`/api/cases/${encodeURIComponent(selected)}/stages/${document.getElementById('stage').value}`);document.getElementById('viewer').textContent=JSON.stringify(x,null,2)}catch(e){document.getElementById('viewer').textContent=e.message}}
-async function revise(){if(!selected)return;await api(`/api/cases/${encodeURIComponent(selected)}/regenerate-section`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({section:document.getElementById('section').value,text:document.getElementById('section-text').value})});await loadCase()}
-async function loadEvidence(){if(!selected)return;const q=document.getElementById('evidence-query').value.trim();try{const x=q.startsWith('EV-')?await api(`/api/cases/${encodeURIComponent(selected)}/evidence/${encodeURIComponent(q)}`):await api(`/api/cases/${encodeURIComponent(selected)}/evidence?query=${encodeURIComponent(q)}`);document.getElementById('viewer').textContent=JSON.stringify(x,null,2)}catch(e){document.getElementById('viewer').textContent=e.message}}
-async function loadClaimsSupport(){if(!selected)return;const x=await api(`/api/cases/${encodeURIComponent(selected)}/claims-support`);document.getElementById('viewer').textContent=JSON.stringify(x,null,2)}
-api('/api/llm/status').then(x=>document.getElementById('llm-status').textContent=`${x.mode||'disabled'} · ${x.provider} · ${x.model||'未配置'} · API ${x.api_configured?'configured':'not configured'}`);refresh();
-</script></body></html>"""
+    return {"saved_version": saved.name, "checkpoint": HumanReviewManager(real_cases.case_dir(case_id)).machine.records[checkpoint].model_dump(mode="json")}

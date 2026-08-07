@@ -14,7 +14,9 @@ from patent_agent.human_review import (
     DependencyGraph,
     HumanCorrection,
     HumanCorrectionEngine,
+    HumanReviewManager,
     RevisionSeverity,
+    ReviewImport,
 )
 from patent_agent.ingestion import SourceManager
 
@@ -67,3 +69,23 @@ def test_checkpoint_state_machine_order_and_completion():
     machine.configure("B", ["BF1"]); machine.transition("B", CheckpointStatus.GENERATED); machine.transition("B", CheckpointStatus.UNDER_REVIEW)
     with pytest.raises(ValueError, match="CHECKPOINT_ORDER_VIOLATION"):
         machine.transition("B", CheckpointStatus.APPROVED, reviewed_ids=["BF1"])
+
+
+def test_incremental_review_import_accumulates_reviewed_ids(tmp_path: Path):
+    manager = HumanReviewManager(tmp_path / "REAL-TEST")
+    manager.export_review("A1", [{"fact_id": "F1"}, {"fact_id": "F2"}])
+    for index, fact_id in enumerate(("F1", "F2"), 1):
+        correction = HumanCorrection(
+            correction_id=f"HC-{index}",
+            case_id="REAL-TEST",
+            target_type="fact",
+            target_id=fact_id,
+            action="ACCEPT",
+        )
+        path = tmp_path / f"review-{index}.json"
+        path.write_text(
+            ReviewImport(case_id="REAL-TEST", checkpoint="A1", corrections=[correction]).model_dump_json(),
+            encoding="utf-8",
+        )
+        manager.import_review(path)
+    assert manager.machine.records["A1"].reviewed_object_ids == ["F1", "F2"]

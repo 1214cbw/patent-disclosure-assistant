@@ -29,3 +29,22 @@ def atomic_write_text(path: Path, text: str, *, encoding: str = "utf-8") -> Path
 
 def atomic_write_json(path: Path, value: Any) -> Path:
     return atomic_write_text(Path(path), json.dumps(value, ensure_ascii=False, indent=2, default=str))
+
+
+def atomic_write_bytes(path: Path, data: bytes) -> Path:
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    handle, temporary = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
+    try:
+        with os.fdopen(handle, "wb") as stream:
+            stream.write(data)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+    except Exception:
+        try:
+            os.unlink(temporary)
+        except FileNotFoundError:
+            pass
+        raise
+    return path

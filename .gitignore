@@ -19,3 +19,8 @@ output/dry_run_synthetic/
 output/real_case/
 output/v2_p1_demo_work/
 output/qa_v2_p1/
+runtime/jobs.json
+runtime/job_errors/
+runtime/patent_agent_server.json
+runtime/patent_agent_server.log
+runtime/progress/REAL-*.json
