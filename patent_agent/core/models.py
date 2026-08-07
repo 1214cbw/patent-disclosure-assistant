@@ -30,6 +30,7 @@ class SupportState(str, Enum):
 class EvidenceScope(str, Enum):
     INVENTION_SOURCE = "INVENTION_SOURCE"
     PRIOR_ART = "PRIOR_ART"
+    REFERENCE = "REFERENCE"
     INVENTOR_ASSERTION = "INVENTOR_ASSERTION"
 
 
@@ -60,6 +61,8 @@ class EvidenceChunk(StrictSchema):
     normalized_text: str
     metadata: dict[str, Any] = Field(default_factory=dict)
     hash: str
+    block_type: str = "paragraph"
+    supersedes: list[str] = Field(default_factory=list)
 
 
 class GroundedStatement(StrictSchema):
@@ -148,6 +151,7 @@ class InventorQuestion(StrictSchema):
     question_id: str
     text: str
     priority: Literal["P0", "P1", "P2"]
+    question_role: Literal["CLAIM_BLOCKING", "ENABLEMENT", "EMBODIMENT_DETAIL", "OPTIONAL_DETAIL"] = "OPTIONAL_DETAIL"
     related_fact_ids: list[str] = Field(default_factory=list)
     related_evidence_ids: list[str] = Field(default_factory=list)
     blocking_stage: Literal["A1", "A2", "B", "C", "FINAL"] | None = None
@@ -390,6 +394,10 @@ class SourceChunk(BaseModel):
     heading: str = ""
     text: str
     sha256: str
+    page: int | None = None
+    paragraph_index: int | None = None
+    block_type: str = "paragraph"
+    scope: EvidenceScope = EvidenceScope.INVENTION_SOURCE
 
 
 class SourceFileRecord(BaseModel):

@@ -20,6 +20,13 @@ class RealCaseManifest(StrictSchema):
     current_checkpoint: Literal["A1", "A2", "B", "C", "FINAL"] = "A1"
     case_state: CaseWorkflowState = CaseWorkflowState.INGESTED
     synthetic: bool = False
+    paper_title: str = "UNKNOWN"
+    publication_status: Literal["UNKNOWN", "UNPUBLISHED", "PREPRINT", "PUBLISHED", "ACCEPTED"] = "UNKNOWN"
+    first_public_date: str = "UNKNOWN"
+    doi: str = "UNKNOWN"
+    preprint_status: Literal["UNKNOWN", "YES", "NO"] = "UNKNOWN"
+    patent_filed_before_publication: Literal["UNKNOWN", "YES", "NO", "NOT_APPLICABLE"] = "UNKNOWN"
+    publication_review_status: Literal["UNREVIEWED", "CONFIRMED"] = "UNREVIEWED"
 
     @model_validator(mode="after")
     def safe_policy(self):

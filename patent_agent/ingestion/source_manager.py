@@ -8,7 +8,7 @@ from pathlib import Path
 from patent_agent.core.models import SourceChunk, SourceFileRecord
 from patent_agent.core.state import CaseStore
 from patent_agent.evidence import EvidenceStore
-from .readers import read_docx, read_pdf, read_pptx, read_text
+from .readers import read_docx, read_pdf, read_pdf_blocks, read_pptx, read_text
 
 
 READERS = {".txt": read_text, ".md": read_text, ".docx": read_docx, ".pdf": read_pdf, ".pptx": read_pptx}
@@ -52,12 +52,14 @@ class SourceManager:
                 images.append({"id": f"IMG-{len(images)+1:03d}", "file": str(stored), "original": str(original), "suggested_number": len(images)+1, "nearby_text": "", "description": "[待人工补充图片说明]"})
                 records.append(SourceFileRecord(path=str(stored), original_path=str(original), media_type="image", sha256=file_hash))
                 continue
-            blocks = split_markdown(stored.read_text(encoding="utf-8")) if suffix == ".md" else READERS[suffix](stored)
+            pdf_blocks = read_pdf_blocks(stored) if suffix == ".pdf" else None
+            blocks = split_markdown(stored.read_text(encoding="utf-8")) if suffix == ".md" else READERS[suffix](stored) if suffix != ".pdf" else [(item.heading, item.text) for item in pdf_blocks]
             chunk_ids = []
-            for heading, text in blocks:
+            for block_index, (heading, text) in enumerate(blocks):
                 if not text.strip(): continue
                 chunk_id = f"P{counter:03d}"; counter += 1; chunk_ids.append(chunk_id)
-                chunks.append(SourceChunk(id=chunk_id, source_file=stored.name, source_location=heading, heading=heading, text=text.strip(), sha256=hashlib.sha256(text.encode("utf-8")).hexdigest()))
+                pdf_block = pdf_blocks[block_index] if pdf_blocks is not None else None
+                chunks.append(SourceChunk(id=chunk_id, source_file=stored.name, source_location=(f"第{pdf_block.page}页 · {heading}" if pdf_block else heading), heading=heading, text=text.strip(), sha256=hashlib.sha256(text.encode("utf-8")).hexdigest(), page=pdf_block.page if pdf_block else None, paragraph_index=pdf_block.paragraph_index if pdf_block else None, block_type=pdf_block.block_type if pdf_block else "paragraph", scope=pdf_block.scope if pdf_block else "INVENTION_SOURCE"))
             records.append(SourceFileRecord(path=str(stored), original_path=str(original), media_type=suffix.lstrip("."), sha256=file_hash, chunk_ids=chunk_ids))
         case = self.store.load(case_id); case.source_files = records; self.store.save_case(case)
         case_dir = self.store.case_dir(case_id)

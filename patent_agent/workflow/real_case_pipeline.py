@@ -120,6 +120,8 @@ class RealCaseWorkflow:
         case_dir = self.manager.case_dir(case_id); review = HumanReviewManager(case_dir); manifest = self.manager.load(case_id); bundle = ReviewBundleBuilder(case_dir)
         if manifest.current_checkpoint == "A1":
             if review.machine.records["A1"].status != CheckpointStatus.APPROVED: raise ValueError("CHECKPOINT_A1_NOT_APPROVED")
+            if not manifest.synthetic and manifest.publication_review_status != "CONFIRMED":
+                raise ValueError("PUBLICATION_STATUS_REQUIRED_BEFORE_A2")
             understanding = TechnicalUnderstandingResult.model_validate_json(self.store.latest_stage_path(case_id, "p1_technical_understanding").read_text(encoding="utf-8")); candidates = DeterministicGroundedInventionMiner().run(understanding)
             self.store.save_stage(case_id, "p1_invention_candidates", [item.model_dump() for item in candidates]); questions = _questions(case_dir); root = bundle.a2(candidates, questions); HumanReviewManager(case_dir).export_review("A2", [item.model_dump(mode="json") for item in candidates]); manifest.current_checkpoint = "A2"; manifest.case_state = CaseWorkflowState.A2_REVIEW
             _mark_current(case_dir, "knowledge", "candidate")

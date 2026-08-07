@@ -16,7 +16,7 @@ def test_a1_to_c_human_correction_and_minimal_regeneration(tmp_path: Path):
     project = Path(__file__).resolve().parents[2]
     settings = Settings(project_root=tmp_path, workspace_root=tmp_path / "workspace", template_root=project / "templates", output_root=tmp_path / "output")
     manager = RealCaseManager(tmp_path); case_id = "REAL-SYN-P1"
-    manager.create(case_id, authorized=True)
+    manager.create(case_id, authorized=True, synthetic=True)
     manager.ingest(case_id, project / "demo" / "motor_control" / "materials")
     workflow = RealCaseWorkflow(settings)
 

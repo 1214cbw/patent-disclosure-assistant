@@ -39,7 +39,7 @@ class RealCaseManager:
         return self.case_dir(case_id) / "real_case_manifest.json"
 
     def create(self, case_id: str, *, authorized: bool, llm_mode: str = "disabled", external_llm_approved: bool = False, synthetic: bool = False, title: str = "[待发明人确认]") -> RealCaseManifest:
-        manifest = RealCaseManifest(case_id=case_id, authorized_for_processing=authorized, llm_mode=llm_mode, external_llm_approved=external_llm_approved, synthetic=synthetic)
+        manifest = RealCaseManifest(case_id=case_id, authorized_for_processing=authorized, llm_mode=llm_mode, external_llm_approved=external_llm_approved, synthetic=synthetic, paper_title=title or "UNKNOWN")
         case_dir = self.case_dir(case_id)
         if not (case_dir / "case.json").exists():
             self.case_store.create(case_id, title)
