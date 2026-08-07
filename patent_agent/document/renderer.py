@@ -47,7 +47,11 @@ class DocumentRenderer:
             paragraph = document.add_paragraph(); paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
             paragraph.add_run().add_picture(node.path, width=Cm(13.5))
             caption = document.add_paragraph(style="Patent Caption"); caption.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            set_run_font(caption.add_run(f"图{node.number}  {node.value}"), size=10.5)
+            # Strip duplicate "图N" prefix from value if present
+            import re
+            figure_title = node.value or ""
+            figure_title = re.sub(r'^图\s*\d+\s*[：:.\s]*', '', figure_title).strip()
+            set_run_font(caption.add_run(f"图{node.number}  {figure_title}"), size=10.5)
         elif node.type == "list":
             for child in node.children:
                 paragraph = document.add_paragraph(style="List Bullet"); set_run_font(paragraph.add_run(child.value))

@@ -445,31 +445,25 @@ class DisclosureOnlyPipeline:
         return edges
 
     @staticmethod
+    @staticmethod
     def _convert_disclosure_to_chinese(
         skeleton: "GroundedDisclosure",
         provider,
     ) -> "GroundedDisclosure":
-        """Convert English evidence disclosure to Chinese using DeepSeek per-section."""
-        from patent_agent.core.models import GroundedParagraph
+        """Convert English evidence disclosure to Chinese using V5 prompts.
 
-        SYSTEM_PROMPT = (
-            "你是中文专利技术交底书撰写专家。请将提供的英文技术材料改写为简体中文专利交底书正文。\n"
-            "要求：\n"
-            "1. 全部使用简体中文输出，禁止输出英文段落\n"
-            "2. 使用专利交底书表达方式，禁止'本文''本研究''我们提出'等学术表达\n"
-            "3. 技术术语首次出现使用'中文全称（English Full Name，缩写）'格式\n"
-            "4. 不编造任何数据、参数或实验结果\n"
-            "5. 缺失信息不编造，保持原文信息量\n"
-            "6. 只输出改写后的中文段落，每段之间用空行分隔\n"
-            "7. 不要输出章节标题"
-        )
+        V5: Uses strict section-boundary prompts to prevent cross-section redundancy.
+        Background only writes background, tech solution only writes HOW, etc.
+        """
+        from patent_agent.agents.v5_prompts import V5_SYSTEM_PROMPT, v5_section_prompt
+        from patent_agent.core.models import GroundedParagraph
 
         new_sections = []
         for section in skeleton.sections:
+            sid = getattr(section, "section_id", "")
             title = getattr(section, "title", "")
             old_paras = getattr(section, "paragraphs", [])
 
-            # Collect English text
             en_text = "\n\n".join(
                 getattr(p, "text", "") for p in old_paras[:15]
             )
@@ -477,17 +471,20 @@ class DisclosureOnlyPipeline:
                 new_sections.append(section)
                 continue
 
-            # Skip if already mostly Chinese
+            # Skip if already mostly Chinese (preserves SEC01 title etc.)
             cn_check = sum(1 for ch in en_text if "一" <= ch <= "鿿")
-            if cn_check > len(en_text) * 0.6:
+            if cn_check > len(en_text) * 0.6 and sid != "SEC06":
                 new_sections.append(section)
                 continue
 
-            # Call DeepSeek for Chinese conversion
+            # Build V5-specific prompt for this section
+            user_prompt = v5_section_prompt(sid, title, en_text)
+
+            # Call DeepSeek
             try:
                 resp = provider.generate_text(
-                    system_prompt=SYSTEM_PROMPT,
-                    user_prompt=f"章节主题：{title}\n\n英文技术材料：\n{en_text[:5000]}",
+                    system_prompt=V5_SYSTEM_PROMPT,
+                    user_prompt=user_prompt,
                 )
                 cn_text = resp.text if hasattr(resp, "text") else str(resp)
             except Exception:
@@ -500,11 +497,10 @@ class DisclosureOnlyPipeline:
             ]
             new_paras = []
             for j, pt in enumerate(raw_paras):
-                # Link to original evidence from skeleton paragraphs
                 src_para = old_paras[min(j, len(old_paras) - 1)] if old_paras else None
                 new_paras.append(GroundedParagraph(
-                    paragraph_id=f"DISC-CN-{getattr(section, 'section_id', 'X')}-P{j + 1:03d}",
-                    section_id=getattr(section, "section_id", ""),
+                    paragraph_id=f"DISC-V5-{sid}-P{j + 1:03d}",
+                    section_id=sid,
                     text=pt,
                     evidence_ids=getattr(src_para, "evidence_ids", [])[:5] if src_para else [],
                     fact_ids=getattr(src_para, "fact_ids", [])[:5] if src_para else [],
