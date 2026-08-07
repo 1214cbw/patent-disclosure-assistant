@@ -96,7 +96,7 @@ class PatentPipeline:
             if event["errors"]: raise RuntimeError("Consistency review contains ERROR findings")
             self.store.save_stage(case_id, "stage_10_consistency_review", [item.model_dump() for item in findings])
         with log.stage("stage_11_docx_rendering", {}) as event:
-            disclosure_ast = disclosure_to_ast(case_id, draft); claims_ast = claims_to_ast(case_id, claims)
+            disclosure_ast = disclosure_to_ast(case_id, draft, legacy_demo_mode=True); claims_ast = claims_to_ast(case_id, claims)
             disclosure_path = self.renderer.render(disclosure_ast, output_dir / "技术交底书_demo.docx")
             claims_path = self.renderer.render(claims_ast, output_dir / "权利要求草案_demo.docx")
             event["output"] = {"disclosure": str(disclosure_path), "claims": str(claims_path)}

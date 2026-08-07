@@ -121,7 +121,7 @@ class PatentPipelineV2:
         with log.stage("v2_stage_11_document_rendering", {}) as event:
             draft = grounded_disclosure_to_draft(disclosure, knowledge, figures)
             claim_tree = grounded_claims_to_tree(claims)
-            disclosure_ast = disclosure_to_ast(case_id, draft); claims_ast = claims_to_ast(case_id, claim_tree)
+            disclosure_ast = disclosure_to_ast(case_id, draft, legacy_demo_mode=True); claims_ast = claims_to_ast(case_id, claim_tree)
             disclosure_docx = self.renderer.render(disclosure_ast, output_dir / "技术交底书_v2_demo.docx")
             claims_docx = self.renderer.render(claims_ast, output_dir / "权利要求草案_v2_demo.docx")
             event["output"] = {"disclosure": str(disclosure_docx), "claims": str(claims_docx)}

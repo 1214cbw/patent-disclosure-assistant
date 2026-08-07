@@ -227,15 +227,21 @@ class DisclosureOnlyPipeline:
 
         # ── Stage 4: Figures ──
         with log.stage("figures", STAGE_LABELS_CN["figures"]) as event:
-            figure_specs = FigurePlanner().run(knowledge)
+            # Use data-driven FigurePlanner with actual technical understanding
+            figure_specs = FigurePlanner().from_understanding(understanding)
             figures = []
+            fig_output_dir = output_dir / "figures"
+            fig_output_dir.mkdir(parents=True, exist_ok=True)
             for spec in figure_specs:
                 try:
-                    rendered = PatentFigureRenderer().render(spec, output_dir / "figures")
+                    rendered = PatentFigureRenderer().render(spec, fig_output_dir)
                     figures.append(rendered)
                 except Exception as exc:
                     event["warnings"].append(f"Figure {spec.figure_id} failed: {exc}")
             event["output"] = {"planned": len(figure_specs), "rendered": len(figures)}
+
+        # ── Stage 4b: Post-process disclosure (cleanup unwanted sections) ──
+        disclosure = _cleanup_disclosure_sections(disclosure)
 
         # ── Stage 5: DOCX Rendering ──
         with log.stage("docx", STAGE_LABELS_CN["docx"]) as event:
@@ -243,9 +249,26 @@ class DisclosureOnlyPipeline:
 
             draft = grounded_disclosure_to_draft(disclosure, knowledge, figures)
             ast = disclosure_to_ast(case_id, draft)
-            docx_path = self.renderer.render(ast, output_dir / "技术交底书.docx")
+
+            # Save v1 as backup if exists, then write v2
+            v1_path = output_dir / "技术交底书_v1.docx"
+            v2_path = output_dir / "技术交底书_v2.docx"
+            main_path = output_dir / "技术交底书.docx"
+
+            # Backup old version
+            if main_path.exists() and not v1_path.exists():
+                import shutil
+                shutil.copy2(main_path, v1_path)
+
+            # Render new version
+            docx_path = self.renderer.render(ast, main_path)
+            if main_path.exists():
+                import shutil
+                shutil.copy2(main_path, v2_path)
+
             event["output"] = {
                 "docx_path": str(docx_path),
+                "v2_path": str(v2_path) if v2_path.exists() else None,
                 "size_kb": round(docx_path.stat().st_size / 1024, 1),
             }
 
@@ -707,6 +730,30 @@ def _check_chinese_disclosure(
         "facts_without_evidence": len(facts_without_evidence),
         "issues": issues,
     }
+
+
+def _cleanup_disclosure_sections(disclosure):
+    """Remove unwanted sections (claims, abstract) and ensure proper section count."""
+    from patent_agent.core.models import GroundedDisclosure, ReviewStatus
+
+    unwanted_keywords = [
+        "权利要求", "claims", "Claim", "摘要", "Abstract",
+        "工业实用性", "Industrial Applicability",
+    ]
+    cleaned_sections = []
+    removed = []
+    for section in disclosure.sections:
+        title = section.title if hasattr(section, "title") else ""
+        should_remove = any(kw.lower() in title.lower() for kw in unwanted_keywords)
+        if should_remove:
+            removed.append(title)
+            continue
+        cleaned_sections.append(section)
+
+    if removed:
+        disclosure = disclosure.model_copy(update={"sections": cleaned_sections})
+
+    return disclosure
 
 
 def _write_internal_outputs(
