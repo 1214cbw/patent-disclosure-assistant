@@ -1,0 +1,192 @@
+[
+  {
+    "schema_version": "2.0",
+    "candidate_id": "INV-M001",
+    "title": "待确认的候选技术方案 / 多源状态融合系统候选",
+    "technical_problem": {
+      "schema_version": "2.0",
+      "text": "- 单一电流或转速反馈难以同时反映电气、机械和热状态。\n- 多类传感器的采样时钟和噪声水平不同，直接拼接可能导致状态估计不稳定。\n- 状态监测与控制回路相互独立，检测结果不能及时转化为控制参数修正量。",
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0004-ee8cb4b3"
+      ],
+      "status": "SOURCE_FACT",
+      "confidence": 0.9,
+      "review_status": "UNREVIEWED",
+      "human_modified": false,
+      "locked": false
+    },
+    "core_idea": {
+      "schema_version": "2.0",
+      "text": "可能的核心组合为：获取振动、定子电流、转速和温度信号。；对多源信号进行时间同步和归一化，形成多源特征向量。；根据各信号的质量指标计算置信度权重，并得到融合状态量。；计算目标状态与融合状态量之间的状态偏差。",
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0006-a7c9a369",
+        "EV-DOCD415652CC4-0007-89a47e37"
+      ],
+      "status": "INFERRED",
+      "confidence": 0.6,
+      "review_status": "UNREVIEWED",
+      "human_modified": false,
+      "locked": false
+    },
+    "mandatory_features": [
+      {
+        "schema_version": "2.0",
+        "text": "获取振动、定子电流、转速和温度信号。",
+        "evidence_ids": [
+          "EV-DOCD415652CC4-0006-a7c9a369"
+        ],
+        "status": "SOURCE_FACT",
+        "confidence": 0.9,
+        "review_status": "UNREVIEWED",
+        "human_modified": false,
+        "locked": false
+      },
+      {
+        "schema_version": "2.0",
+        "text": "对多源信号进行时间同步和归一化，形成多源特征向量。",
+        "evidence_ids": [
+          "EV-DOCD415652CC4-0007-89a47e37"
+        ],
+        "status": "SOURCE_FACT",
+        "confidence": 0.9,
+        "review_status": "UNREVIEWED",
+        "human_modified": false,
+        "locked": false
+      },
+      {
+        "schema_version": "2.0",
+        "text": "根据各信号的质量指标计算置信度权重，并得到融合状态量。",
+        "evidence_ids": [
+          "EV-DOCD415652CC4-0007-89a47e37"
+        ],
+        "status": "SOURCE_FACT",
+        "confidence": 0.9,
+        "review_status": "UNREVIEWED",
+        "human_modified": false,
+        "locked": false
+      },
+      {
+        "schema_version": "2.0",
+        "text": "计算目标状态与融合状态量之间的状态偏差。",
+        "evidence_ids": [
+          "EV-DOCD415652CC4-0007-89a47e37"
+        ],
+        "status": "SOURCE_FACT",
+        "confidence": 0.9,
+        "review_status": "UNREVIEWED",
+        "human_modified": false,
+        "locked": false
+      }
+    ],
+    "optional_features": [
+      {
+        "schema_version": "2.0",
+        "text": "状态采集单元可仅使用振动、电流和温度中的两种信号。",
+        "evidence_ids": [
+          "EV-DOCD415652CC4-0011-3b77a576"
+        ],
+        "status": "SOURCE_FACT",
+        "confidence": 0.9,
+        "review_status": "UNREVIEWED",
+        "human_modified": false,
+        "locked": false
+      },
+      {
+        "schema_version": "2.0",
+        "text": "置信度权重可由信噪比、缺失率或传感器自检状态确定。",
+        "evidence_ids": [
+          "EV-DOCD415652CC4-0011-3b77a576"
+        ],
+        "status": "SOURCE_FACT",
+        "confidence": 0.9,
+        "review_status": "UNREVIEWED",
+        "human_modified": false,
+        "locked": false
+      },
+      {
+        "schema_version": "2.0",
+        "text": "控制处理单元可采用PI控制、模型预测控制或其他有来源支持的控制方式。",
+        "evidence_ids": [
+          "EV-DOCD415652CC4-0011-3b77a576"
+        ],
+        "status": "SOURCE_FACT",
+        "confidence": 0.9,
+        "review_status": "UNREVIEWED",
+        "human_modified": false,
+        "locked": false
+      }
+    ],
+    "technical_effects": [
+      {
+        "schema_version": "2.0",
+        "text": "将机械、电气和热状态映射为同一融合状态量，为闭环控制提供统一输入。",
+        "evidence_ids": [
+          "EV-DOCD415652CC4-0009-0412a654"
+        ],
+        "status": "SOURCE_FACT",
+        "confidence": 0.9,
+        "review_status": "UNREVIEWED",
+        "human_modified": false,
+        "locked": false
+      },
+      {
+        "schema_version": "2.0",
+        "text": "通过置信度权重降低单个传感通道异常对控制指令的影响。",
+        "evidence_ids": [
+          "EV-DOCD415652CC4-0009-0412a654"
+        ],
+        "status": "SOURCE_FACT",
+        "confidence": 0.9,
+        "review_status": "UNREVIEWED",
+        "human_modified": false,
+        "locked": false
+      },
+      {
+        "schema_version": "2.0",
+        "text": "使状态监测结果能够直接参与控制参数修正，缩短监测与控制之间的信息链路。",
+        "evidence_ids": [
+          "EV-DOCD415652CC4-0009-0412a654"
+        ],
+        "status": "SOURCE_FACT",
+        "confidence": 0.9,
+        "review_status": "UNREVIEWED",
+        "human_modified": false,
+        "locked": false
+      }
+    ],
+    "evidence_ids": [
+      "EV-DOCD415652CC4-0006-a7c9a369",
+      "EV-DOCD415652CC4-0007-89a47e37"
+    ],
+    "novelty_hypothesis": "尚未查新，仅作为 Checkpoint A 预览。",
+    "inventiveness_hypothesis": "需要人工导入 prior art 后判断。",
+    "protection_value_score": 0.5,
+    "evidence_strength_score": 0.6,
+    "risk_score": 0.7,
+    "score_breakdown": {
+      "schema_version": "2.0",
+      "evidence_strength": 0.6,
+      "novelty_potential": 0.5,
+      "technical_importance": 0.5,
+      "claimability": 0.5,
+      "alternative_coverage": 0.4,
+      "implementation_support": 0.5,
+      "risk": 0.7
+    },
+    "inventor_questions": [
+      "真实样机的传感器型号、采样精度和通信接口待发明人确认。",
+      "权重约束、控制参数边界和故障安全策略待发明人确认。",
+      "公开日期、发明人和权属信息待确认。"
+    ],
+    "possible_duplicate_of": [],
+    "merge_recommendation": "",
+    "review_status": "LOCKED",
+    "human_modified": true,
+    "locked": true,
+    "merged_from": [
+      "INV-DET-001",
+      "INV-DET-002"
+    ],
+    "split_from": null
+  }
+]

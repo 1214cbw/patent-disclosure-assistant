@@ -22,7 +22,9 @@
             "FACT-001"
           ],
           "status": "AI_SUGGESTION",
-          "human_modified": false
+          "human_modified": false,
+          "review_status": "UNREVIEWED",
+          "locked": false
         }
       ]
     },
@@ -46,7 +48,9 @@
             "FACT-001"
           ],
           "status": "SOURCE_FACT",
-          "human_modified": false
+          "human_modified": false,
+          "review_status": "UNREVIEWED",
+          "locked": false
         }
       ]
     },
@@ -70,7 +74,9 @@
             "FACT-002"
           ],
           "status": "SOURCE_FACT",
-          "human_modified": false
+          "human_modified": false,
+          "review_status": "UNREVIEWED",
+          "locked": false
         }
       ]
     },
@@ -94,7 +100,9 @@
             "FACT-003"
           ],
           "status": "SOURCE_FACT",
-          "human_modified": false
+          "human_modified": false,
+          "review_status": "UNREVIEWED",
+          "locked": false
         }
       ]
     },
@@ -118,7 +126,9 @@
             "FACT-001"
           ],
           "status": "SOURCE_FACT",
-          "human_modified": false
+          "human_modified": false,
+          "review_status": "UNREVIEWED",
+          "locked": false
         }
       ]
     },
@@ -150,7 +160,9 @@
             "FACT-S005"
           ],
           "status": "SOURCE_FACT",
-          "human_modified": false
+          "human_modified": false,
+          "review_status": "UNREVIEWED",
+          "locked": false
         },
         {
           "schema_version": "2.0",
@@ -175,7 +187,9 @@
             "FACT-S005"
           ],
           "status": "SOURCE_FACT",
-          "human_modified": false
+          "human_modified": false,
+          "review_status": "UNREVIEWED",
+          "locked": false
         },
         {
           "schema_version": "2.0",
@@ -200,7 +214,9 @@
             "FACT-S005"
           ],
           "status": "SOURCE_FACT",
-          "human_modified": false
+          "human_modified": false,
+          "review_status": "UNREVIEWED",
+          "locked": false
         },
         {
           "schema_version": "2.0",
@@ -225,7 +241,9 @@
             "FACT-S005"
           ],
           "status": "SOURCE_FACT",
-          "human_modified": false
+          "human_modified": false,
+          "review_status": "UNREVIEWED",
+          "locked": false
         },
         {
           "schema_version": "2.0",
@@ -250,7 +268,9 @@
             "FACT-S005"
           ],
           "status": "SOURCE_FACT",
-          "human_modified": false
+          "human_modified": false,
+          "review_status": "UNREVIEWED",
+          "locked": false
         }
       ]
     },
@@ -278,7 +298,9 @@
             "FACT-E003"
           ],
           "status": "SOURCE_FACT",
-          "human_modified": false
+          "human_modified": false,
+          "review_status": "UNREVIEWED",
+          "locked": false
         },
         {
           "schema_version": "2.0",
@@ -299,7 +321,9 @@
             "FACT-E003"
           ],
           "status": "SOURCE_FACT",
-          "human_modified": false
+          "human_modified": false,
+          "review_status": "UNREVIEWED",
+          "locked": false
         },
         {
           "schema_version": "2.0",
@@ -320,7 +344,9 @@
             "FACT-E003"
           ],
           "status": "SOURCE_FACT",
-          "human_modified": false
+          "human_modified": false,
+          "review_status": "UNREVIEWED",
+          "locked": false
         }
       ]
     },
@@ -352,7 +378,9 @@
             "FACT-C005"
           ],
           "status": "INFERRED",
-          "human_modified": false
+          "human_modified": false,
+          "review_status": "UNREVIEWED",
+          "locked": false
         }
       ]
     },
@@ -384,7 +412,9 @@
             "FACT-S005"
           ],
           "status": "INFERRED",
-          "human_modified": false
+          "human_modified": false,
+          "review_status": "UNREVIEWED",
+          "locked": false
         },
         {
           "schema_version": "2.0",
@@ -401,7 +431,9 @@
             "FACT-EXP-001"
           ],
           "status": "SOURCE_FACT",
-          "human_modified": false
+          "human_modified": false,
+          "review_status": "UNREVIEWED",
+          "locked": false
         }
       ]
     },
@@ -429,7 +461,9 @@
             "FACT-A003"
           ],
           "status": "SOURCE_FACT",
-          "human_modified": false
+          "human_modified": false,
+          "review_status": "UNREVIEWED",
+          "locked": false
         },
         {
           "schema_version": "2.0",
@@ -450,7 +484,9 @@
             "FACT-A003"
           ],
           "status": "SOURCE_FACT",
-          "human_modified": false
+          "human_modified": false,
+          "review_status": "UNREVIEWED",
+          "locked": false
         },
         {
           "schema_version": "2.0",
@@ -471,7 +507,9 @@
             "FACT-A003"
           ],
           "status": "SOURCE_FACT",
-          "human_modified": false
+          "human_modified": false,
+          "review_status": "UNREVIEWED",
+          "locked": false
         }
       ]
     },
@@ -503,7 +541,9 @@
             "FACT-S005"
           ],
           "status": "INFERRED",
-          "human_modified": false
+          "human_modified": false,
+          "review_status": "UNREVIEWED",
+          "locked": false
         }
       ]
     },
@@ -527,7 +567,9 @@
             "FACT-U001"
           ],
           "status": "SOURCE_FACT",
-          "human_modified": false
+          "human_modified": false,
+          "review_status": "UNREVIEWED",
+          "locked": false
         },
         {
           "schema_version": "2.0",
@@ -544,7 +586,9 @@
             "FACT-U001"
           ],
           "status": "SOURCE_FACT",
-          "human_modified": false
+          "human_modified": false,
+          "review_status": "UNREVIEWED",
+          "locked": false
         },
         {
           "schema_version": "2.0",
@@ -561,7 +605,9 @@
             "FACT-U001"
           ],
           "status": "SOURCE_FACT",
-          "human_modified": false
+          "human_modified": false,
+          "review_status": "UNREVIEWED",
+          "locked": false
         }
       ]
     }

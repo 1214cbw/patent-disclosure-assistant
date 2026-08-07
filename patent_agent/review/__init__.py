@@ -7,3 +7,6 @@ from .quality_gates import evaluate_quality_gates
 from .inventor_questions import generate_inventor_questions
 from .terminology import review_terminology
 from .symbols import review_symbols
+from .claim_scope import ClaimScopeEngine, ClaimScopeAssessment, ClaimScopeReview, render_scope_comparison, render_scope_review
+from .claim_editor import ClaimFeatureEditor
+from .asset_semantics import apply_confirmed_terminology, confirm_equation, review_equations, review_figures

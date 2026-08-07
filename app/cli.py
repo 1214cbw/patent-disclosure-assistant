@@ -32,6 +32,18 @@ def main(argv=None):
     p = sub.add_parser("claims-support"); p.add_argument("case_id")
     p = sub.add_parser("dry-run-real"); p.add_argument("case_id"); p.add_argument("materials"); p.add_argument("--output", required=True); p.add_argument("--llm", action="store_true"); p.add_argument("--no-cache", action="store_true")
     p = sub.add_parser("confirm-inventor"); p.add_argument("case_id"); p.add_argument("question_id"); p.add_argument("statement")
+    p = sub.add_parser("real-case-create"); p.add_argument("case_id"); p.add_argument("--title", default="[待发明人确认]"); p.add_argument("--authorized", action="store_true"); p.add_argument("--llm-mode", choices=["disabled", "local", "external-approved"], default="disabled"); p.add_argument("--external-llm-approved", action="store_true")
+    p = sub.add_parser("real-case-ingest"); p.add_argument("case_id"); p.add_argument("path")
+    p = sub.add_parser("real-case-a1"); p.add_argument("case_id"); p.add_argument("--llm", action="store_true"); p.add_argument("--auto-approve", action="store_true")
+    p = sub.add_parser("checkpoint"); p.add_argument("case_id")
+    p = sub.add_parser("checkpoint-review"); p.add_argument("case_id"); p.add_argument("checkpoint", choices=["A1", "A2", "B", "C"])
+    p = sub.add_parser("checkpoint-export"); p.add_argument("case_id"); p.add_argument("checkpoint", choices=["A1", "A2", "B", "C"])
+    p = sub.add_parser("checkpoint-import"); p.add_argument("case_id"); p.add_argument("json_file")
+    p = sub.add_parser("checkpoint-approve"); p.add_argument("case_id"); p.add_argument("checkpoint", choices=["A1", "A2", "B", "C"]); p.add_argument("--ack-risk", action="store_true")
+    p = sub.add_parser("checkpoint-continue"); p.add_argument("case_id"); p.add_argument("--prior-art")
+    p = sub.add_parser("claim-scope"); p.add_argument("case_id")
+    p = sub.add_parser("evaluation-report"); p.add_argument("case_id"); p.add_argument("--run-id")
+    p = sub.add_parser("real-case-answer"); p.add_argument("case_id"); p.add_argument("question_id"); p.add_argument("statement")
     args = parser.parse_args(argv); settings = Settings.load(); store = CaseStore(settings.workspace_root)
     if args.command == "new": print(store.create(args.case_id, args.title).model_dump_json(indent=2))
     elif args.command == "ingest": print(SourceManager(store).ingest(args.case_id, [Path(p) for p in args.paths])[0])
@@ -87,6 +99,48 @@ def main(argv=None):
         from patent_agent.core.models import InventorAssertion
         assertion = InventorAssertion(assertion_id=f"IA-{args.question_id}", question_id=args.question_id, statement=args.statement, confirmed_by_user=True, confirmed_by="user")
         print(store.save_inventor_assertion(args.case_id, assertion))
+    elif args.command == "real-case-create":
+        from patent_agent.real_case import RealCaseManager
+        result = RealCaseManager(settings.project_root).create(args.case_id, authorized=args.authorized, llm_mode=args.llm_mode, external_llm_approved=args.external_llm_approved, title=args.title)
+        print(result.model_dump_json(indent=2))
+    elif args.command == "real-case-ingest":
+        from patent_agent.real_case import RealCaseManager
+        print(RealCaseManager(settings.project_root).ingest(args.case_id, Path(args.path)))
+    elif args.command == "real-case-a1":
+        from patent_agent.workflow import RealCaseWorkflow
+        provider = None
+        if args.llm:
+            from patent_agent.llm import OpenAICompatibleProvider
+            provider = OpenAICompatibleProvider(settings)
+        print(RealCaseWorkflow(settings, provider).run_a1(args.case_id, use_llm=args.llm, auto_approve=args.auto_approve))
+    elif args.command in {"checkpoint", "checkpoint-review", "checkpoint-export"}:
+        from patent_agent.human_review import HumanReviewManager
+        from patent_agent.real_case import RealCaseManager
+        case_dir = RealCaseManager(settings.project_root).case_dir(args.case_id); manager = HumanReviewManager(case_dir)
+        if args.command == "checkpoint": print(json.dumps({key: value.model_dump(mode="json") for key, value in manager.machine.records.items()}, ensure_ascii=False, indent=2))
+        else:
+            checkpoint = args.checkpoint; root = case_dir / "review" / f"checkpoint_{checkpoint}"
+            print(root if args.command == "checkpoint-review" else root / "review_input.json")
+    elif args.command == "checkpoint-import":
+        from patent_agent.workflow import RealCaseWorkflow
+        print(RealCaseWorkflow(settings).import_review(args.case_id, Path(args.json_file)))
+    elif args.command == "checkpoint-approve":
+        from patent_agent.workflow import RealCaseWorkflow
+        RealCaseWorkflow(settings).approve(args.case_id, args.checkpoint, risk_acknowledged=args.ack_risk); print("approved")
+    elif args.command == "checkpoint-continue":
+        from patent_agent.workflow import RealCaseWorkflow
+        print(RealCaseWorkflow(settings).continue_case(args.case_id, Path(args.prior_art) if args.prior_art else None))
+    elif args.command == "claim-scope":
+        from patent_agent.real_case import RealCaseManager
+        manager = RealCaseManager(settings.project_root); print(manager.case_store.latest_stage_path(args.case_id, "p1_claim_scope").read_text(encoding="utf-8"))
+    elif args.command == "evaluation-report":
+        from patent_agent.real_case import RealCaseManager
+        root = RealCaseManager(settings.project_root).case_dir(args.case_id) / "evaluation_runs"
+        run = root / args.run_id if args.run_id else max((path for path in root.iterdir() if path.is_dir()), key=lambda path: path.name)
+        print((run / "model_evaluation_report.md").read_text(encoding="utf-8"))
+    elif args.command == "real-case-answer":
+        from patent_agent.workflow import RealCaseWorkflow
+        print(RealCaseWorkflow(settings).answer_inventor_question(args.case_id, args.question_id, args.statement))
 
 
 if __name__ == "__main__": main()

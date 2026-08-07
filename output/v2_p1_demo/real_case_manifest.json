@@ -1,0 +1,16 @@
+{
+  "schema_version": "2.0",
+  "case_id": "SYN-P1-DEMO-001",
+  "confidential": true,
+  "authorized_for_processing": true,
+  "llm_mode": "disabled",
+  "external_llm_approved": false,
+  "source_paths": [
+    "{\"name\": \"materials\", \"sha256\": \"8c67bdc43c6925dc496a24ca2cf86f167f15490c4eed8661781b1a8c835898c4\"}"
+  ],
+  "created_at": "2026-08-07T10:01:53.402907+00:00",
+  "updated_at": "2026-08-07T10:02:14.531089+00:00",
+  "current_checkpoint": "FINAL",
+  "case_state": "VALIDATED",
+  "synthetic": true
+}

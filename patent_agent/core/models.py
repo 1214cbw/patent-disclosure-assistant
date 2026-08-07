@@ -14,6 +14,7 @@ def utc_now() -> str:
 
 class EvidenceStatus(str, Enum):
     SOURCE_FACT = "SOURCE_FACT"
+    HUMAN_CONFIRMED = "HUMAN_CONFIRMED"
     INFERRED = "INFERRED"
     AI_SUGGESTION = "AI_SUGGESTION"
     UNVERIFIED = "UNVERIFIED"
@@ -30,6 +31,15 @@ class EvidenceScope(str, Enum):
     INVENTION_SOURCE = "INVENTION_SOURCE"
     PRIOR_ART = "PRIOR_ART"
     INVENTOR_ASSERTION = "INVENTOR_ASSERTION"
+
+
+class ReviewStatus(str, Enum):
+    UNREVIEWED = "UNREVIEWED"
+    ACCEPTED = "ACCEPTED"
+    EDITED = "EDITED"
+    REJECTED = "REJECTED"
+    NEEDS_REVIEW = "NEEDS_REVIEW"
+    LOCKED = "LOCKED"
 
 
 class StrictSchema(BaseModel):
@@ -57,6 +67,9 @@ class GroundedStatement(StrictSchema):
     evidence_ids: list[str] = Field(default_factory=list)
     status: EvidenceStatus
     confidence: float = Field(ge=0, le=1)
+    review_status: ReviewStatus = ReviewStatus.UNREVIEWED
+    human_modified: bool = False
+    locked: bool = False
 
     @model_validator(mode="after")
     def source_fact_has_evidence(self):
@@ -73,6 +86,15 @@ class TechnicalFact(StrictSchema):
     status: EvidenceStatus
     confidence: float = Field(ge=0, le=1)
     notes: str | None = None
+    review_status: ReviewStatus = ReviewStatus.UNREVIEWED
+    human_modified: bool = False
+    locked: bool = False
+    confirmation_id: str | None = None
+    correction_id: str | None = None
+    revision_id: str | None = None
+    previous_version_id: str | None = None
+    revision_reason: str | None = None
+    reviewed_at: str | None = None
 
     @model_validator(mode="after")
     def source_fact_has_evidence(self):
@@ -115,6 +137,11 @@ class EquationKnowledge(StrictSchema):
     evidence_ids: list[str] = Field(default_factory=list)
     status: EvidenceStatus
     symbols: dict[str, str] = Field(default_factory=dict)
+    original_formula: str | None = None
+    human_formula: str | None = None
+    review_status: ReviewStatus = ReviewStatus.UNREVIEWED
+    human_modified: bool = False
+    locked: bool = False
 
 
 class InventorQuestion(StrictSchema):
@@ -123,6 +150,8 @@ class InventorQuestion(StrictSchema):
     priority: Literal["P0", "P1", "P2"]
     related_fact_ids: list[str] = Field(default_factory=list)
     related_evidence_ids: list[str] = Field(default_factory=list)
+    blocking_stage: Literal["A1", "A2", "B", "C", "FINAL"] | None = None
+    answered: bool = False
 
 
 class InventorAssertion(StrictSchema):
@@ -187,6 +216,11 @@ class GroundedInventionCandidate(StrictSchema):
     inventor_questions: list[str] = Field(default_factory=list)
     possible_duplicate_of: list[str] = Field(default_factory=list)
     merge_recommendation: str = ""
+    review_status: ReviewStatus = ReviewStatus.UNREVIEWED
+    human_modified: bool = False
+    locked: bool = False
+    merged_from: list[str] = Field(default_factory=list)
+    split_from: str | None = None
 
 
 class TerminologyChoice(StrictSchema):
@@ -194,6 +228,9 @@ class TerminologyChoice(StrictSchema):
     selected_term: str
     alternatives: list[str] = Field(default_factory=list)
     evidence_ids: list[str] = Field(default_factory=list)
+    patent_term: str | None = None
+    human_confirmed: bool = False
+    review_status: ReviewStatus = ReviewStatus.UNREVIEWED
 
 
 class GroundedProtectionStrategy(StrictSchema):
@@ -208,6 +245,10 @@ class GroundedProtectionStrategy(StrictSchema):
     support_gaps: list[str]
     risks: list[str]
     inventor_questions: list[str]
+    scope_strategy: Literal["Broad", "Balanced", "Conservative"] = "Balanced"
+    review_status: ReviewStatus = ReviewStatus.UNREVIEWED
+    human_modified: bool = False
+    locked: bool = False
 
 
 class GroundedParagraph(StrictSchema):
@@ -219,6 +260,8 @@ class GroundedParagraph(StrictSchema):
     derived_from: list[str] = Field(default_factory=list)
     status: EvidenceStatus
     human_modified: bool = False
+    review_status: ReviewStatus = ReviewStatus.UNREVIEWED
+    locked: bool = False
 
 
 class GroundedSection(StrictSchema):
@@ -239,6 +282,9 @@ class ClaimFeature(StrictSchema):
     evidence_ids: list[str]
     support_status: Literal["SUPPORTED", "PARTIALLY_SUPPORTED", "UNSUPPORTED", "UNCERTAIN"]
     mandatory: bool = False
+    review_status: ReviewStatus = ReviewStatus.UNREVIEWED
+    human_modified: bool = False
+    locked: bool = False
 
 
 class PatentClaimV2(StrictSchema):
@@ -247,7 +293,10 @@ class PatentClaimV2(StrictSchema):
     parent_claims: list[int] = Field(default_factory=list)
     features: list[ClaimFeature]
     rendered_text: str
-    draft_strategy: Literal["broad", "conservative"] = "conservative"
+    draft_strategy: Literal["broad", "balanced", "conservative"] = "conservative"
+    review_status: ReviewStatus = ReviewStatus.UNREVIEWED
+    human_modified: bool = False
+    structured_mapping_stale: bool = False
 
 
 class GroundedClaimSet(StrictSchema):
@@ -455,7 +504,7 @@ class Claim(BaseModel):
     text: str
     feature_ids: list[str]
     evidence_ids: list[str]
-    scope: Literal["broad", "conservative"] = "conservative"
+    scope: Literal["broad", "balanced", "conservative"] = "conservative"
 
 
 class ClaimTree(BaseModel):

@@ -12,8 +12,8 @@ CASE_DIRS = ("source", "working", "figures", "search", "drafts", "review", "outp
 
 
 class CaseStore:
-    def __init__(self, workspace_root: Path):
-        self.root = Path(workspace_root) / "cases"
+    def __init__(self, workspace_root: Path, cases_subdir: str = "cases"):
+        self.root = Path(workspace_root) / cases_subdir
         self.root.mkdir(parents=True, exist_ok=True)
 
     def case_dir(self, case_id: str) -> Path:

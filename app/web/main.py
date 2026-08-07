@@ -11,11 +11,14 @@ from patent_agent.core.config import Settings
 from patent_agent.core.models import DisclosureDraft
 from patent_agent.core.state import CaseStore
 from patent_agent.ingestion import SourceManager
+from patent_agent.human_review.models import ReviewImport
+from patent_agent.real_case import RealCaseManager
 
 
 app = FastAPI(title="Patent Agent Local UI API", version="0.1.0")
 settings = Settings.load()
 store = CaseStore(settings.workspace_root)
+real_cases = RealCaseManager(settings.project_root)
 ALLOWED_UPLOADS = {".txt", ".md", ".docx", ".pdf", ".pptx", ".png", ".jpg", ".jpeg"}
 
 
@@ -158,6 +161,52 @@ def get_claims_support(case_id: str):
         return JSONResponse(json.loads(store.latest_stage_path(case_id, "v2_claims_support_matrix").read_text(encoding="utf-8")))
     except FileNotFoundError as exc:
         raise HTTPException(404, "claims support matrix not found") from exc
+
+
+@app.get("/api/real-cases")
+def list_real_cases():
+    return [real_cases.load(path.name).model_dump() for path in sorted(real_cases.root.iterdir()) if (path / "real_case_manifest.json").exists()]
+
+
+@app.get("/api/real-cases/{case_id}/status")
+def real_case_status(case_id: str):
+    from patent_agent.human_review import HumanReviewManager
+    try:
+        manifest = real_cases.load(case_id)
+    except FileNotFoundError as exc:
+        raise HTTPException(404, "real case not found") from exc
+    checkpoints = HumanReviewManager(real_cases.case_dir(case_id)).machine.records
+    return {"manifest": manifest.model_dump(), "checkpoints": {key: value.model_dump() for key, value in checkpoints.items()}}
+
+
+@app.post("/api/real-cases/{case_id}/review")
+def import_real_case_review(case_id: str, payload: ReviewImport):
+    if payload.case_id != case_id:
+        raise HTTPException(400, "case mismatch")
+    from patent_agent.workflow import RealCaseWorkflow
+    path = real_cases.case_dir(case_id) / "review" / f"web_review_{payload.checkpoint}.json"
+    path.write_text(payload.model_dump_json(indent=2), encoding="utf-8")
+    try:
+        saved = RealCaseWorkflow(settings).import_review(case_id, path)
+    except (ValueError, KeyError, PermissionError) as exc:
+        raise HTTPException(409, str(exc)) from exc
+    return {"saved": str(saved), "checkpoint": payload.checkpoint}
+
+
+@app.get("/api/real-cases/{case_id}/claim-scope")
+def real_case_claim_scope(case_id: str):
+    try:
+        path = real_cases.case_store.latest_stage_path(case_id, "p1_claim_scope")
+    except FileNotFoundError as exc:
+        raise HTTPException(404, "claim scope review not found") from exc
+    return JSONResponse(json.loads(path.read_text(encoding="utf-8")))
+
+
+@app.get("/api/real-cases/{case_id}/evaluation")
+def real_case_evaluation(case_id: str):
+    root = real_cases.case_dir(case_id) / "evaluation_runs"
+    runs = sorted(path for path in root.iterdir() if path.is_dir()) if root.exists() else []
+    return [{"run_id": path.name, "summary": json.loads((path / "evaluation_summary.json").read_text(encoding="utf-8"))} for path in runs if (path / "evaluation_summary.json").exists()]
 
 
 @app.get("/api/cases/{case_id}/download/{filename}")

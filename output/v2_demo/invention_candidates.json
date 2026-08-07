@@ -10,7 +10,10 @@
         "EV-DOCD415652CC4-0005-b608d283"
       ],
       "status": "SOURCE_FACT",
-      "confidence": 0.97
+      "confidence": 0.97,
+      "review_status": "UNREVIEWED",
+      "human_modified": false,
+      "locked": false
     },
     "core_idea": {
       "schema_version": "2.0",
@@ -27,7 +30,10 @@
         "EV-DOCD415652CC4-0012-50f769c6"
       ],
       "status": "INFERRED",
-      "confidence": 0.9
+      "confidence": 0.9,
+      "review_status": "UNREVIEWED",
+      "human_modified": false,
+      "locked": false
     },
     "mandatory_features": [
       {
@@ -37,7 +43,10 @@
           "EV-DOCD415652CC4-0007-89a47e37"
         ],
         "status": "SOURCE_FACT",
-        "confidence": 0.97
+        "confidence": 0.97,
+        "review_status": "UNREVIEWED",
+        "human_modified": false,
+        "locked": false
       },
       {
         "schema_version": "2.0",
@@ -46,7 +55,10 @@
           "EV-DOCD415652CC4-0007-89a47e37"
         ],
         "status": "SOURCE_FACT",
-        "confidence": 0.97
+        "confidence": 0.97,
+        "review_status": "UNREVIEWED",
+        "human_modified": false,
+        "locked": false
       },
       {
         "schema_version": "2.0",
@@ -55,7 +67,10 @@
           "EV-DOCD415652CC4-0007-89a47e37"
         ],
         "status": "SOURCE_FACT",
-        "confidence": 0.97
+        "confidence": 0.97,
+        "review_status": "UNREVIEWED",
+        "human_modified": false,
+        "locked": false
       },
       {
         "schema_version": "2.0",
@@ -64,7 +79,10 @@
           "EV-DOCD415652CC4-0007-89a47e37"
         ],
         "status": "SOURCE_FACT",
-        "confidence": 0.97
+        "confidence": 0.97,
+        "review_status": "UNREVIEWED",
+        "human_modified": false,
+        "locked": false
       }
     ],
     "optional_features": [
@@ -75,7 +93,10 @@
           "EV-DOCD415652CC4-0011-3b77a576"
         ],
         "status": "SOURCE_FACT",
-        "confidence": 0.97
+        "confidence": 0.97,
+        "review_status": "UNREVIEWED",
+        "human_modified": false,
+        "locked": false
       },
       {
         "schema_version": "2.0",
@@ -84,7 +105,10 @@
           "EV-DOCD415652CC4-0011-3b77a576"
         ],
         "status": "SOURCE_FACT",
-        "confidence": 0.97
+        "confidence": 0.97,
+        "review_status": "UNREVIEWED",
+        "human_modified": false,
+        "locked": false
       },
       {
         "schema_version": "2.0",
@@ -93,7 +117,10 @@
           "EV-DOCD415652CC4-0011-3b77a576"
         ],
         "status": "SOURCE_FACT",
-        "confidence": 0.97
+        "confidence": 0.97,
+        "review_status": "UNREVIEWED",
+        "human_modified": false,
+        "locked": false
       }
     ],
     "technical_effects": [
@@ -104,7 +131,10 @@
           "EV-DOCD415652CC4-0009-0412a654"
         ],
         "status": "SOURCE_FACT",
-        "confidence": 0.97
+        "confidence": 0.97,
+        "review_status": "UNREVIEWED",
+        "human_modified": false,
+        "locked": false
       },
       {
         "schema_version": "2.0",
@@ -113,7 +143,10 @@
           "EV-DOCD415652CC4-0009-0412a654"
         ],
         "status": "SOURCE_FACT",
-        "confidence": 0.97
+        "confidence": 0.97,
+        "review_status": "UNREVIEWED",
+        "human_modified": false,
+        "locked": false
       },
       {
         "schema_version": "2.0",
@@ -122,7 +155,10 @@
           "EV-DOCD415652CC4-0009-0412a654"
         ],
         "status": "SOURCE_FACT",
-        "confidence": 0.97
+        "confidence": 0.97,
+        "review_status": "UNREVIEWED",
+        "human_modified": false,
+        "locked": false
       }
     ],
     "evidence_ids": [
@@ -157,7 +193,12 @@
       "公开日期、发明人和权属信息待确认。"
     ],
     "possible_duplicate_of": [],
-    "merge_recommendation": ""
+    "merge_recommendation": "",
+    "review_status": "UNREVIEWED",
+    "human_modified": false,
+    "locked": false,
+    "merged_from": [],
+    "split_from": null
   },
   {
     "schema_version": "2.0",
@@ -170,7 +211,10 @@
         "EV-DOCD415652CC4-0005-b608d283"
       ],
       "status": "SOURCE_FACT",
-      "confidence": 0.97
+      "confidence": 0.97,
+      "review_status": "UNREVIEWED",
+      "human_modified": false,
+      "locked": false
     },
     "core_idea": {
       "schema_version": "2.0",
@@ -187,7 +231,10 @@
         "EV-DOCD415652CC4-0012-50f769c6"
       ],
       "status": "INFERRED",
-      "confidence": 0.9
+      "confidence": 0.9,
+      "review_status": "UNREVIEWED",
+      "human_modified": false,
+      "locked": false
     },
     "mandatory_features": [
       {
@@ -197,7 +244,10 @@
           "EV-DOCD415652CC4-0007-89a47e37"
         ],
         "status": "SOURCE_FACT",
-        "confidence": 0.97
+        "confidence": 0.97,
+        "review_status": "UNREVIEWED",
+        "human_modified": false,
+        "locked": false
       },
       {
         "schema_version": "2.0",
@@ -206,7 +256,10 @@
           "EV-DOCD415652CC4-0007-89a47e37"
         ],
         "status": "SOURCE_FACT",
-        "confidence": 0.97
+        "confidence": 0.97,
+        "review_status": "UNREVIEWED",
+        "human_modified": false,
+        "locked": false
       },
       {
         "schema_version": "2.0",
@@ -215,7 +268,10 @@
           "EV-DOCD415652CC4-0007-89a47e37"
         ],
         "status": "SOURCE_FACT",
-        "confidence": 0.97
+        "confidence": 0.97,
+        "review_status": "UNREVIEWED",
+        "human_modified": false,
+        "locked": false
       }
     ],
     "optional_features": [
@@ -226,7 +282,10 @@
           "EV-DOCD415652CC4-0011-3b77a576"
         ],
         "status": "SOURCE_FACT",
-        "confidence": 0.97
+        "confidence": 0.97,
+        "review_status": "UNREVIEWED",
+        "human_modified": false,
+        "locked": false
       },
       {
         "schema_version": "2.0",
@@ -235,7 +294,10 @@
           "EV-DOCD415652CC4-0011-3b77a576"
         ],
         "status": "SOURCE_FACT",
-        "confidence": 0.97
+        "confidence": 0.97,
+        "review_status": "UNREVIEWED",
+        "human_modified": false,
+        "locked": false
       },
       {
         "schema_version": "2.0",
@@ -244,7 +306,10 @@
           "EV-DOCD415652CC4-0011-3b77a576"
         ],
         "status": "SOURCE_FACT",
-        "confidence": 0.97
+        "confidence": 0.97,
+        "review_status": "UNREVIEWED",
+        "human_modified": false,
+        "locked": false
       }
     ],
     "technical_effects": [
@@ -255,7 +320,10 @@
           "EV-DOCD415652CC4-0009-0412a654"
         ],
         "status": "SOURCE_FACT",
-        "confidence": 0.97
+        "confidence": 0.97,
+        "review_status": "UNREVIEWED",
+        "human_modified": false,
+        "locked": false
       },
       {
         "schema_version": "2.0",
@@ -264,7 +332,10 @@
           "EV-DOCD415652CC4-0009-0412a654"
         ],
         "status": "SOURCE_FACT",
-        "confidence": 0.97
+        "confidence": 0.97,
+        "review_status": "UNREVIEWED",
+        "human_modified": false,
+        "locked": false
       },
       {
         "schema_version": "2.0",
@@ -273,7 +344,10 @@
           "EV-DOCD415652CC4-0009-0412a654"
         ],
         "status": "SOURCE_FACT",
-        "confidence": 0.97
+        "confidence": 0.97,
+        "review_status": "UNREVIEWED",
+        "human_modified": false,
+        "locked": false
       }
     ],
     "evidence_ids": [
@@ -310,7 +384,12 @@
     "possible_duplicate_of": [
       "INV-001"
     ],
-    "merge_recommendation": "与INV-001核心特征重合度较高，Checkpoint A 建议合并审阅。"
+    "merge_recommendation": "与INV-001核心特征重合度较高，Checkpoint A 建议合并审阅。",
+    "review_status": "UNREVIEWED",
+    "human_modified": false,
+    "locked": false,
+    "merged_from": [],
+    "split_from": null
   },
   {
     "schema_version": "2.0",
@@ -323,7 +402,10 @@
         "EV-DOCD415652CC4-0005-b608d283"
       ],
       "status": "SOURCE_FACT",
-      "confidence": 0.97
+      "confidence": 0.97,
+      "review_status": "UNREVIEWED",
+      "human_modified": false,
+      "locked": false
     },
     "core_idea": {
       "schema_version": "2.0",
@@ -340,7 +422,10 @@
         "EV-DOCD415652CC4-0012-50f769c6"
       ],
       "status": "INFERRED",
-      "confidence": 0.9
+      "confidence": 0.9,
+      "review_status": "UNREVIEWED",
+      "human_modified": false,
+      "locked": false
     },
     "mandatory_features": [
       {
@@ -350,7 +435,10 @@
           "EV-DOCD415652CC4-0007-89a47e37"
         ],
         "status": "SOURCE_FACT",
-        "confidence": 0.97
+        "confidence": 0.97,
+        "review_status": "UNREVIEWED",
+        "human_modified": false,
+        "locked": false
       },
       {
         "schema_version": "2.0",
@@ -359,7 +447,10 @@
           "EV-DOCD415652CC4-0007-89a47e37"
         ],
         "status": "SOURCE_FACT",
-        "confidence": 0.97
+        "confidence": 0.97,
+        "review_status": "UNREVIEWED",
+        "human_modified": false,
+        "locked": false
       },
       {
         "schema_version": "2.0",
@@ -368,7 +459,10 @@
           "EV-DOCD415652CC4-0007-89a47e37"
         ],
         "status": "SOURCE_FACT",
-        "confidence": 0.97
+        "confidence": 0.97,
+        "review_status": "UNREVIEWED",
+        "human_modified": false,
+        "locked": false
       }
     ],
     "optional_features": [
@@ -379,7 +473,10 @@
           "EV-DOCD415652CC4-0011-3b77a576"
         ],
         "status": "SOURCE_FACT",
-        "confidence": 0.97
+        "confidence": 0.97,
+        "review_status": "UNREVIEWED",
+        "human_modified": false,
+        "locked": false
       },
       {
         "schema_version": "2.0",
@@ -388,7 +485,10 @@
           "EV-DOCD415652CC4-0011-3b77a576"
         ],
         "status": "SOURCE_FACT",
-        "confidence": 0.97
+        "confidence": 0.97,
+        "review_status": "UNREVIEWED",
+        "human_modified": false,
+        "locked": false
       },
       {
         "schema_version": "2.0",
@@ -397,7 +497,10 @@
           "EV-DOCD415652CC4-0011-3b77a576"
         ],
         "status": "SOURCE_FACT",
-        "confidence": 0.97
+        "confidence": 0.97,
+        "review_status": "UNREVIEWED",
+        "human_modified": false,
+        "locked": false
       }
     ],
     "technical_effects": [
@@ -408,7 +511,10 @@
           "EV-DOCD415652CC4-0009-0412a654"
         ],
         "status": "SOURCE_FACT",
-        "confidence": 0.97
+        "confidence": 0.97,
+        "review_status": "UNREVIEWED",
+        "human_modified": false,
+        "locked": false
       },
       {
         "schema_version": "2.0",
@@ -417,7 +523,10 @@
           "EV-DOCD415652CC4-0009-0412a654"
         ],
         "status": "SOURCE_FACT",
-        "confidence": 0.97
+        "confidence": 0.97,
+        "review_status": "UNREVIEWED",
+        "human_modified": false,
+        "locked": false
       },
       {
         "schema_version": "2.0",
@@ -426,7 +535,10 @@
           "EV-DOCD415652CC4-0009-0412a654"
         ],
         "status": "SOURCE_FACT",
-        "confidence": 0.97
+        "confidence": 0.97,
+        "review_status": "UNREVIEWED",
+        "human_modified": false,
+        "locked": false
       }
     ],
     "evidence_ids": [
@@ -461,6 +573,11 @@
       "公开日期、发明人和权属信息待确认。"
     ],
     "possible_duplicate_of": [],
-    "merge_recommendation": ""
+    "merge_recommendation": "",
+    "review_status": "UNREVIEWED",
+    "human_modified": false,
+    "locked": false,
+    "merged_from": [],
+    "split_from": null
   }
 ]

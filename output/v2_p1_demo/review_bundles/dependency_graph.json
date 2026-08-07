@@ -1,0 +1,146 @@
+{
+  "schema_version": "2.0",
+  "links": [
+    {
+      "schema_version": "2.0",
+      "source_id": "fact",
+      "target_id": "knowledge",
+      "relation": "invalidates"
+    },
+    {
+      "schema_version": "2.0",
+      "source_id": "knowledge",
+      "target_id": "candidate",
+      "relation": "invalidates"
+    },
+    {
+      "schema_version": "2.0",
+      "source_id": "candidate",
+      "target_id": "strategy",
+      "relation": "invalidates"
+    },
+    {
+      "schema_version": "2.0",
+      "source_id": "strategy",
+      "target_id": "claim_feature",
+      "relation": "invalidates"
+    },
+    {
+      "schema_version": "2.0",
+      "source_id": "strategy",
+      "target_id": "disclosure",
+      "relation": "invalidates"
+    },
+    {
+      "schema_version": "2.0",
+      "source_id": "claim_feature",
+      "target_id": "claim",
+      "relation": "invalidates"
+    },
+    {
+      "schema_version": "2.0",
+      "source_id": "claim_feature",
+      "target_id": "support_matrix",
+      "relation": "invalidates"
+    },
+    {
+      "schema_version": "2.0",
+      "source_id": "claim_feature",
+      "target_id": "scope_review",
+      "relation": "invalidates"
+    },
+    {
+      "schema_version": "2.0",
+      "source_id": "claim",
+      "target_id": "support_matrix",
+      "relation": "invalidates"
+    },
+    {
+      "schema_version": "2.0",
+      "source_id": "claim",
+      "target_id": "scope_review",
+      "relation": "invalidates"
+    },
+    {
+      "schema_version": "2.0",
+      "source_id": "claim",
+      "target_id": "traceability",
+      "relation": "invalidates"
+    },
+    {
+      "schema_version": "2.0",
+      "source_id": "disclosure",
+      "target_id": "support_matrix",
+      "relation": "invalidates"
+    },
+    {
+      "schema_version": "2.0",
+      "source_id": "disclosure",
+      "target_id": "figure",
+      "relation": "invalidates"
+    },
+    {
+      "schema_version": "2.0",
+      "source_id": "disclosure",
+      "target_id": "traceability",
+      "relation": "invalidates"
+    },
+    {
+      "schema_version": "2.0",
+      "source_id": "terminology",
+      "target_id": "disclosure",
+      "relation": "invalidates"
+    },
+    {
+      "schema_version": "2.0",
+      "source_id": "terminology",
+      "target_id": "claim",
+      "relation": "invalidates"
+    },
+    {
+      "schema_version": "2.0",
+      "source_id": "terminology",
+      "target_id": "figure",
+      "relation": "invalidates"
+    },
+    {
+      "schema_version": "2.0",
+      "source_id": "equation",
+      "target_id": "disclosure",
+      "relation": "invalidates"
+    },
+    {
+      "schema_version": "2.0",
+      "source_id": "equation",
+      "target_id": "traceability",
+      "relation": "invalidates"
+    }
+  ],
+  "artifact_states": {
+    "equation": "CURRENT",
+    "terminology": "CURRENT",
+    "candidate": "CURRENT",
+    "claim_feature": "CURRENT",
+    "fact": "CURRENT",
+    "traceability": "CURRENT",
+    "knowledge": "CURRENT",
+    "strategy": "CURRENT",
+    "disclosure": "CURRENT",
+    "scope_review": "CURRENT",
+    "figure": "CURRENT",
+    "support_matrix": "CURRENT",
+    "claim": "CURRENT",
+    "FACT-0001": "LOCKED",
+    "FACT-0002": "LOCKED",
+    "FACT-0003": "LOCKED",
+    "FACT-0004": "LOCKED",
+    "FACT-0005": "LOCKED",
+    "FACT-0006": "LOCKED",
+    "FACT-0007": "LOCKED",
+    "FACT-0008": "LOCKED",
+    "FACT-0009": "LOCKED",
+    "FACT-0010": "LOCKED",
+    "FACT-0011": "LOCKED",
+    "FACT-0012": "LOCKED"
+  }
+}

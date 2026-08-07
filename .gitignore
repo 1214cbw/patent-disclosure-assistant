@@ -10,8 +10,12 @@ workspace/cache/
 workspace/cases/*
 !workspace/cases/.gitkeep
 private_cases/
+workspace/private_cases/
 ~$*.docx
 *.tmp
 output/qa/
 output/qa_v2/
 output/dry_run_synthetic/
+output/real_case/
+output/v2_p1_demo_work/
+output/qa_v2_p1/

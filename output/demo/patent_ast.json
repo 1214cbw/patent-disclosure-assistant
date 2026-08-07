@@ -1,6 +1,6 @@
 {
   "disclosure": {
-    "schema_version": "1.0",
+    "schema_version": "2.0",
     "document_id": "PAT-2026-DEMO-001-DISCLOSURE",
     "kind": "disclosure",
     "title": "一种基于多源传感信息的电机状态监测与自适应控制方法",
@@ -697,7 +697,7 @@
     }
   },
   "claims": {
-    "schema_version": "1.0",
+    "schema_version": "2.0",
     "document_id": "PAT-2026-DEMO-001-CLAIMS",
     "kind": "claims",
     "title": "一种基于多源传感信息的电机状态监测与自适应控制方法",

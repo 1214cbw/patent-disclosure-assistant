@@ -1,0 +1,232 @@
+[
+  {
+    "id": "FIG-001",
+    "number": 1,
+    "type": "flowchart",
+    "title": "电机状态监测与自适应控制方法流程图",
+    "nodes": [
+      {
+        "id": "S1",
+        "label": "S1：获取振动、定子电流、转速和温度信号。",
+        "claim_step": "S1",
+        "fact_ids": [
+          "FACT-0006"
+        ],
+        "evidence_ids": [
+          "EV-DOCD415652CC4-0006-a7c9a369"
+        ]
+      },
+      {
+        "id": "S2",
+        "label": "S2：对多源信号进行时间同步和归一化，形成多源特征向量。",
+        "claim_step": "S2",
+        "fact_ids": [
+          "FACT-0007"
+        ],
+        "evidence_ids": [
+          "EV-DOCD415652CC4-0007-89a47e37"
+        ]
+      },
+      {
+        "id": "S3",
+        "label": "S3：根据各信号的质量指标计算置信度权重，并得到融合状态量。",
+        "claim_step": "S3",
+        "fact_ids": [
+          "FACT-0007"
+        ],
+        "evidence_ids": [
+          "EV-DOCD415652CC4-0007-89a47e37"
+        ]
+      },
+      {
+        "id": "S4",
+        "label": "S4：计算目标状态与融合状态量之间的状态偏差。",
+        "claim_step": "S4",
+        "fact_ids": [
+          "FACT-0007"
+        ],
+        "evidence_ids": [
+          "EV-DOCD415652CC4-0007-89a47e37"
+        ]
+      },
+      {
+        "id": "S5",
+        "label": "S5：根据状态偏差和历史偏差生成自适应控制指令并输出至电机驱动单元。",
+        "claim_step": "S5",
+        "fact_ids": [
+          "FACT-0007"
+        ],
+        "evidence_ids": [
+          "EV-DOCD415652CC4-0007-89a47e37"
+        ]
+      }
+    ],
+    "edges": [
+      {
+        "source": "S1",
+        "target": "S2",
+        "label": "",
+        "fact_ids": [
+          "FACT-0006",
+          "FACT-0007"
+        ],
+        "evidence_ids": [
+          "EV-DOCD415652CC4-0006-a7c9a369",
+          "EV-DOCD415652CC4-0007-89a47e37"
+        ]
+      },
+      {
+        "source": "S2",
+        "target": "S3",
+        "label": "",
+        "fact_ids": [
+          "FACT-0007"
+        ],
+        "evidence_ids": [
+          "EV-DOCD415652CC4-0007-89a47e37"
+        ]
+      },
+      {
+        "source": "S3",
+        "target": "S4",
+        "label": "",
+        "fact_ids": [
+          "FACT-0007"
+        ],
+        "evidence_ids": [
+          "EV-DOCD415652CC4-0007-89a47e37"
+        ]
+      },
+      {
+        "source": "S4",
+        "target": "S5",
+        "label": "",
+        "fact_ids": [
+          "FACT-0007"
+        ],
+        "evidence_ids": [
+          "EV-DOCD415652CC4-0007-89a47e37"
+        ]
+      }
+    ],
+    "source_ids": [
+      "EV-DOCD415652CC4-0001-7c2f4745",
+      "EV-DOCD415652CC4-0002-1ffcddaa",
+      "EV-DOCD415652CC4-0003-e67990ad",
+      "EV-DOCD415652CC4-0004-ee8cb4b3",
+      "EV-DOCD415652CC4-0005-b608d283",
+      "EV-DOCD415652CC4-0006-a7c9a369",
+      "EV-DOCD415652CC4-0007-89a47e37",
+      "EV-DOCD415652CC4-0008-5e77edd0",
+      "EV-DOCD415652CC4-0009-0412a654",
+      "EV-DOCD415652CC4-0010-7bfee3fc",
+      "EV-DOCD415652CC4-0011-3b77a576",
+      "EV-DOCD415652CC4-0012-50f769c6"
+    ],
+    "png_path": "C:\\Users\\25032\\Desktop\\gongshi\\patent_agent\\output\\v2_p1_demo_work\\real_case\\SYN-P1-DEMO-001\\figures\\figure_01.png",
+    "svg_path": "C:\\Users\\25032\\Desktop\\gongshi\\patent_agent\\output\\v2_p1_demo_work\\real_case\\SYN-P1-DEMO-001\\figures\\figure_01.svg"
+  },
+  {
+    "id": "FIG-002",
+    "number": 2,
+    "type": "system",
+    "title": "电机状态监测与自适应控制系统结构示意图",
+    "nodes": [
+      {
+        "id": "A",
+        "label": "状态采集单元",
+        "claim_step": null,
+        "fact_ids": [
+          "FACT-0006"
+        ],
+        "evidence_ids": [
+          "EV-DOCD415652CC4-0006-a7c9a369"
+        ]
+      },
+      {
+        "id": "B",
+        "label": "状态估计单元",
+        "claim_step": null,
+        "fact_ids": [
+          "FACT-0006"
+        ],
+        "evidence_ids": [
+          "EV-DOCD415652CC4-0006-a7c9a369"
+        ]
+      },
+      {
+        "id": "C",
+        "label": "控制处理单元",
+        "claim_step": null,
+        "fact_ids": [
+          "FACT-0006"
+        ],
+        "evidence_ids": [
+          "EV-DOCD415652CC4-0006-a7c9a369"
+        ]
+      },
+      {
+        "id": "D",
+        "label": "电机驱动单元",
+        "claim_step": null,
+        "fact_ids": [
+          "FACT-0006"
+        ],
+        "evidence_ids": [
+          "EV-DOCD415652CC4-0006-a7c9a369"
+        ]
+      }
+    ],
+    "edges": [
+      {
+        "source": "A",
+        "target": "B",
+        "label": "",
+        "fact_ids": [
+          "FACT-0006"
+        ],
+        "evidence_ids": [
+          "EV-DOCD415652CC4-0006-a7c9a369"
+        ]
+      },
+      {
+        "source": "B",
+        "target": "C",
+        "label": "",
+        "fact_ids": [
+          "FACT-0006"
+        ],
+        "evidence_ids": [
+          "EV-DOCD415652CC4-0006-a7c9a369"
+        ]
+      },
+      {
+        "source": "C",
+        "target": "D",
+        "label": "",
+        "fact_ids": [
+          "FACT-0006"
+        ],
+        "evidence_ids": [
+          "EV-DOCD415652CC4-0006-a7c9a369"
+        ]
+      }
+    ],
+    "source_ids": [
+      "EV-DOCD415652CC4-0001-7c2f4745",
+      "EV-DOCD415652CC4-0002-1ffcddaa",
+      "EV-DOCD415652CC4-0003-e67990ad",
+      "EV-DOCD415652CC4-0004-ee8cb4b3",
+      "EV-DOCD415652CC4-0005-b608d283",
+      "EV-DOCD415652CC4-0006-a7c9a369",
+      "EV-DOCD415652CC4-0007-89a47e37",
+      "EV-DOCD415652CC4-0008-5e77edd0",
+      "EV-DOCD415652CC4-0009-0412a654",
+      "EV-DOCD415652CC4-0010-7bfee3fc",
+      "EV-DOCD415652CC4-0011-3b77a576",
+      "EV-DOCD415652CC4-0012-50f769c6"
+    ],
+    "png_path": "C:\\Users\\25032\\Desktop\\gongshi\\patent_agent\\output\\v2_p1_demo_work\\real_case\\SYN-P1-DEMO-001\\figures\\figure_02.png",
+    "svg_path": "C:\\Users\\25032\\Desktop\\gongshi\\patent_agent\\output\\v2_p1_demo_work\\real_case\\SYN-P1-DEMO-001\\figures\\figure_02.svg"
+  }
+]

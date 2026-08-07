@@ -1,4 +1,5 @@
 {
+  "schema_version": "2.0",
   "technical_field": "电机状态监测、故障预警与自适应控制，涉及多源传感信息同步、状态融合和闭环控制。",
   "technical_problem": "- 单一电流或转速反馈难以同时反映电气、机械和热状态。\n- 多类传感器的采样时钟和噪声水平不同，直接拼接可能导致状态估计不稳定。\n- 状态监测与控制回路相互独立，检测结果不能及时转化为控制参数修正量。",
   "existing_technology": [
@@ -68,12 +69,16 @@
   },
   "equations": [
     {
+      "schema_version": "2.0",
       "id": "EQ-001",
       "latex": "z_k=\\alpha x_{v,k}+\\beta x_{i,k}+(1-\\alpha-\\beta)x_{T,k}",
       "role": "多源状态融合",
       "source_ids": [
         "P007"
       ],
+      "evidence_ids": [],
+      "original_expression": "",
+      "status": "SOURCE_FACT",
       "symbols": {
         "z": "融合状态量",
         "k": "离散时间序号",
@@ -98,12 +103,16 @@
       "number": null
     },
     {
+      "schema_version": "2.0",
       "id": "EQ-002",
       "latex": "e_k=r_k-z_k",
       "role": "状态偏差计算",
       "source_ids": [
         "P007"
       ],
+      "evidence_ids": [],
+      "original_expression": "",
+      "status": "SOURCE_FACT",
       "symbols": {
         "z": "融合状态量",
         "k": "离散时间序号",
@@ -128,12 +137,16 @@
       "number": null
     },
     {
+      "schema_version": "2.0",
       "id": "EQ-003",
       "latex": "u_k=u_{k-1}+K_pe_k+K_i\\sum_{j=1}^{k}e_j",
       "role": "自适应控制更新",
       "source_ids": [
         "P007"
       ],
+      "evidence_ids": [],
+      "original_expression": "",
+      "status": "SOURCE_FACT",
       "symbols": {
         "z": "融合状态量",
         "k": "离散时间序号",
@@ -158,12 +171,16 @@
       "number": null
     },
     {
+      "schema_version": "2.0",
       "id": "EQ-004",
       "latex": "T_e=\\frac{3}{2}p[\\psi_f i_q+(L_d-L_q)i_di_q]",
       "role": "电磁转矩估计",
       "source_ids": [
         "P007"
       ],
+      "evidence_ids": [],
+      "original_expression": "",
+      "status": "SOURCE_FACT",
       "symbols": {
         "z": "融合状态量",
         "k": "离散时间序号",
@@ -332,5 +349,6 @@
       "status": "SOURCE_FACT",
       "support_state": "explicit"
     }
-  ]
+  ],
+  "technical_facts": []
 }

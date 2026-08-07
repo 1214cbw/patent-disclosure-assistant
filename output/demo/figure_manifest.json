@@ -8,49 +8,67 @@
       {
         "id": "S1",
         "label": "S1：获取振动、定子电流、转速和温度信号。",
-        "claim_step": "S1"
+        "claim_step": "S1",
+        "fact_ids": [],
+        "evidence_ids": []
       },
       {
         "id": "S2",
         "label": "S2：对多源信号进行时间同步和归一化，形成多源特征向量。",
-        "claim_step": "S2"
+        "claim_step": "S2",
+        "fact_ids": [],
+        "evidence_ids": []
       },
       {
         "id": "S3",
         "label": "S3：根据各信号的质量指标计算置信度权重，并得到融合状态量。",
-        "claim_step": "S3"
+        "claim_step": "S3",
+        "fact_ids": [],
+        "evidence_ids": []
       },
       {
         "id": "S4",
         "label": "S4：计算目标状态与融合状态量之间的状态偏差。",
-        "claim_step": "S4"
+        "claim_step": "S4",
+        "fact_ids": [],
+        "evidence_ids": []
       },
       {
         "id": "S5",
         "label": "S5：根据状态偏差和历史偏差生成自适应控制指令并输出至电机驱动单元。",
-        "claim_step": "S5"
+        "claim_step": "S5",
+        "fact_ids": [],
+        "evidence_ids": []
       }
     ],
     "edges": [
       {
         "source": "S1",
         "target": "S2",
-        "label": ""
+        "label": "",
+        "fact_ids": [],
+        "evidence_ids": []
       },
       {
         "source": "S2",
         "target": "S3",
-        "label": ""
+        "label": "",
+        "fact_ids": [],
+        "evidence_ids": []
       },
       {
         "source": "S3",
         "target": "S4",
-        "label": ""
+        "label": "",
+        "fact_ids": [],
+        "evidence_ids": []
       },
       {
         "source": "S4",
         "target": "S5",
-        "label": ""
+        "label": "",
+        "fact_ids": [],
+        "evidence_ids": []
       }
     ],
     "source_ids": [
@@ -79,39 +97,53 @@
       {
         "id": "A",
         "label": "状态采集单元",
-        "claim_step": null
+        "claim_step": null,
+        "fact_ids": [],
+        "evidence_ids": []
       },
       {
         "id": "B",
         "label": "状态估计单元",
-        "claim_step": null
+        "claim_step": null,
+        "fact_ids": [],
+        "evidence_ids": []
       },
       {
         "id": "C",
         "label": "控制处理单元",
-        "claim_step": null
+        "claim_step": null,
+        "fact_ids": [],
+        "evidence_ids": []
       },
       {
         "id": "D",
         "label": "电机驱动单元",
-        "claim_step": null
+        "claim_step": null,
+        "fact_ids": [],
+        "evidence_ids": []
       }
     ],
     "edges": [
       {
         "source": "A",
         "target": "B",
-        "label": ""
+        "label": "",
+        "fact_ids": [],
+        "evidence_ids": []
       },
       {
         "source": "B",
         "target": "C",
-        "label": ""
+        "label": "",
+        "fact_ids": [],
+        "evidence_ids": []
       },
       {
         "source": "C",
         "target": "D",
-        "label": ""
+        "label": "",
+        "fact_ids": [],
+        "evidence_ids": []
       }
     ],
     "source_ids": [

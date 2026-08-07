@@ -1,0 +1,295 @@
+{
+  "schema_version": "2.0",
+  "links": [
+    {
+      "schema_version": "2.0",
+      "link_id": "TR-DISC-06-P001",
+      "object_type": "disclosure",
+      "object_id": "DISC-06-P001",
+      "disclosure_paragraph_ids": [],
+      "fact_ids": [
+        "FACT-0001"
+      ],
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0001-7c2f4745"
+      ],
+      "status": "LINKED"
+    },
+    {
+      "schema_version": "2.0",
+      "link_id": "TR-DISC-06-P002",
+      "object_type": "disclosure",
+      "object_id": "DISC-06-P002",
+      "disclosure_paragraph_ids": [],
+      "fact_ids": [
+        "FACT-0002"
+      ],
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0002-1ffcddaa"
+      ],
+      "status": "LINKED"
+    },
+    {
+      "schema_version": "2.0",
+      "link_id": "TR-DISC-06-P003",
+      "object_type": "disclosure",
+      "object_id": "DISC-06-P003",
+      "disclosure_paragraph_ids": [],
+      "fact_ids": [
+        "FACT-0003"
+      ],
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0003-e67990ad"
+      ],
+      "status": "LINKED"
+    },
+    {
+      "schema_version": "2.0",
+      "link_id": "TR-DISC-06-P004",
+      "object_type": "disclosure",
+      "object_id": "DISC-06-P004",
+      "disclosure_paragraph_ids": [],
+      "fact_ids": [
+        "FACT-0004"
+      ],
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0004-ee8cb4b3"
+      ],
+      "status": "LINKED"
+    },
+    {
+      "schema_version": "2.0",
+      "link_id": "TR-DISC-06-P005",
+      "object_type": "disclosure",
+      "object_id": "DISC-06-P005",
+      "disclosure_paragraph_ids": [],
+      "fact_ids": [
+        "FACT-0005"
+      ],
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0005-b608d283"
+      ],
+      "status": "LINKED"
+    },
+    {
+      "schema_version": "2.0",
+      "link_id": "TR-DISC-06-P006",
+      "object_type": "disclosure",
+      "object_id": "DISC-06-P006",
+      "disclosure_paragraph_ids": [],
+      "fact_ids": [
+        "FACT-0006"
+      ],
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0006-a7c9a369"
+      ],
+      "status": "LINKED"
+    },
+    {
+      "schema_version": "2.0",
+      "link_id": "TR-DISC-06-P007",
+      "object_type": "disclosure",
+      "object_id": "DISC-06-P007",
+      "disclosure_paragraph_ids": [],
+      "fact_ids": [
+        "FACT-0007"
+      ],
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0007-89a47e37"
+      ],
+      "status": "LINKED"
+    },
+    {
+      "schema_version": "2.0",
+      "link_id": "TR-DISC-06-P009",
+      "object_type": "disclosure",
+      "object_id": "DISC-06-P009",
+      "disclosure_paragraph_ids": [],
+      "fact_ids": [
+        "FACT-0009"
+      ],
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0009-0412a654"
+      ],
+      "status": "LINKED"
+    },
+    {
+      "schema_version": "2.0",
+      "link_id": "TR-DISC-06-P010",
+      "object_type": "disclosure",
+      "object_id": "DISC-06-P010",
+      "disclosure_paragraph_ids": [],
+      "fact_ids": [
+        "FACT-0010"
+      ],
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0010-7bfee3fc"
+      ],
+      "status": "LINKED"
+    },
+    {
+      "schema_version": "2.0",
+      "link_id": "TR-DISC-06-P011",
+      "object_type": "disclosure",
+      "object_id": "DISC-06-P011",
+      "disclosure_paragraph_ids": [],
+      "fact_ids": [
+        "FACT-0011"
+      ],
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0011-3b77a576"
+      ],
+      "status": "LINKED"
+    },
+    {
+      "schema_version": "2.0",
+      "link_id": "TR-DISC-06-P012",
+      "object_type": "disclosure",
+      "object_id": "DISC-06-P012",
+      "disclosure_paragraph_ids": [],
+      "fact_ids": [
+        "FACT-0012"
+      ],
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0012-50f769c6"
+      ],
+      "status": "LINKED"
+    },
+    {
+      "schema_version": "2.0",
+      "link_id": "TR-DISC-08-P001",
+      "object_type": "disclosure",
+      "object_id": "DISC-08-P001",
+      "disclosure_paragraph_ids": [],
+      "fact_ids": [
+        "FACT-0001"
+      ],
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0001-7c2f4745"
+      ],
+      "status": "LINKED"
+    },
+    {
+      "schema_version": "2.0",
+      "link_id": "TR-CL1-CORE-F001",
+      "object_type": "claim_feature",
+      "object_id": "CL1:CORE-F001",
+      "disclosure_paragraph_ids": [
+        "DISC-06-P006"
+      ],
+      "fact_ids": [
+        "FACT-0006"
+      ],
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0006-a7c9a369"
+      ],
+      "status": "LINKED"
+    },
+    {
+      "schema_version": "2.0",
+      "link_id": "TR-CL1-CORE-F002",
+      "object_type": "claim_feature",
+      "object_id": "CL1:CORE-F002",
+      "disclosure_paragraph_ids": [
+        "DISC-06-P007"
+      ],
+      "fact_ids": [
+        "FACT-0007"
+      ],
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0007-89a47e37"
+      ],
+      "status": "LINKED"
+    },
+    {
+      "schema_version": "2.0",
+      "link_id": "TR-CL1-CORE-F003",
+      "object_type": "claim_feature",
+      "object_id": "CL1:CORE-F003",
+      "disclosure_paragraph_ids": [
+        "DISC-06-P007"
+      ],
+      "fact_ids": [
+        "FACT-0007"
+      ],
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0007-89a47e37"
+      ],
+      "status": "LINKED"
+    },
+    {
+      "schema_version": "2.0",
+      "link_id": "TR-EQ-001",
+      "object_type": "equation",
+      "object_id": "EQ-001",
+      "disclosure_paragraph_ids": [],
+      "fact_ids": [],
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0007-89a47e37"
+      ],
+      "status": "LINKED"
+    },
+    {
+      "schema_version": "2.0",
+      "link_id": "TR-EQ-002",
+      "object_type": "equation",
+      "object_id": "EQ-002",
+      "disclosure_paragraph_ids": [],
+      "fact_ids": [],
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0007-89a47e37"
+      ],
+      "status": "LINKED"
+    },
+    {
+      "schema_version": "2.0",
+      "link_id": "TR-EQ-003",
+      "object_type": "equation",
+      "object_id": "EQ-003",
+      "disclosure_paragraph_ids": [],
+      "fact_ids": [],
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0007-89a47e37"
+      ],
+      "status": "LINKED"
+    },
+    {
+      "schema_version": "2.0",
+      "link_id": "TR-EQ-004",
+      "object_type": "equation",
+      "object_id": "EQ-004",
+      "disclosure_paragraph_ids": [],
+      "fact_ids": [],
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0007-89a47e37"
+      ],
+      "status": "LINKED"
+    },
+    {
+      "schema_version": "2.0",
+      "link_id": "TR-FIG-001",
+      "object_type": "figure",
+      "object_id": "FIG-001",
+      "disclosure_paragraph_ids": [],
+      "fact_ids": [],
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0006-a7c9a369",
+        "EV-DOCD415652CC4-0007-89a47e37"
+      ],
+      "status": "LINKED"
+    },
+    {
+      "schema_version": "2.0",
+      "link_id": "TR-FIG-002",
+      "object_type": "figure",
+      "object_id": "FIG-002",
+      "disclosure_paragraph_ids": [],
+      "fact_ids": [],
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0006-a7c9a369"
+      ],
+      "status": "LINKED"
+    }
+  ],
+  "broken_links": []
+}

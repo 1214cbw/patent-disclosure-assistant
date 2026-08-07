@@ -1,0 +1,66 @@
+[
+  {
+    "id": "scope_strategy",
+    "value": "Balanced"
+  },
+  {
+    "id": "mandatory-1",
+    "value": {
+      "schema_version": "2.0",
+      "text": "获取振动、定子电流、转速和温度信号。",
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0006-a7c9a369"
+      ],
+      "status": "SOURCE_FACT",
+      "confidence": 0.9,
+      "review_status": "UNREVIEWED",
+      "human_modified": false,
+      "locked": false
+    }
+  },
+  {
+    "id": "mandatory-2",
+    "value": {
+      "schema_version": "2.0",
+      "text": "对多源信号进行时间同步和归一化，形成多源特征向量。",
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0007-89a47e37"
+      ],
+      "status": "SOURCE_FACT",
+      "confidence": 0.9,
+      "review_status": "UNREVIEWED",
+      "human_modified": false,
+      "locked": false
+    }
+  },
+  {
+    "id": "mandatory-3",
+    "value": {
+      "schema_version": "2.0",
+      "text": "根据各信号的质量指标计算置信度权重，并得到融合状态量。",
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0007-89a47e37"
+      ],
+      "status": "SOURCE_FACT",
+      "confidence": 0.9,
+      "review_status": "UNREVIEWED",
+      "human_modified": false,
+      "locked": false
+    }
+  },
+  {
+    "id": "mandatory-4",
+    "value": {
+      "schema_version": "2.0",
+      "text": "计算目标状态与融合状态量之间的状态偏差。",
+      "evidence_ids": [
+        "EV-DOCD415652CC4-0007-89a47e37"
+      ],
+      "status": "SOURCE_FACT",
+      "confidence": 0.9,
+      "review_status": "UNREVIEWED",
+      "human_modified": false,
+      "locked": false
+    }
+  }
+]

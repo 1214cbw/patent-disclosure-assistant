@@ -1,0 +1,67 @@
+{
+  "schema_version": "2.0",
+  "title": "一种基于多源传感信息的电机状态监测与自适应控制方法",
+  "claims": [
+    {
+      "schema_version": "2.0",
+      "claim_number": 1,
+      "claim_type": "method",
+      "parent_claims": [],
+      "features": [
+        {
+          "schema_version": "2.0",
+          "feature_id": "CORE-F001",
+          "text": "获取振动、定子电流、转速和温度信号。",
+          "source_fact_ids": [
+            "FACT-0006"
+          ],
+          "evidence_ids": [
+            "EV-DOCD415652CC4-0006-a7c9a369"
+          ],
+          "support_status": "SUPPORTED",
+          "mandatory": true,
+          "review_status": "LOCKED",
+          "human_modified": false,
+          "locked": true
+        },
+        {
+          "schema_version": "2.0",
+          "feature_id": "CORE-F002",
+          "text": "对多源信号进行时间同步和归一化，形成多源特征向量。",
+          "source_fact_ids": [
+            "FACT-0007"
+          ],
+          "evidence_ids": [
+            "EV-DOCD415652CC4-0007-89a47e37"
+          ],
+          "support_status": "SUPPORTED",
+          "mandatory": true,
+          "review_status": "LOCKED",
+          "human_modified": false,
+          "locked": true
+        },
+        {
+          "schema_version": "2.0",
+          "feature_id": "CORE-F003",
+          "text": "根据各信号的质量指标计算置信度权重，并得到融合状态量。",
+          "source_fact_ids": [
+            "FACT-0007"
+          ],
+          "evidence_ids": [
+            "EV-DOCD415652CC4-0007-89a47e37"
+          ],
+          "support_status": "SUPPORTED",
+          "mandatory": true,
+          "review_status": "LOCKED",
+          "human_modified": false,
+          "locked": true
+        }
+      ],
+      "rendered_text": "一种电机状态监测与自适应控制方法，其特征在于，包括：获取振动、定子电流、转速和温度信号；对多源信号进行时间同步和归一化，形成多源特征向量；根据各信号的质量指标计算置信度权重，并得到融合状态量。",
+      "draft_strategy": "balanced",
+      "review_status": "EDITED",
+      "human_modified": true,
+      "structured_mapping_stale": false
+    }
+  ]
+}

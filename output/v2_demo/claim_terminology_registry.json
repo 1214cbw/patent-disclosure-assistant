@@ -18,7 +18,10 @@
         "EV-DOCD415652CC4-0010-7bfee3fc",
         "EV-DOCD415652CC4-0011-3b77a576",
         "EV-DOCD415652CC4-0012-50f769c6"
-      ]
+      ],
+      "patent_term": null,
+      "human_confirmed": false,
+      "review_status": "UNREVIEWED"
     },
     {
       "schema_version": "2.0",
@@ -37,7 +40,10 @@
         "EV-DOCD415652CC4-0010-7bfee3fc",
         "EV-DOCD415652CC4-0011-3b77a576",
         "EV-DOCD415652CC4-0012-50f769c6"
-      ]
+      ],
+      "patent_term": null,
+      "human_confirmed": false,
+      "review_status": "UNREVIEWED"
     }
   ]
 }

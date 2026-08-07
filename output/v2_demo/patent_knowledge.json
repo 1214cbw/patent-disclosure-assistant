@@ -324,7 +324,16 @@
       ],
       "status": "SOURCE_FACT",
       "confidence": 0.99,
-      "notes": null
+      "notes": null,
+      "review_status": "UNREVIEWED",
+      "human_modified": false,
+      "locked": false,
+      "confirmation_id": null,
+      "correction_id": null,
+      "revision_id": null,
+      "previous_version_id": null,
+      "revision_reason": null,
+      "reviewed_at": null
     },
     {
       "schema_version": "2.0",
@@ -336,7 +345,16 @@
       ],
       "status": "SOURCE_FACT",
       "confidence": 0.98,
-      "notes": null
+      "notes": null,
+      "review_status": "UNREVIEWED",
+      "human_modified": false,
+      "locked": false,
+      "confirmation_id": null,
+      "correction_id": null,
+      "revision_id": null,
+      "previous_version_id": null,
+      "revision_reason": null,
+      "reviewed_at": null
     },
     {
       "schema_version": "2.0",
@@ -348,7 +366,16 @@
       ],
       "status": "SOURCE_FACT",
       "confidence": 0.98,
-      "notes": null
+      "notes": null,
+      "review_status": "UNREVIEWED",
+      "human_modified": false,
+      "locked": false,
+      "confirmation_id": null,
+      "correction_id": null,
+      "revision_id": null,
+      "previous_version_id": null,
+      "revision_reason": null,
+      "reviewed_at": null
     },
     {
       "schema_version": "2.0",
@@ -360,7 +387,16 @@
       ],
       "status": "SOURCE_FACT",
       "confidence": 0.99,
-      "notes": null
+      "notes": null,
+      "review_status": "UNREVIEWED",
+      "human_modified": false,
+      "locked": false,
+      "confirmation_id": null,
+      "correction_id": null,
+      "revision_id": null,
+      "previous_version_id": null,
+      "revision_reason": null,
+      "reviewed_at": null
     },
     {
       "schema_version": "2.0",
@@ -372,7 +408,16 @@
       ],
       "status": "SOURCE_FACT",
       "confidence": 0.99,
-      "notes": null
+      "notes": null,
+      "review_status": "UNREVIEWED",
+      "human_modified": false,
+      "locked": false,
+      "confirmation_id": null,
+      "correction_id": null,
+      "revision_id": null,
+      "previous_version_id": null,
+      "revision_reason": null,
+      "reviewed_at": null
     },
     {
       "schema_version": "2.0",
@@ -384,7 +429,16 @@
       ],
       "status": "SOURCE_FACT",
       "confidence": 0.99,
-      "notes": null
+      "notes": null,
+      "review_status": "UNREVIEWED",
+      "human_modified": false,
+      "locked": false,
+      "confirmation_id": null,
+      "correction_id": null,
+      "revision_id": null,
+      "previous_version_id": null,
+      "revision_reason": null,
+      "reviewed_at": null
     },
     {
       "schema_version": "2.0",
@@ -396,7 +450,16 @@
       ],
       "status": "SOURCE_FACT",
       "confidence": 0.99,
-      "notes": null
+      "notes": null,
+      "review_status": "UNREVIEWED",
+      "human_modified": false,
+      "locked": false,
+      "confirmation_id": null,
+      "correction_id": null,
+      "revision_id": null,
+      "previous_version_id": null,
+      "revision_reason": null,
+      "reviewed_at": null
     },
     {
       "schema_version": "2.0",
@@ -408,7 +471,16 @@
       ],
       "status": "SOURCE_FACT",
       "confidence": 0.99,
-      "notes": null
+      "notes": null,
+      "review_status": "UNREVIEWED",
+      "human_modified": false,
+      "locked": false,
+      "confirmation_id": null,
+      "correction_id": null,
+      "revision_id": null,
+      "previous_version_id": null,
+      "revision_reason": null,
+      "reviewed_at": null
     },
     {
       "schema_version": "2.0",
@@ -420,7 +492,16 @@
       ],
       "status": "SOURCE_FACT",
       "confidence": 0.99,
-      "notes": null
+      "notes": null,
+      "review_status": "UNREVIEWED",
+      "human_modified": false,
+      "locked": false,
+      "confirmation_id": null,
+      "correction_id": null,
+      "revision_id": null,
+      "previous_version_id": null,
+      "revision_reason": null,
+      "reviewed_at": null
     },
     {
       "schema_version": "2.0",
@@ -432,7 +513,16 @@
       ],
       "status": "SOURCE_FACT",
       "confidence": 0.99,
-      "notes": null
+      "notes": null,
+      "review_status": "UNREVIEWED",
+      "human_modified": false,
+      "locked": false,
+      "confirmation_id": null,
+      "correction_id": null,
+      "revision_id": null,
+      "previous_version_id": null,
+      "revision_reason": null,
+      "reviewed_at": null
     },
     {
       "schema_version": "2.0",
@@ -444,7 +534,16 @@
       ],
       "status": "SOURCE_FACT",
       "confidence": 0.99,
-      "notes": null
+      "notes": null,
+      "review_status": "UNREVIEWED",
+      "human_modified": false,
+      "locked": false,
+      "confirmation_id": null,
+      "correction_id": null,
+      "revision_id": null,
+      "previous_version_id": null,
+      "revision_reason": null,
+      "reviewed_at": null
     },
     {
       "schema_version": "2.0",
@@ -456,7 +555,16 @@
       ],
       "status": "SOURCE_FACT",
       "confidence": 0.99,
-      "notes": null
+      "notes": null,
+      "review_status": "UNREVIEWED",
+      "human_modified": false,
+      "locked": false,
+      "confirmation_id": null,
+      "correction_id": null,
+      "revision_id": null,
+      "previous_version_id": null,
+      "revision_reason": null,
+      "reviewed_at": null
     },
     {
       "schema_version": "2.0",
@@ -468,7 +576,16 @@
       ],
       "status": "SOURCE_FACT",
       "confidence": 0.99,
-      "notes": null
+      "notes": null,
+      "review_status": "UNREVIEWED",
+      "human_modified": false,
+      "locked": false,
+      "confirmation_id": null,
+      "correction_id": null,
+      "revision_id": null,
+      "previous_version_id": null,
+      "revision_reason": null,
+      "reviewed_at": null
     },
     {
       "schema_version": "2.0",
@@ -480,7 +597,16 @@
       ],
       "status": "SOURCE_FACT",
       "confidence": 0.98,
-      "notes": null
+      "notes": null,
+      "review_status": "UNREVIEWED",
+      "human_modified": false,
+      "locked": false,
+      "confirmation_id": null,
+      "correction_id": null,
+      "revision_id": null,
+      "previous_version_id": null,
+      "revision_reason": null,
+      "reviewed_at": null
     },
     {
       "schema_version": "2.0",
@@ -492,7 +618,16 @@
       ],
       "status": "SOURCE_FACT",
       "confidence": 0.98,
-      "notes": null
+      "notes": null,
+      "review_status": "UNREVIEWED",
+      "human_modified": false,
+      "locked": false,
+      "confirmation_id": null,
+      "correction_id": null,
+      "revision_id": null,
+      "previous_version_id": null,
+      "revision_reason": null,
+      "reviewed_at": null
     },
     {
       "schema_version": "2.0",
@@ -504,7 +639,16 @@
       ],
       "status": "SOURCE_FACT",
       "confidence": 0.98,
-      "notes": null
+      "notes": null,
+      "review_status": "UNREVIEWED",
+      "human_modified": false,
+      "locked": false,
+      "confirmation_id": null,
+      "correction_id": null,
+      "revision_id": null,
+      "previous_version_id": null,
+      "revision_reason": null,
+      "reviewed_at": null
     },
     {
       "schema_version": "2.0",
@@ -516,7 +660,16 @@
       ],
       "status": "SOURCE_FACT",
       "confidence": 0.98,
-      "notes": null
+      "notes": null,
+      "review_status": "UNREVIEWED",
+      "human_modified": false,
+      "locked": false,
+      "confirmation_id": null,
+      "correction_id": null,
+      "revision_id": null,
+      "previous_version_id": null,
+      "revision_reason": null,
+      "reviewed_at": null
     },
     {
       "schema_version": "2.0",
@@ -528,7 +681,16 @@
       ],
       "status": "SOURCE_FACT",
       "confidence": 0.98,
-      "notes": null
+      "notes": null,
+      "review_status": "UNREVIEWED",
+      "human_modified": false,
+      "locked": false,
+      "confirmation_id": null,
+      "correction_id": null,
+      "revision_id": null,
+      "previous_version_id": null,
+      "revision_reason": null,
+      "reviewed_at": null
     },
     {
       "schema_version": "2.0",
@@ -540,7 +702,16 @@
       ],
       "status": "SOURCE_FACT",
       "confidence": 0.98,
-      "notes": null
+      "notes": null,
+      "review_status": "UNREVIEWED",
+      "human_modified": false,
+      "locked": false,
+      "confirmation_id": null,
+      "correction_id": null,
+      "revision_id": null,
+      "previous_version_id": null,
+      "revision_reason": null,
+      "reviewed_at": null
     },
     {
       "schema_version": "2.0",
@@ -552,7 +723,16 @@
       ],
       "status": "SOURCE_FACT",
       "confidence": 1.0,
-      "notes": "SYNTHETIC DEMO DATA only"
+      "notes": "SYNTHETIC DEMO DATA only",
+      "review_status": "UNREVIEWED",
+      "human_modified": false,
+      "locked": false,
+      "confirmation_id": null,
+      "correction_id": null,
+      "revision_id": null,
+      "previous_version_id": null,
+      "revision_reason": null,
+      "reviewed_at": null
     },
     {
       "schema_version": "2.0",
@@ -564,7 +744,16 @@
       ],
       "status": "SOURCE_FACT",
       "confidence": 1.0,
-      "notes": null
+      "notes": null,
+      "review_status": "UNREVIEWED",
+      "human_modified": false,
+      "locked": false,
+      "confirmation_id": null,
+      "correction_id": null,
+      "revision_id": null,
+      "previous_version_id": null,
+      "revision_reason": null,
+      "reviewed_at": null
     },
     {
       "schema_version": "2.0",
@@ -577,7 +766,16 @@
       ],
       "status": "INFERRED",
       "confidence": 0.82,
-      "notes": null
+      "notes": null,
+      "review_status": "UNREVIEWED",
+      "human_modified": false,
+      "locked": false,
+      "confirmation_id": null,
+      "correction_id": null,
+      "revision_id": null,
+      "previous_version_id": null,
+      "revision_reason": null,
+      "reviewed_at": null
     }
   ]
 }

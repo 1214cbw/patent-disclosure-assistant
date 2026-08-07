@@ -170,3 +170,62 @@ python scripts/run_v2_demo.py
 ## LLM Limitations
 
 LLM 是推理引擎，不是事实来源、正式查新结论或法律判断。关键词语义验证是轻量第一层，不等于专利专业人员的技术等同/充分公开判断。所有 AI 输出仍需发明人和专利专业人员复核。
+
+## Real Case Workflow（V2-P1）
+
+V2-P1 的真实案件保存在 Git 隔离的 `workspace/private_cases/REAL-*`。系统不会扫描桌面或论文目录；必须依次显式执行 `real-case-create --authorized`、`real-case-ingest CASE PATH` 和 `real-case-a1 CASE`。真实案件首次运行固定停在 A1，不生成发明点、Claims 或 Word。
+
+```powershell
+python -m app.cli real-case-create REAL-2026-001 --title "一种……方法" --authorized
+python -m app.cli real-case-ingest REAL-2026-001 D:\approved-materials
+python -m app.cli real-case-a1 REAL-2026-001
+python -m app.cli checkpoint REAL-2026-001
+```
+
+完整 A1→A2→B→C 操作见 [docs/real_case_workflow.md](docs/real_case_workflow.md)。
+
+## Human Correction Loop
+
+人工审查使用严格 Pydantic JSON，而不是只改 Markdown：
+
+```text
+AI/规则输出 -> HumanCorrection -> Revision Graph -> Human Lock
+            -> Dependency STALE -> 最小范围重生成
+```
+
+人工编辑不会自动冒充 `SOURCE_FACT`；新增而未被原 Evidence 完整支持的内容标记为 `HUMAN_CONFIRMED`。人工锁定对象不会被后续模型覆盖，除非显式 `UNLOCK`。审计日志只保存目标、动作、时间和内容哈希。
+
+## Human-confirmed Facts
+
+事实状态包括 `SOURCE_FACT`、`HUMAN_CONFIRMED`、`INFERRED`、`AI_SUGGESTION` 和 `UNVERIFIED`。发明人后续补充仍单独保存为 `INVENTOR_ASSERTION`。每次重要修订保留 `previous_version_id`、原因、确认ID和时间戳。
+
+## Checkpoints A1 / A2 / B / C
+
+- A1：逐项审核技术理解；未完成不能进入发明挖掘。
+- A2：批准、拒绝、编辑、合并、拆分或重排候选发明点。
+- B：审核保护策略、必要特征、术语、支持缺口，并选择 Broad/Balanced/Conservative。
+- C：同时审核 Claim 长句和 Feature Graph；Feature 修改后自动重写 Claim、支持矩阵和范围评估。
+
+所有对象必须脱离 `UNREVIEWED` 才可批准。P0 发明人问题会阻断 B/C，真实案件禁止自动批准。
+
+## Claim Scope Review
+
+范围审查组合 Feature Count、Protection Strategy、Novelty Matrix、Support Matrix、Parameter Usage 和 Terminology Registry，确定性检测 `PARAMETER_LOCKING_RISK`、`IMPLEMENTATION_NARROWING`、`ENABLEMENT_RISK`、`SUPPORT_SCOPE_RISK` 与 `NOVELTY_RISK`。三种宽窄版本由同一个 Feature Pool 渲染，不允许为“写宽”添加不存在的特征。
+
+```powershell
+python -m app.cli claim-scope REAL-2026-001
+```
+
+## Model Evaluation
+
+`evaluation_runs/RUN-*` 固定保存 Evidence 哈希、Prompt/Schema版本、Provider、Model、temperature 和起始检查点。报告包含 Fact 直接接受率、Minor/Major/Reject/Omission、候选接受代理指标、Claim Feature 接受率、不支持特征、范围缩窄、调用次数、Tokens和成本。
+
+```powershell
+python -m app.cli evaluation-report REAL-2026-001 --run-id RUN-001
+```
+
+## Confidential Processing and LLM Approval
+
+真实案件 LLM 权限由全局 `PATENT_LLM_MODE` 与 `real_case_manifest.json` 的案件策略共同决定，取更严格结果。外部模式还必须设置 `external_llm_approved=true`；仅存在 API Key 不构成授权。本地模型要求全局和案件均为 `local`。真实材料、缓存、评审记录、`output/real_case/` 和 API Key 均不提交 Git。
+
+架构细节见 [docs/architecture/v2_p1.md](docs/architecture/v2_p1.md)。

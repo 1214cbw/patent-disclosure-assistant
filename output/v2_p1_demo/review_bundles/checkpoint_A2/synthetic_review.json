@@ -1,0 +1,48 @@
+{
+  "schema_version": "2.0",
+  "case_id": "SYN-P1-DEMO-001",
+  "checkpoint": "A2",
+  "corrections": [
+    {
+      "schema_version": "2.0",
+      "correction_id": "HC-A2-MERGE",
+      "case_id": "SYN-P1-DEMO-001",
+      "target_type": "candidate",
+      "target_id": "INV-DET-001",
+      "original_value": null,
+      "corrected_value": {
+        "candidate_ids": [
+          "INV-DET-001",
+          "INV-DET-002"
+        ],
+        "new_id": "INV-M001"
+      },
+      "action": "MERGE",
+      "severity": "MINOR",
+      "reason": "两个候选属于同一核心构思",
+      "reason_category": "OTHER",
+      "created_at": "2026-08-07T10:01:54.171960+00:00",
+      "confirmed_by_user": true,
+      "actor": "local_user",
+      "lock_after_apply": true
+    },
+    {
+      "schema_version": "2.0",
+      "correction_id": "HC-A2-ACK-SECOND",
+      "case_id": "SYN-P1-DEMO-001",
+      "target_type": "candidate",
+      "target_id": "INV-DET-002",
+      "original_value": null,
+      "corrected_value": null,
+      "action": "ACCEPT",
+      "severity": "NONE",
+      "reason": null,
+      "reason_category": "OTHER",
+      "created_at": "2026-08-07T10:01:54.171960+00:00",
+      "confirmed_by_user": true,
+      "actor": "local_user",
+      "lock_after_apply": true
+    }
+  ],
+  "risk_acknowledged": false
+}

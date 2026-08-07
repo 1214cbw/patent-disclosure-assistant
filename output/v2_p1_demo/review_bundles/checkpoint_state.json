@@ -1,0 +1,106 @@
+{
+  "A1": {
+    "schema_version": "2.0",
+    "checkpoint": "A1",
+    "status": "APPROVED",
+    "required_object_ids": [
+      "FACT-0001",
+      "FACT-0002",
+      "FACT-0003",
+      "FACT-0004",
+      "FACT-0005",
+      "FACT-0006",
+      "FACT-0007",
+      "FACT-0008",
+      "FACT-0009",
+      "FACT-0010",
+      "FACT-0011",
+      "FACT-0012"
+    ],
+    "reviewed_object_ids": [
+      "FACT-0001",
+      "FACT-0002",
+      "FACT-0003",
+      "FACT-0004",
+      "FACT-0005",
+      "FACT-0006",
+      "FACT-0007",
+      "FACT-0008",
+      "FACT-0009",
+      "FACT-0010",
+      "FACT-0011",
+      "FACT-0012"
+    ],
+    "blocking_question_ids": [],
+    "risk_acknowledged": false,
+    "updated_at": "2026-08-07T10:01:54.013547+00:00"
+  },
+  "A2": {
+    "schema_version": "2.0",
+    "checkpoint": "A2",
+    "status": "APPROVED",
+    "required_object_ids": [
+      "INV-DET-001",
+      "INV-DET-002"
+    ],
+    "reviewed_object_ids": [
+      "INV-DET-001",
+      "INV-DET-002",
+      "INV-M001"
+    ],
+    "blocking_question_ids": [],
+    "risk_acknowledged": false,
+    "updated_at": "2026-08-07T10:01:54.321165+00:00"
+  },
+  "B": {
+    "schema_version": "2.0",
+    "checkpoint": "B",
+    "status": "APPROVED",
+    "required_object_ids": [
+      "scope_strategy",
+      "mandatory-1",
+      "mandatory-2",
+      "mandatory-3",
+      "mandatory-4"
+    ],
+    "reviewed_object_ids": [
+      "mandatory-1",
+      "mandatory-2",
+      "mandatory-3",
+      "mandatory-4",
+      "scope_strategy"
+    ],
+    "blocking_question_ids": [],
+    "risk_acknowledged": false,
+    "updated_at": "2026-08-07T10:01:54.559495+00:00"
+  },
+  "C": {
+    "schema_version": "2.0",
+    "checkpoint": "C",
+    "status": "APPROVED",
+    "required_object_ids": [
+      "CORE-F001",
+      "CORE-F002",
+      "CORE-F003"
+    ],
+    "reviewed_object_ids": [
+      "CORE-F001",
+      "CORE-F002",
+      "CORE-F003",
+      "CORE-F004"
+    ],
+    "blocking_question_ids": [],
+    "risk_acknowledged": true,
+    "updated_at": "2026-08-07T10:01:55.104650+00:00"
+  },
+  "FINAL": {
+    "schema_version": "2.0",
+    "checkpoint": "FINAL",
+    "status": "APPROVED",
+    "required_object_ids": [],
+    "reviewed_object_ids": [],
+    "blocking_question_ids": [],
+    "risk_acknowledged": false,
+    "updated_at": "2026-08-07T10:02:14.506072+00:00"
+  }
+}
