@@ -105,8 +105,8 @@ class DisclosureOnlyPipeline:
     def __init__(self, settings: Settings, provider=None):
         self.settings = settings
         self.provider = provider
-        self.store = CaseStore(settings.workspace_root)
         self.manager = RealCaseManager(settings.project_root)
+        self.store = self.manager.case_store  # Use real case store for private_cases
         self.renderer = DocumentRenderer(settings.template_root)
         self.validator = PatentDocxValidator()
 
@@ -410,7 +410,11 @@ def _minimal_strategy_for_disclosure(understanding):
 
 def _first_candidate(understanding):
     """Create a minimal invention candidate for disclosure writing."""
-    from patent_agent.core.models import GroundedInventionCandidate, GroundedStatement
+    from patent_agent.core.models import (
+        CandidateScoreBreakdown,
+        GroundedInventionCandidate,
+        GroundedStatement,
+    )
 
     facts = [f for f in understanding.facts if f.review_status != ReviewStatus.REJECTED]
     mandatory = []
@@ -431,12 +435,49 @@ def _first_candidate(understanding):
         confidence=0.9,
     )
 
+    tech_problem = GroundedStatement(
+        text="现有技术存在技术效果不理想的问题。" if not facts else facts[0].statement,
+        evidence_ids=facts[0].evidence_ids if facts else [],
+        status=EvidenceStatus.INFERRED,
+        confidence=0.7,
+    )
+
+    tech_effects = [
+        GroundedStatement(
+            text="提升技术方案的整体性能。",
+            evidence_ids=facts[0].evidence_ids if facts else [],
+            status=EvidenceStatus.INFERRED,
+            confidence=0.7,
+        )
+    ]
+
+    all_evidence = sorted(set(
+        eid for f in facts for eid in f.evidence_ids
+    ))
+
     return GroundedInventionCandidate(
         candidate_id="INV-D001",
         title="技术方案核心",
+        technical_problem=tech_problem,
         core_idea=core,
         mandatory_features=mandatory[:5] if len(mandatory) >= 5 else mandatory,
         optional_features=mandatory[5:] if len(mandatory) > 5 else [],
+        technical_effects=tech_effects,
+        evidence_ids=all_evidence,
+        novelty_hypothesis="待专利代理机构评估。Disclosure-only mode: 未进行新颖性检索。",
+        inventiveness_hypothesis="待专利代理机构评估。",
+        protection_value_score=0.7,
+        evidence_strength_score=0.8,
+        risk_score=0.3,
+        score_breakdown=CandidateScoreBreakdown(
+            evidence_strength=0.8,
+            novelty_potential=0.5,
+            technical_importance=0.7,
+            claimability=0.6,
+            alternative_coverage=0.5,
+            implementation_support=0.8,
+            risk=0.3,
+        ),
         review_status=ReviewStatus.LOCKED,
         locked=True,
     )
@@ -691,10 +732,12 @@ def _write_internal_outputs(
         disclosure.model_dump_json(indent=2), encoding="utf-8"
     )
 
-    # Traceability
+    # Traceability (disclosure-only: no claims, so use minimal traceability)
     from patent_agent.review import build_traceability, render_traceability_markdown
+    from patent_agent.core.models import GroundedClaimSet, PatentClaimV2
 
-    traceability = build_traceability(disclosure, None, understanding, figures)
+    empty_claims = GroundedClaimSet(title="", claims=[PatentClaimV2(claim_number=0, claim_type="method", features=[], rendered_text="", draft_strategy="balanced")])
+    traceability = build_traceability(disclosure, empty_claims, understanding, figures)
     (internal / "traceability.json").write_text(
         traceability.model_dump_json(indent=2), encoding="utf-8"
     )
