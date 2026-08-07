@@ -1,22 +1,23 @@
 {
   "schema_version": "2.0",
   "task": "Patent Agent Long-Run Completion",
-  "phase": "Phase 3",
-  "subphase": "Local review UI",
+  "phase": "Phase 5",
+  "subphase": "Security/Test/Docs and final checkpoint",
   "status": "COMPLETED",
-  "last_completed_step": "FastAPI local review workbench, job APIs, and start/stop scripts complete",
-  "next_step": "Run synthetic UI E2E through final Word/OMML and verify documents",
-  "git_commit": "",
-  "tests_last_run": "60 passed; browser QA desktop/768/390 passed",
-  "updated_at": "2026-08-07T12:04:16.301317+00:00",
+  "last_completed_step": "All non-human productization tasks completed",
+  "next_step": "Human reviews REAL-PAPER-001 A1 v2 and confirms Publication Metadata",
+  "git_commit": "83e7b07",
+  "tests_last_run": "64 automated tests passed; V1/V2-P0/V2-P1 demos passed; synthetic UI E2E, Word COM and visual QA passed",
+  "updated_at": "2026-08-07T12:24:32.146923+00:00",
   "blocking_reason": null,
   "case_id": null,
   "error_code": null,
-  "attempts": 3,
+  "attempts": 4,
   "stage_states": {
     "baseline": "COMPLETED",
     "config_provider_progress": "COMPLETED",
     "evidence_refinement": "COMPLETED",
-    "Local review UI": "COMPLETED"
+    "Local review UI": "COMPLETED",
+    "Security/Test/Docs and final checkpoint": "COMPLETED"
   }
 }
