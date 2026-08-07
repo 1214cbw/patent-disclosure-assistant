@@ -25,3 +25,4 @@ runtime/job_errors/
 runtime/patent_agent_server.json
 runtime/patent_agent_server.log
 runtime/progress/REAL-*.json
+reference/

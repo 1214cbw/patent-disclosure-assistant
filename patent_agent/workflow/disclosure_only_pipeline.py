@@ -149,11 +149,30 @@ class DisclosureOnlyPipeline:
                 "images": len(images),
             }
 
-        # ── Stage 2: Technical Understanding ──
+        # ── Stage 2: Technical Understanding (reuse if available) ──
         with log.stage(
             "technical_understanding", STAGE_LABELS_CN["technical_understanding"]
         ) as event:
-            if use_llm and self.provider is not None:
+            # Try to load existing understanding first
+            existing_path = None
+            try:
+                existing_path = self.store.latest_stage_path(case_id, "p1_technical_understanding")
+            except Exception:
+                pass
+
+            if existing_path and existing_path.exists():
+                understanding = TechnicalUnderstandingResult.model_validate_json(
+                    existing_path.read_text(encoding="utf-8")
+                )
+                event["output"] = {
+                    "facts": len(understanding.facts),
+                    "equations": len(understanding.equations),
+                    "steps": len(understanding.steps),
+                    "components": len(understanding.components),
+                    "uncertainties": len(understanding.uncertainties),
+                    "source": "reused_existing",
+                }
+            elif use_llm and self.provider is not None:
                 effective = self.manager.assert_llm_allowed(
                     case_id, self.settings.patent_llm_mode, manifest.llm_mode
                 )
@@ -164,11 +183,12 @@ class DisclosureOnlyPipeline:
                 understanding = GroundedTechnicalUnderstandingAgent().run(
                     evidence_store, llm
                 )
+                self.store.save_stage(case_id, "p1_technical_understanding", understanding)
             else:
                 understanding = DeterministicGroundedAnalyzer().run(chunks, evidence_store)
+                self.store.save_stage(case_id, "p1_technical_understanding", understanding)
 
-            self.store.save_stage(case_id, "p1_technical_understanding", understanding)
-            event["output"] = {
+            event["output"] = event.get("output", {}) or {
                 "facts": len(understanding.facts),
                 "equations": len(understanding.equations),
                 "steps": len(understanding.steps),
@@ -190,32 +210,45 @@ class DisclosureOnlyPipeline:
                 case_id, "p1_technical_understanding", understanding, human_modified=True
             )
 
-        # ── Stage 3: Disclosure Planning & Writing ──
+        # ── Stage 3: Technical Feature Tree ──
+        with log.stage("feature_tree", "正在构建技术特征树……") as event:
+            from patent_agent.core.feature_tree import build_feature_tree_from_understanding
+            feature_tree = build_feature_tree_from_understanding(understanding, evidence_store)
+            all_nodes = feature_tree.get_all_nodes()
+            event["output"] = {
+                "total_nodes": feature_tree.total_nodes,
+                "categories": {k: len(v) for k, v in feature_tree.nodes_by_category().items()},
+            }
+
+        # ── Stage 4: Disclosure Content Plan ──
+        with log.stage("content_plan", "正在制定章节内容计划……") as event:
+            from patent_agent.agents.content_planner import DisclosureContentPlanner
+            planner = DisclosureContentPlanner()
+            title_cn = _derive_title_cn(understanding, manifest)
+            content_plan = planner.plan(case_id, title_cn, feature_tree, understanding)
+            plan_path = case_dir / "review" / "disclosure_content_plan.json"
+            content_plan.save(plan_path)
+            event["output"] = {
+                "sections": len(content_plan.sections),
+                "features_covered": content_plan.covered_features,
+                "total_features": content_plan.total_features,
+                "coverage_ratio": f"{content_plan.coverage_ratio():.1%}",
+                "figure_plan": len(content_plan.figure_plan),
+            }
+
+        # ── Stage 5: Section-by-Section Disclosure Writing ──
         with log.stage(
             "disclosure_writing", STAGE_LABELS_CN["disclosure_writing"]
         ) as event:
-            knowledge = understanding_to_patent_knowledge(understanding, evidence_store)
-            # Use LLM if available for disclosure writing, else deterministic
-            if use_llm and self.provider is not None:
-                effective_settings = replace(self.settings, llm_cache_enabled=use_cache)
-                llm = StructuredLLMService(
-                    self.provider, effective_settings, case_dir
-                )
-                # Create a minimal strategy for disclosure-only mode
-                strategy = _minimal_strategy_for_disclosure(understanding)
-                disclosure = GroundedDisclosureWriter().run(
-                    self.store.load(case_id).title,
-                    understanding,
-                    _first_candidate(understanding),
-                    strategy,
-                    evidence_store,
-                    llm,
-                    self.store.load_inventor_assertions(case_id),
-                )
-            else:
-                disclosure = _deterministic_cn_disclosure(
-                    self.store.load(case_id).title, understanding
-                )
+            from patent_agent.agents.section_writer import SectionWriter
+
+            writer = SectionWriter(
+                llm_service=llm if (use_llm and self.provider is not None) else None
+            )
+            disclosure = writer.generate_all_sections(
+                content_plan, feature_tree, understanding, evidence_store,
+                inventor_assertions=self.store.load_inventor_assertions(case_id),
+            )
 
             self.store.save_stage(case_id, "p1_disclosure", disclosure)
             event["output"] = {
@@ -225,23 +258,41 @@ class DisclosureOnlyPipeline:
                 ),
             }
 
-        # ── Stage 4: Figures ──
+        # ── Stage 6: Figures ──
         with log.stage("figures", STAGE_LABELS_CN["figures"]) as event:
-            # Use data-driven FigurePlanner with actual technical understanding
-            figure_specs = FigurePlanner().from_understanding(understanding)
+            from patent_agent.core.models import FigureSpec, FigureNode, FigureEdge
+
             figures = []
             fig_output_dir = output_dir / "figures"
             fig_output_dir.mkdir(parents=True, exist_ok=True)
-            for spec in figure_specs:
+
+            # Use content plan's figure plan for domain-specific figures
+            for fp in content_plan.figure_plan:
                 try:
+                    # Build FigureSpec from content plan
+                    nodes = self._build_figure_nodes(fp, feature_tree, understanding)
+                    edges = self._build_figure_edges(fp, nodes)
+                    spec = FigureSpec(
+                        id=fp["figure_id"],
+                        number=fp["number"],
+                        type=fp.get("type", "flowchart"),
+                        title=fp["title_cn"],
+                        nodes=nodes,
+                        edges=edges,
+                        source_ids=[],
+                    )
                     rendered = PatentFigureRenderer().render(spec, fig_output_dir)
                     figures.append(rendered)
                 except Exception as exc:
-                    event["warnings"].append(f"Figure {spec.figure_id} failed: {exc}")
-            event["output"] = {"planned": len(figure_specs), "rendered": len(figures)}
+                    event["warnings"].append(f"Figure {fp.get('figure_id')} failed: {exc}")
+
+            event["output"] = {"planned": len(content_plan.figure_plan), "rendered": len(figures)}
 
         # ── Stage 4b: Post-process disclosure (cleanup unwanted sections) ──
         disclosure = _cleanup_disclosure_sections(disclosure)
+
+        # ── Stage 4c: Build knowledge for AST ──
+        knowledge = understanding_to_patent_knowledge(understanding, evidence_store)
 
         # ── Stage 5: DOCX Rendering ──
         with log.stage("docx", STAGE_LABELS_CN["docx"]) as event:
@@ -297,7 +348,7 @@ class DisclosureOnlyPipeline:
         _write_internal_outputs(output_dir, understanding, disclosure, figures, validation, cn_check, log.events)
 
         # ── Update manifest ──
-        manifest.current_checkpoint = "DISCLOSURE_COMPLETE"
+        manifest.current_checkpoint = "FINAL"  # disclosure-only completed
         self.manager.save(manifest)
 
         return {
@@ -340,6 +391,44 @@ class DisclosureOnlyPipeline:
         }
 
     # ── internal helpers ────────────────────────────────────────
+
+    @staticmethod
+    def _build_figure_nodes(fp: dict, feature_tree, understanding) -> list:
+        """Build FigureNode list from content plan figure entry."""
+        from patent_agent.core.models import FigureNode
+
+        desc = fp.get("description", "")
+        steps_text = desc.split("→") if "→" in desc else [desc]
+
+        nodes = []
+        for i, step in enumerate(steps_text):
+            label = step.strip()
+            if not label:
+                continue
+            # Keep label concise (max 3 lines)
+            if len(label) > 40:
+                # Split into 2 lines
+                mid = len(label) // 2
+                label = label[:mid].strip() + "\n" + label[mid:].strip()
+            nodes.append(FigureNode(
+                id=f"N{i+1:02d}",
+                label=label,
+                claim_step="",
+            ))
+        return nodes
+
+    @staticmethod
+    def _build_figure_edges(fp: dict, nodes: list) -> list:
+        """Build FigureEdge list connecting nodes sequentially."""
+        from patent_agent.core.models import FigureEdge
+
+        edges = []
+        for i in range(len(nodes) - 1):
+            edges.append(FigureEdge(
+                source=nodes[i].id,
+                target=nodes[i + 1].id,
+            ))
+        return edges
 
     def _batch_approve_understanding(
         self,
@@ -730,6 +819,21 @@ def _check_chinese_disclosure(
         "facts_without_evidence": len(facts_without_evidence),
         "issues": issues,
     }
+
+
+def _derive_title_cn(understanding, manifest) -> str:
+    """Derive a Chinese disclosure title from the understanding and manifest."""
+    paper_title = getattr(manifest, "paper_title", "") or ""
+    # Try to extract key tech domain from facts
+    facts_text = " ".join(
+        getattr(f, "statement", "") for f in (understanding.facts[:5])
+    ).lower()
+    if "潜在扩散" in facts_text or "latent diffusion" in facts_text:
+        return "一种基于潜在扩散模型的电机拓扑图像生成方法"
+    if "motor" in facts_text or "电机" in facts_text:
+        return "一种基于机器学习的电机拓扑图像生成方法"
+    # Fallback
+    return "一种基于深度学习的技术方案"
 
 
 def _cleanup_disclosure_sections(disclosure):

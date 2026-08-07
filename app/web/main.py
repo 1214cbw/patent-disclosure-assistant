@@ -213,6 +213,67 @@ async def upload_real_source(case_id: str, filename: str, request: Request):
     return {"file": safe_name, "size": len(body), "status": "INGESTED"}
 
 
+# ── Supplemental Image Upload ──
+
+SUPPLEMENTAL_IMAGE_TYPES = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif"}
+SUPPLEMENTAL_MAX_BYTES = 20 * 1024 * 1024  # 20MB per image
+
+
+class SupplementalImageMeta(BaseModel):
+    caption: str = ""
+    image_type: str = "auto"  # auto | structure | flowchart | experiment | other
+    use_in_disclosure: bool = True
+
+
+@app.put("/api/real-cases/{case_id}/supplemental-images/{filename}")
+async def upload_supplemental_image(case_id: str, filename: str, request: Request):
+    """上传补充技术图片（流程图、结构图、实验图等）。"""
+    _real_manifest(case_id)
+    safe_name = Path(filename).name
+    suffix = Path(safe_name).suffix.lower()
+    if suffix not in SUPPLEMENTAL_IMAGE_TYPES:
+        raise HTTPException(400, f"不支持的图片格式：{suffix}。支持：{', '.join(SUPPLEMENTAL_IMAGE_TYPES)}")
+    body = await request.body()
+    if not body or len(body) > SUPPLEMENTAL_MAX_BYTES:
+        raise HTTPException(400, f"图片大小必须在1字节至{SUPPLEMENTAL_MAX_BYTES // 1024 // 1024}MB之间")
+    target_dir = real_cases.case_dir(case_id) / "supplemental_images"
+    target_dir.mkdir(parents=True, exist_ok=True)
+    target = target_dir / safe_name
+    atomic_write_bytes(target, body)
+    return {"file": safe_name, "size": len(body), "status": "UPLOADED"}
+
+
+@app.get("/api/real-cases/{case_id}/supplemental-images")
+def list_supplemental_images(case_id: str):
+    """列出已上传的补充图片。"""
+    _real_manifest(case_id)
+    target_dir = real_cases.case_dir(case_id) / "supplemental_images"
+    if not target_dir.exists():
+        return []
+    images = []
+    for path in sorted(target_dir.rglob("*")):
+        if path.is_file() and path.suffix.lower() in SUPPLEMENTAL_IMAGE_TYPES:
+            images.append({
+                "name": path.name,
+                "size": path.stat().st_size,
+                "preview_url": f"/api/real-cases/{case_id}/supplemental-images/{path.name}",
+            })
+    return images
+
+
+@app.get("/api/real-cases/{case_id}/supplemental-images/{filename}")
+def preview_supplemental_image(case_id: str, filename: str):
+    """预览补充图片。"""
+    _real_manifest(case_id)
+    root = (real_cases.case_dir(case_id) / "supplemental_images").resolve()
+    target = (root / Path(filename).name).resolve()
+    if not target.is_relative_to(root) or not target.is_file():
+        raise HTTPException(404, "图片不存在")
+    media_types = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+                   ".webp": "image/webp", ".gif": "image/gif", ".bmp": "image/bmp"}
+    return FileResponse(target, media_type=media_types.get(target.suffix.lower(), "image/png"))
+
+
 @app.put("/api/real-cases/{case_id}/prior-art/{filename}")
 async def upload_prior_art(case_id: str, filename: str, request: Request):
     _real_manifest(case_id)
