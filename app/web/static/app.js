@@ -150,6 +150,7 @@ async function createRealCase() {
   const caseId = $('#new-case-id').value.trim() || 'PAPER-' + Date.now().toString(36).toUpperCase();
   const title = $('#new-title').value.trim() || '未命名项目';
   try {
+    const model = $('#new-project-model')?.value || 'deepseek-v4-flash';
     await api('/api/real-cases', jsonOptions('POST', {
       case_id: caseId,
       title: title,
@@ -157,6 +158,7 @@ async function createRealCase() {
       llm_mode: 'external-approved',
       external_llm_approved: true,
       synthetic: false,
+      llm_model: model,
     }));
     state.caseId = caseId;
     localStorage.setItem('patentAgentCase', caseId);
@@ -525,10 +527,14 @@ async function loadAllProjects() {
 async function loadSettingsPage() {
   try {
     const data = await api('/api/settings');
+    const models = (data.models_display || []).map(m =>
+      `${esc(m.display_name)}${m.recommended ? '（推荐）' : ''}`
+    ).join(' / ');
     $('#settings-card').innerHTML = `
       <h3>AI 模型</h3>
-      <p>提供商：<b>${esc(data.provider)}</b></p>
-      <p>模型：<b>${esc(data.model)}</b></p>
+      <p>提供商：<b>${esc(data.provider)} · DeepSeek</b></p>
+      <p>可选模型：<b>${models}</b></p>
+      <p>系统默认：<b>${esc(data.default_model)}</b></p>
       <p>连接：<b style="color:${data.api_configured?'#087c78':'#a43434'}">${data.api_configured ? '正常' : '未配置'}</b></p>
       <p>模式：<b>${esc(data.mode)}</b></p>
       <p>运行模式：<b>${esc(data.app_mode)}</b></p>

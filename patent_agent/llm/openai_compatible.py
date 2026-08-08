@@ -15,10 +15,15 @@ from .structured_output import validate_structured_output
 class OpenAICompatibleProvider(LLMProvider):
     provider_name = "openai-compatible"
 
-    def __init__(self, settings: Settings):
+    def __init__(self, settings: Settings, model: str | None = None):
         self.settings = settings
-        self.model = settings.llm_model
+        self.model = model or settings.default_model
         self.last_usage: dict[str, int] = {}
+
+    def set_model(self, model: str):
+        """Dynamically change the model for subsequent calls."""
+        from patent_agent.llm.model_registry import validate_model
+        self.model = validate_model(model)
 
     def generate_text(self, *, system_prompt: str, user_prompt: str, context: dict | None = None) -> LLMResponse:
         return self._generate_text(system_prompt=system_prompt, user_prompt=user_prompt, context=context, json_mode=False)

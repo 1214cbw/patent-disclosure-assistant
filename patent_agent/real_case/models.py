@@ -27,6 +27,8 @@ class RealCaseManifest(StrictSchema):
     preprint_status: Literal["UNKNOWN", "YES", "NO"] = "UNKNOWN"
     patent_filed_before_publication: Literal["UNKNOWN", "YES", "NO", "NOT_APPLICABLE"] = "UNKNOWN"
     publication_review_status: Literal["UNREVIEWED", "CONFIRMED"] = "UNREVIEWED"
+    # V6.5: project-level model selection
+    llm_model: str = ""  # Empty = use system default
 
     @model_validator(mode="after")
     def safe_policy(self):

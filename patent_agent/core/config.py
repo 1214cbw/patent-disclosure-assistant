@@ -32,7 +32,7 @@ class Settings:
     output_root: Path
     llm_base_url: str = ""
     llm_api_key: str = ""
-    llm_model: str = ""
+    llm_model: str = ""  # Legacy model field (backward compat)
     llm_provider: str = "openai-compatible"
     llm_timeout: float = 120.0
     llm_max_retries: int = 1
@@ -42,7 +42,34 @@ class Settings:
     llm_input_price_per_million: float | None = None
     llm_output_price_per_million: float | None = None
     allow_external_llm: bool = False
-    app_mode: str = "disclosure_only"  # "disclosure_only" | "full_patent"
+    app_mode: str = "disclosure_only"
+    # V6.5 dual-model fields
+    llm_default_model: str = "deepseek-v4-flash"
+    llm_allowed_models: str = "deepseek-v4-flash,deepseek-v4-pro"
+    cache_schema_version: int = 2
+
+    @property
+    def default_model(self) -> str:
+        """Resolved default model (V6.5+ dual-model support)."""
+        from patent_agent.llm.model_registry import DEFAULT_MODEL, validate_model
+        if self.llm_default_model:
+            try:
+                return validate_model(self.llm_default_model)
+            except ValueError:
+                pass
+        # Legacy fallback
+        if self.llm_model:
+            try:
+                return validate_model(self.llm_model)
+            except ValueError:
+                pass
+        return DEFAULT_MODEL
+
+    @property
+    def allowed_models(self) -> list[str]:
+        """Parse allowed models list."""
+        raw = self.llm_allowed_models or ""
+        return [m.strip() for m in raw.split(",") if m.strip()]
 
     @classmethod
     def load(cls, project_root: Path | None = None) -> "Settings":
@@ -73,7 +100,27 @@ class Settings:
             llm_output_price_per_million=_optional_float_value(value("LLM_OUTPUT_PRICE_PER_MILLION")),
             allow_external_llm=mode in {"external-approved", "local"},
             app_mode=value("APP_MODE", "disclosure_only").strip().lower(),
+            llm_default_model=value("LLM_DEFAULT_MODEL", "deepseek-v4-flash").strip(),
+            llm_allowed_models=value("LLM_ALLOWED_MODELS", "deepseek-v4-flash,deepseek-v4-pro").strip(),
+            cache_schema_version=int(value("CACHE_SCHEMA_VERSION", "2")),
         )
+
+    def safe_summary(self) -> dict:
+        return {
+            "llm_base_url_configured": bool(self.llm_base_url),
+            "llm_api_key_configured": bool(self.llm_api_key),
+            "llm_model": self.llm_model,
+            "llm_provider": self.llm_provider,
+            "patent_llm_mode": self.patent_llm_mode,
+            "llm_timeout": self.llm_timeout,
+            "llm_max_retries": self.llm_max_retries,
+            "llm_cache_enabled": self.llm_cache_enabled,
+            "debug_save_llm_payloads": self.debug_save_llm_payloads,
+            "allow_external_llm": self.allow_external_llm,
+            "app_mode": self.app_mode,
+            "default_model": self.default_model,
+            "allowed_models": self.allowed_models,
+        }
 
     def safe_summary(self) -> dict:
         return {

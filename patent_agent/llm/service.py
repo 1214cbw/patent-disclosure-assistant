@@ -28,7 +28,14 @@ class StructuredLLMService:
     def generate(self, *, stage: str, system_prompt: str, user_prompt: str, response_model: type[BaseModel], context: dict | None, prompt_version: str, use_cache: bool | None = None) -> BaseModel:
         cache_allowed = self.settings.llm_cache_enabled if use_cache is None else use_cache
         input_hash = _hash_json({"system": system_prompt, "user": user_prompt, "context": context})
-        cache_key = _hash_json({"provider": self.provider.provider_name, "model": self.provider.model, "prompt_version": prompt_version, "input_hash": input_hash, "schema": response_model.model_json_schema()})
+        cache_key = _hash_json({
+            "provider": self.provider.provider_name,
+            "model": self.provider.model,
+            "prompt_version": prompt_version,
+            "input_hash": input_hash,
+            "schema": response_model.model_json_schema(),
+            "cache_schema_version": self.settings.cache_schema_version,
+        })
         cache_path = self.cache_dir / f"{cache_key}.json"
         if cache_allowed and cache_path.exists():
             result = response_model.model_validate_json(cache_path.read_text(encoding="utf-8"))

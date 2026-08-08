@@ -58,6 +58,12 @@ class RealCaseCreate(CaseCreate):
     llm_mode: str = "disabled"
     external_llm_approved: bool = False
     synthetic: bool = False
+    llm_model: str = ""  # V6.5: project-level model selection, empty=system default
+
+
+class ModelUpdate(BaseModel):
+    """Update project model selection."""
+    llm_model: str = Field(min_length=1)
 
 
 class PublicationMetadata(BaseModel):
@@ -170,6 +176,13 @@ def get_case(case_id: str):
 def create_real_case(payload: RealCaseCreate):
     if not payload.authorized:
         raise HTTPException(400, "必须明确确认已获授权处理资料")
+    # Validate model if provided
+    if payload.llm_model:
+        from patent_agent.llm.model_registry import validate_model
+        try:
+            validate_model(payload.llm_model)
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
     try:
         manifest = real_cases.create(
             payload.case_id,
@@ -178,10 +191,53 @@ def create_real_case(payload: RealCaseCreate):
             external_llm_approved=payload.external_llm_approved,
             synthetic=payload.synthetic,
             title=payload.title,
+            llm_model=payload.llm_model or "",
         )
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
     return manifest.model_dump(mode="json")
+
+
+# ── V6.5 Model Selection API ──
+
+@app.get("/api/models")
+def list_models():
+    """List available AI models for UI display."""
+    from patent_agent.llm.model_registry import allowed_models_display, DEFAULT_MODEL
+    return {
+        "models": allowed_models_display(),
+        "default": DEFAULT_MODEL,
+    }
+
+
+@app.put("/api/real-cases/{case_id}/model")
+def update_project_model(case_id: str, payload: ModelUpdate):
+    """Update a project's selected AI model."""
+    from patent_agent.llm.model_registry import validate_model
+    try:
+        validated = validate_model(payload.llm_model)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+    manifest = _real_manifest(case_id)
+    manifest.llm_model = validated
+    real_cases.save(manifest)
+    return {"case_id": case_id, "llm_model": validated, "status": "UPDATED"}
+
+
+@app.get("/api/real-cases/{case_id}/model")
+def get_project_model(case_id: str):
+    """Get a project's current model selection."""
+    from patent_agent.llm.model_registry import DEFAULT_MODEL, get_model_info
+    manifest = _real_manifest(case_id)
+    model_id = manifest.llm_model if hasattr(manifest, 'llm_model') and manifest.llm_model else DEFAULT_MODEL
+    info = get_model_info(model_id)
+    return {
+        "case_id": case_id,
+        "llm_model": model_id,
+        "display_name": info.display_name if info else model_id,
+        "is_default": not (hasattr(manifest, 'llm_model') and manifest.llm_model),
+    }
 
 
 @app.get("/api/real-cases")
@@ -678,15 +734,20 @@ def resume(case_id: str | None = None):
 
 @app.get("/api/settings")
 def safe_settings():
+    from patent_agent.llm.model_registry import DEFAULT_MODEL, allowed_models_display
     return {
         "provider": settings.llm_provider,
-        "model": settings.llm_model,
+        "model": settings.default_model,
+        "legacy_model": settings.llm_model,
         "mode": settings.patent_llm_mode,
         "api_configured": bool(settings.llm_api_key),
         "cache_enabled": settings.llm_cache_enabled,
         "max_upload_mb": MAX_UPLOAD_BYTES // 1024 // 1024,
         "privacy": "本地单用户；仅显式授权案件可调用外部 LLM。",
         "app_mode": settings.app_mode,
+        "default_model": settings.default_model,
+        "allowed_models": settings.allowed_models,
+        "models_display": allowed_models_display(),
     }
 
 
