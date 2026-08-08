@@ -43,23 +43,39 @@ def _get_chinese_font(size: int) -> ImageFont.FreeTypeFont:
     except Exception: return ImageFont.load_default()
 
 
-# ── Math rendering (lazy import) ─────────────────────────────────
+# ── Math rendering (lazy init with Chinese height) ──────────────
 
 _math_renderer = None
+_chinese_body_height = None
 
 
 def _get_math_renderer():
     global _math_renderer
     if _math_renderer is None:
-        from .figure_math_renderer import FigureMathRenderer
-        _math_renderer = FigureMathRenderer(dpi=300, fontsize=20)
+        from .figure_math_renderer import FigureMathRenderer, FigureTypographyConfig
+        cfg = FigureTypographyConfig()
+        if _chinese_body_height:
+            cfg.chinese_body_height_px = _chinese_body_height
+        _math_renderer = FigureMathRenderer(config=cfg)
     return _math_renderer
 
 
+def _classify_expr_role(expr: str) -> str:
+    """Classify a LaTeX expression into small/normal/emphasis."""
+    # Emphasis: full formulas with = sign or multiple terms with fractions
+    if len(expr) > 25 and '=' in expr:
+        return "emphasis"
+    # Small: single variables, simple subscripts
+    if len(expr) <= 12 and not any(c in expr for c in ('\\rightarrow', '\\cdots', '\\leq', '\\in', ',')):
+        return "small"
+    return "normal"
+
+
 def _render_math_expr(expr: str) -> Image.Image | None:
-    """Render a math expression string to a PIL Image."""
+    """Render a math expression to a PIL Image at proper scale."""
     r = _get_math_renderer()
-    return r.render_latex(expr)
+    role = _classify_expr_role(expr)
+    return r.render_latex(expr, role=role)
 
 
 # ── Label parsing ────────────────────────────────────────────────
@@ -103,7 +119,15 @@ class PatentFigureRenderer:
 
         img_temp = Image.new("RGB", (100, 100), "white")
         draw_temp = ImageDraw.Draw(img_temp)
-        math_rend = _get_math_renderer()
+
+        # Compute Chinese body height for math scaling
+        global _chinese_body_height
+        cn_bbox = draw_temp.textbbox((0, 0), "中文测试变量", font=main_font)
+        _chinese_body_height = cn_bbox[3] - cn_bbox[1]
+
+        # Lazy init math renderer with Chinese height
+        mr = _get_math_renderer()
+        mr.set_chinese_height(_chinese_body_height)
 
         # Process labels: split into text/math segments
         processed = []
@@ -121,7 +145,7 @@ class PatentFigureRenderer:
                         max_w = max(max_w, bbox[2] - bbox[0] + 10)
                         total_h += bbox[3] - bbox[1] + 8
                 else:  # math
-                    img = math_rend.render_latex(content)
+                    img = _render_math_expr(content)
                     if img:
                         mw, mh = img.size
                         scale = self.MATH_FONT_SIZE / (self.FONT_SIZE * 0.8)
@@ -179,7 +203,7 @@ class PatentFigureRenderer:
                         draw.text((lx, seg_y), line, fill="black", font=main_font)
                         seg_y += line_h + 8
                 else:  # math
-                    math_img = math_rend.render_latex(content)
+                    math_img = _render_math_expr(content)
                     if math_img:
                         mw, mh = math_img.size
                         scale = self.MATH_FONT_SIZE / (self.FONT_SIZE * 0.75)
