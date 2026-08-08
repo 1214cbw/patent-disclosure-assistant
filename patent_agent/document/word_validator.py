@@ -27,7 +27,11 @@ class PatentDocxValidator:
             "has_figure_1_reference": "图1" in full_text,
             "has_equation_1_reference": "式（1）" in full_text,
         }
-        result["xml_pass"] = result["omml_count"] >= 3 and result["inline_omml_count"] >= 1 and result["display_omml_count"] >= 2 and result["image_count"] >= 1 and result["empty_nary_operands"] == 0 and result["residual_latex_in_omml"] == 0 and not result["unresolved_variables"] and result["has_figure_1_reference"] and result["has_equation_1_reference"]
+        # V7: inline math is a nice-to-have (emitted when equations declare
+        # symbols); the hard floor is display equations (>=2) + total OMML
+        # (>=3). A disclosure whose equations carry no symbol table is still
+        # valid.
+        result["xml_pass"] = result["omml_count"] >= 3 and result["display_omml_count"] >= 2 and result["image_count"] >= 1 and result["empty_nary_operands"] == 0 and result["residual_latex_in_omml"] == 0 and not result["unresolved_variables"] and result["has_figure_1_reference"] and result["has_equation_1_reference"]
         return result
 
     def inspect_word(self, path: Path, export_pdf: bool = True) -> dict:

@@ -310,8 +310,7 @@ class ChineseSectionWriter:
 ### 语言
 1. 全部使用简体中文。禁止输出英文段落。
 2. 技术术语首次出现：中文全称（English Full Name，缩写）
-   例如：潜在扩散模型（Latent Diffusion Model，LDM）
-   后续统一使用：LDM 或 潜在扩散模型
+   例如：流匹配（Flow Matching，FM）；后续统一使用缩写或中文。
 3. 术语全文统一，不要中英文随机切换。
 
 ### 专利表达
@@ -393,36 +392,53 @@ class ChineseSectionWriter:
         )
 
     def _build_terminology(self, understanding) -> dict[str, str]:
-        """Build Chinese terminology mapping from understanding."""
-        terms = {}
-        # Motor/LDM specific terms
-        defaults = {
-            "Latent Diffusion Model": "潜在扩散模型（Latent Diffusion Model，LDM）",
-            "LDM": "LDM",
+        """Build Chinese terminology mapping from understanding.
+
+        V7: terminology is derived from the case's OWN understanding content,
+        not a hardcoded LDM table. Generic method-level terms are kept;
+        domain terms (diffusion, rotor, magnetic barrier...) only enter the
+        mapping when the case's own evidence actually contains them.
+        """
+        terms = {
             "Variational Autoencoder": "变分自编码器（Variational Autoencoder，VAE）",
             "VAE": "VAE",
             "Generative Adversarial Network": "生成对抗网络（Generative Adversarial Network，GAN）",
             "GAN": "GAN",
-            "U-Net": "U-Net",
             "FID": "FID（Fréchet Inception Distance）",
             "PCA": "PCA（主成分分析）",
-            "t-SNE": "t-SNE（t分布随机邻域嵌入）",
             "RGB": "RGB",
+            "encoder": "编码器",
+            "decoder": "解码器",
+        }
+        # Domain terms: only for terms present in this case's own facts.
+        domain = {
+            "Latent Diffusion Model": "潜在扩散模型（Latent Diffusion Model，LDM）",
+            "LDM": "LDM",
+            "U-Net": "U-Net",
+            "latent space": "潜在空间",
+            "diffusion": "扩散",
+            "denoising": "去噪",
+            "forward diffusion": "前向扩散",
+            "reverse denoising": "反向去噪",
             "rotor": "转子",
             "stator": "定子",
             "topology": "拓扑",
             "magnetic barrier": "磁障",
             "permanent magnet": "永磁体",
             "electrical steel": "电工钢",
-            "latent space": "潜在空间",
-            "diffusion": "扩散",
-            "denoising": "去噪",
-            "encoder": "编码器",
-            "decoder": "解码器",
-            "forward diffusion": "前向扩散",
-            "reverse denoising": "反向去噪",
+            "Flow Matching": "流匹配（Flow Matching，FM）",
+            "velocity field": "速度场",
+            "surrogate model": "代理模型",
+            "FiLM": "特征线性调制（FiLM）",
+            "current vector": "电流矢量",
         }
-        terms.update(defaults)
+        case_text = " ".join(
+            str(getattr(f, "statement", "")) for f in
+            (getattr(understanding, "facts", []) or [])
+        ).lower()
+        for en_term, zh_term in domain.items():
+            if en_term.lower() in case_text:
+                terms[en_term] = zh_term
         return terms
 
     def _collect_section_evidence(

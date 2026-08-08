@@ -566,6 +566,11 @@ class FigureSpec(BaseModel):
     provenance: str = "generated"  # generated | extracted | uploaded | omitted
     left_node_ids: list[str] = Field(default_factory=list)  # two_column semantic split
     right_node_ids: list[str] = Field(default_factory=list)
+    # V7 figure semantic fingerprint (cross-case isolation): each figure is
+    # bound to the case whose evidence produced it.
+    case_id: str = ""
+    semantic_keywords: list[str] = Field(default_factory=list)
+    source_feature_ids: list[str] = Field(default_factory=list)
 
 
 class DisclosureDraft(BaseModel):

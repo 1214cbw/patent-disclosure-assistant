@@ -136,7 +136,7 @@ class DisclosureContentPlanner:
                 SectionPlan(section_id="SEC03a", title_cn="3.1 技术应用背景",
                              purpose="说明该技术为什么存在及其重要性"),
                 SectionPlan(section_id="SEC03b", title_cn="3.2 现有主要技术路线",
-                             purpose="详细介绍GAN、VAE等现有方案"),
+                             purpose="基于参考材料说明现有生成/设计方法路线"),
                 SectionPlan(section_id="SEC03c", title_cn="3.3 现有技术具体不足",
                              purpose="每个不足对应后续技术手段"),
                 SectionPlan(section_id="SEC03d", title_cn="3.4 本方案提出的必要性",
@@ -204,21 +204,23 @@ class DisclosureContentPlanner:
             purpose="提供可实施的具体实施例，每个实施例包含完整步骤",
             target_detail="exhaustive", estimated_paragraphs=16,
         )
-        # Create embodiment subsections
-        embodiments = [
-            ("SEC07a", "7.1 实施例一：转子拓扑参数化及数据集构建",
-             "详细说明12个设计变量定义、参数采样、RGB图像转换、数据集生成"),
-            ("SEC07b", "7.2 实施例二：潜在扩散模型训练",
-             "详细说明VAE编码、前向扩散加噪、U-Net训练、损失函数"),
-            ("SEC07c", "7.3 实施例三：新型电机拓扑生成",
-             "详细说明从随机噪声开始的反向扩散生成过程"),
-            ("SEC07d", "7.4 实施例四：潜在空间插值与设计空间探索",
-             "详细说明潜在变量插值、连续拓扑过渡、设计空间导航"),
-        ]
-        for eid, etitle, epurpose in embodiments:
+        # V7: embodiments are derived from the case's own feature tree
+        # (phases from node categories), never a hardcoded LDM template.
+        cn_numerals = ["一", "二", "三", "四", "五", "六", "七", "八", "九", "十"]
+        phase_labels = {
+            "data": "数据构建", "architecture": "模型结构",
+            "method": "处理流程", "parameter": "关键参数",
+            "effect": "效果验证",
+        }
+        for e_idx, child in enumerate(root_children, 1):
+            phase = phase_labels.get(child.category, "实施细节")
+            cn = cn_numerals[min(e_idx - 1, 9)]
             impl_section.subsections.append(SectionPlan(
-                section_id=eid, title_cn=etitle, purpose=epurpose,
-                feature_ids=leaf_nodes[:6],
+                section_id=f"SEC07_{e_idx}",
+                title_cn=f"7.{e_idx} 实施例{cn}：{phase}",
+                purpose=f"围绕'{child.label_cn}'给出可实施的具体步骤、参数和输出",
+                feature_ids=[child.id] + [c.id for c in child.children],
+                evidence_ids=child.evidence_ids,
                 target_detail="exhaustive", estimated_paragraphs=4,
             ))
         plan.sections.append(impl_section)
@@ -238,35 +240,43 @@ class DisclosureContentPlanner:
         ))
 
         # ── Figure Plan ──
-        plan.figure_plan = [
-            {
-                "figure_id": "FIG-001", "number": 1,
-                "title_cn": "图1 本发明电机拓扑图像生成方法总体流程图",
-                "type": "flowchart", "category": "A_redraw",
-                "description": "转子参数化→RGB图像→VAE编码→潜在扩散→U-Net去噪→VAE解码→生成拓扑",
-                "feature_ids": [n.id for n in root_children[:4]],
-            },
-            {
+        # V7: dynamic from the case's own feature tree (2..4 figures), no
+        # hardcoded LDM architecture.
+        plan.figure_plan = [{
+            "figure_id": "FIG-001", "number": 1,
+            "title_cn": "图1 本发明技术方案总体流程图",
+            "type": "flowchart", "category": "A_redraw",
+            "description": "→".join(n.label_cn[:12] for n in root_children) or "总体流程",
+            "feature_ids": [n.id for n in root_children[:6]],
+        }]
+        data_children = [n for n in root_children if n.category == "data"]
+        if data_children:
+            data_child = data_children[0]
+            plan.figure_plan.append({
                 "figure_id": "FIG-002", "number": 2,
-                "title_cn": "图2 三层转子拓扑设计变量示意图",
+                "title_cn": f"图2 {data_child.label_cn[:16]}示意图",
                 "type": "system", "category": "A_redraw",
-                "description": "展示三层磁障结构及每层4个设计变量的标注",
-                "feature_ids": ["F01a", "F01b"],
-            },
-            {
+                "description": data_child.description or data_child.label_cn,
+                "feature_ids": [data_child.id] + [c.id for c in data_child.children],
+            })
+        arch = [n for n in root_children if n.category in ("architecture", "method")]
+        if arch:
+            arch_child = arch[0]
+            plan.figure_plan.append({
                 "figure_id": "FIG-003", "number": 3,
-                "title_cn": "图3 潜在扩散模型核心架构图",
+                "title_cn": f"图3 {arch_child.label_cn[:16]}结构示意图",
                 "type": "flowchart", "category": "A_redraw",
-                "description": "VAE编码→前向扩散→U-Net→反向去噪→VAE解码的完整LDM架构",
-                "feature_ids": [n.id for n in root_children[2:7]],
-            },
-            {
+                "description": arch_child.description or arch_child.label_cn,
+                "feature_ids": [arch_child.id] + [c.id for c in arch_child.children],
+            })
+        if len(arch) > 1:
+            extra = arch[1]
+            plan.figure_plan.append({
                 "figure_id": "FIG-004", "number": 4,
-                "title_cn": "图4 潜在空间插值与拓扑探索示意图",
+                "title_cn": f"图4 {extra.label_cn[:16]}流程示意图",
                 "type": "flowchart", "category": "A_redraw",
-                "description": "Z1+Z2→插值→中间潜变量→解码→连续拓扑过渡",
-                "feature_ids": ["F07a", "F07b", "F07c"],
-            },
-        ]
+                "description": extra.description or extra.label_cn,
+                "feature_ids": [extra.id] + [c.id for c in extra.children],
+            })
 
         return plan

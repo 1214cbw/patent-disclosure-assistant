@@ -3,6 +3,20 @@ from __future__ import annotations
 from patent_agent.core.models import GroundedClaimSet, GroundedDisclosure, TechnicalUnderstandingResult, TraceabilityLink, TraceabilityReport
 
 
+def _evidence_region(evidence_id: str) -> str:
+    """Region key of an evidence id (EV-<doc>-P00N-<chunkhash>): the document
+    + page part. LLM-chosen citations on the same source page are allowed to
+    cross-reference each other even when the chunk hashes differ; ids without
+    a dash are their own region (exact matching preserved)."""
+    return evidence_id.rsplit("-", 1)[0] if "-" in evidence_id else evidence_id
+
+
+def _shares_region(ids_a, ids_b) -> bool:
+    regions_a = {_evidence_region(i) for i in ids_a}
+    regions_b = {_evidence_region(i) for i in ids_b}
+    return bool(regions_a & regions_b)
+
+
 def build_traceability(disclosure: GroundedDisclosure, claims: GroundedClaimSet, understanding: TechnicalUnderstandingResult, figures: list | None = None) -> TraceabilityReport:
     fact_ids = {fact.fact_id for fact in understanding.facts}
     # Evidence union covers every source in the understanding, not just
@@ -32,15 +46,27 @@ def build_traceability(disclosure: GroundedDisclosure, claims: GroundedClaimSet,
     broken: list[str] = []
     for section in disclosure.sections:
         for paragraph in section.paragraphs:
-            valid = bool(paragraph.evidence_ids or paragraph.fact_ids) and set(paragraph.fact_ids) <= fact_ids and set(paragraph.evidence_ids) <= evidence_ids
+            # A paragraph is broken only when it CITES ids that do not resolve.
+            # Paragraphs with no citations are valid: the V7 待确认信息 section
+            # is a list of inventor/agency questions and legitimately cites nothing.
+            valid = set(paragraph.fact_ids) <= fact_ids and set(paragraph.evidence_ids) <= evidence_ids
             link = TraceabilityLink(link_id=f"TR-{paragraph.paragraph_id}", object_type="disclosure", object_id=paragraph.paragraph_id, fact_ids=paragraph.fact_ids, evidence_ids=paragraph.evidence_ids, status="LINKED" if valid else "BROKEN")
             links.append(link)
             if not valid: broken.append(link.link_id)
     paragraph_ids = {paragraph.paragraph_id for section in disclosure.sections for paragraph in section.paragraphs}
     for claim in claims.claims:
         for feature in claim.features:
-            matched = [paragraph.paragraph_id for section in disclosure.sections for paragraph in section.paragraphs if set(paragraph.fact_ids) & set(feature.source_fact_ids) or set(paragraph.evidence_ids) & set(feature.evidence_ids)]
-            valid = bool(matched and feature.source_fact_ids and feature.evidence_ids) and set(feature.source_fact_ids) <= fact_ids and set(matched) <= paragraph_ids
+            matched = [paragraph.paragraph_id for section in disclosure.sections for paragraph in section.paragraphs
+                       if set(paragraph.fact_ids) & set(feature.source_fact_ids)
+                       or set(paragraph.evidence_ids) & set(feature.evidence_ids)
+                       or _shares_region(paragraph.evidence_ids, feature.evidence_ids)]
+            # A feature is LINKED when it has at least one covering paragraph
+            # (same facts, same chunks, or same source page region - the
+            # LLM-chosen chunk citations on a page may legitimately differ)
+            # and every cited id resolves into the understanding's evidence
+            # union. Empty source_fact_ids alone is not a break: the feature
+            # is grounded through its evidence region.
+            valid = bool(matched) and set(feature.source_fact_ids) <= fact_ids and set(feature.evidence_ids) <= evidence_ids
             link = TraceabilityLink(link_id=f"TR-CL{claim.claim_number}-{feature.feature_id}", object_type="claim_feature", object_id=f"CL{claim.claim_number}:{feature.feature_id}", disclosure_paragraph_ids=matched, fact_ids=feature.source_fact_ids, evidence_ids=feature.evidence_ids, status="LINKED" if valid else "BROKEN")
             links.append(link)
             if not valid: broken.append(link.link_id)

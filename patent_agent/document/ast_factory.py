@@ -8,13 +8,11 @@ from patent_agent.core.patent_ast import PatentDocumentAST, PatentNode
 def disclosure_to_ast(
     case_id: str,
     draft: DisclosureDraft,
-    *,
-    legacy_demo_mode: bool = False,
 ) -> PatentDocumentAST:
     """Convert a DisclosureDraft to PatentDocumentAST with proper figure & equation placement.
 
-    In legacy_demo_mode (for old demo pipeline), uses hardcoded section numbering (6./8.)
-    and demo-specific text. Otherwise, detects sections by content keywords.
+    Sections are detected by content keywords (V7: the legacy_demo_mode branch
+    with hardcoded 6./8. numbering and demo control sentences was removed).
     """
     nodes: list[PatentNode] = [
         PatentNode(type="heading", value=draft.title, level=0)
@@ -55,66 +53,54 @@ def disclosure_to_ast(
     for heading, paragraphs in draft.sections.items():
         nodes.append(PatentNode(type="heading", value=heading, level=1))
 
-        if legacy_demo_mode:
-            # Legacy behavior: use hardcoded section numbers
-            if not heading.startswith("8."):
-                for paragraph in paragraphs:
-                    nodes.append(PatentNode(type="paragraph", value=paragraph))
-            if heading.startswith("6.") and not inserted_equations:
-                nodes.append(PatentNode(type="paragraph", children=[
-                    PatentNode(type="text", value="在控制过程中，电磁转矩 "),
-                    PatentNode(type="inline_math", latex="T_e"),
-                    PatentNode(type="text", value=" 作为状态量参与控制参数修正。"),
-                ]))
-                nodes.extend(equation_nodes)
-                if equation_nodes:
-                    nodes.append(PatentNode(type="paragraph", children=[
-                        PatentNode(type="text", value="根据"),
-                        PatentNode(type="equation_reference", target=equation_nodes[0].target),
-                        PatentNode(type="text", value="计算融合状态量，并据此生成控制参数修正量。"),
-                    ]))
-                inserted_equations = True
-            if heading.startswith("8.") and not inserted_figures:
-                if figure_nodes:
-                    nodes.append(PatentNode(type="paragraph", children=[
-                        PatentNode(type="text", value="该方法形成从多源信号采集到自适应控制指令输出的闭环流程，如"),
-                        PatentNode(type="figure_reference", target=figure_nodes[0].target),
-                        PatentNode(type="text", value="所示。"),
-                    ]))
-                for figure_node in figure_nodes:
-                    nodes.append(figure_node)
-                inserted_figures = True
-        else:
-            # New behavior: content-based detection
-            is_figure_section = _is_figure_section(heading)
-            is_tech_section = _is_tech_section(heading)
+        # Content-based detection (V7)
+        is_figure_section = _is_figure_section(heading)
+        is_tech_section = _is_tech_section(heading)
 
-            if not is_figure_section:
-                for paragraph in paragraphs:
-                    nodes.append(PatentNode(type="paragraph", value=paragraph))
+        if not is_figure_section:
+            for paragraph in paragraphs:
+                nodes.append(PatentNode(type="paragraph", value=paragraph))
 
-            if is_tech_section and equation_nodes and not inserted_equations:
-                if equation_nodes:
-                    nodes.append(PatentNode(type="paragraph", value="本技术方案涉及的关键公式如下："))
-                nodes.extend(equation_nodes)
-                inserted_equations = True
+        if is_tech_section and equation_nodes and not inserted_equations:
+            if equation_nodes:
+                nodes.append(PatentNode(type="paragraph", value="本技术方案涉及的关键公式如下："))
+            nodes.extend(equation_nodes)
+            # Patent-standard equation reference (式（1）); when the first
+            # equation declares symbols, the first symbol is rendered as
+            # inline math (genuine OMML, never fabricated prose).
+            reference_children: list[PatentNode] = [
+                PatentNode(type="text", value="其中，"),
+            ]
+            first_symbol = next(iter((draft.equations[0].symbols or {})), None) \
+                if draft.equations else None
+            if first_symbol:
+                reference_children.append(PatentNode(type="inline_math", latex=first_symbol))
+                reference_children.append(PatentNode(type="text", value=" 等关键参数的含义如"))
+            else:
+                reference_children.append(PatentNode(type="text", value="本技术方案的关键参数关系如"))
+            reference_children.append(
+                PatentNode(type="equation_reference", target=equation_nodes[0].target))
+            reference_children.append(
+                PatentNode(type="text", value="所示，各符号含义详见具体实施方式。"))
+            nodes.append(PatentNode(type="paragraph", children=reference_children))
+            inserted_equations = True
 
-            if is_figure_section and figure_nodes and not inserted_figures:
-                if figure_nodes:
-                    nodes.append(PatentNode(
-                        type="paragraph",
-                        value=f"本技术方案包含以下{len(figure_nodes)}幅附图：",
-                    ))
-                # V6.7: no forced page breaks between figures - dynamic
-                # pagination keeps each Figure+Caption on one page (see
-                # DocumentRenderer keep_with_next) without creating blank
-                # pages after the figure block.
-                for figure_node in figure_nodes:
-                    nodes.append(figure_node)
-                inserted_figures = True
+        if is_figure_section and figure_nodes and not inserted_figures:
+            if figure_nodes:
+                nodes.append(PatentNode(
+                    type="paragraph",
+                    value=f"本技术方案包含以下{len(figure_nodes)}幅附图：",
+                ))
+            # V6.7: no forced page breaks between figures - dynamic
+            # pagination keeps each Figure+Caption on one page (see
+            # DocumentRenderer keep_with_next) without creating blank
+            # pages after the figure block.
+            for figure_node in figure_nodes:
+                nodes.append(figure_node)
+            inserted_figures = True
 
     # Fallback: if no figure section was found, append figures at the end
-    if figure_nodes and not inserted_figures and not legacy_demo_mode:
+    if figure_nodes and not inserted_figures:
         nodes.append(PatentNode(type="heading", value="附图", level=1))
         for figure_node in figure_nodes:
             nodes.append(figure_node)

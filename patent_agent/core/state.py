@@ -56,7 +56,12 @@ class CaseStore:
         stage_dir = self.case_dir(case_id) / "working" / stage
         stage_dir.mkdir(parents=True, exist_ok=True)
         path = stage_dir / f"v{version:03d}.json"
-        if hasattr(payload, "model_dump_json"):
+        # V7: explicit behavior for each payload type. A str payload is treated
+        # as already-serialized JSON text and written verbatim (never re-encoded);
+        # a dict/list is serialized once; a pydantic model uses model_dump_json.
+        if isinstance(payload, str):
+            text = payload
+        elif hasattr(payload, "model_dump_json"):
             text = payload.model_dump_json(indent=2)
         else:
             text = json.dumps(payload, ensure_ascii=False, indent=2)

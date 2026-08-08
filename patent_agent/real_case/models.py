@@ -29,6 +29,15 @@ class RealCaseManifest(StrictSchema):
     publication_review_status: Literal["UNREVIEWED", "CONFIRMED"] = "UNREVIEWED"
     # V6.5: project-level model selection
     llm_model: str = ""  # Empty = use system default
+    # V7: language contract - source language(s) vs. patent output language.
+    # Patent deliverables are ALWAYS Chinese (PATENT_OUTPUT_LANGUAGE=zh-CN)
+    # regardless of source language; translation_postprocess_used documents
+    # that Chinese was generated natively (True would mean post-hoc
+    # translation happened, which V7 forbids for real cases).
+    source_languages: list[str] = Field(default_factory=list)
+    patent_output_language: str = "zh-CN"
+    disclosure_language: str = "zh-CN"
+    translation_postprocess_used: bool = False
 
     @model_validator(mode="after")
     def safe_policy(self):
