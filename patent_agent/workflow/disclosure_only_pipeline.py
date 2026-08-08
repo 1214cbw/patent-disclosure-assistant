@@ -131,6 +131,14 @@ class DisclosureOnlyPipeline:
         output_dir = self.settings.output_root / "real_case" / case_id
         output_dir.mkdir(parents=True, exist_ok=True)
 
+        # V6.5: apply project-level model selection before any LLM call
+        model_used = self.settings.default_model
+        if use_llm and self.provider is not None:
+            model_id = getattr(manifest, "llm_model", "") or ""
+            if model_id:
+                self.provider.set_model(model_id)
+            model_used = self.provider.model
+
         log = DisclosurePipelineLog(case_dir / "logs" / "disclosure_pipeline.jsonl")
 
         # ── Stage 1: Ingestion ──
@@ -375,6 +383,7 @@ class DisclosureOnlyPipeline:
             "figures": figures,
             "chinese_check": cn_check,
             "pipeline_events": log.events,
+            "model_used": model_used,
         }
 
     def batch_approve(

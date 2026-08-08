@@ -56,6 +56,7 @@ function bindNav() {
 function bindActions() {
   $('#btn-upload').onclick = uploadSourceFiles;
   $('#btn-start-generate').onclick = startGenerate;
+  $('#btn-save-project-model')?.addEventListener('click', saveProjectModel);
   $('#btn-batch-approve')?.addEventListener('click', batchApprove);
   $('#btn-view-details')?.addEventListener('click', toggleDetails);
   $('#btn-download')?.addEventListener('click', downloadDisclosure);
@@ -252,7 +253,12 @@ function showGenerationProgress() {
   $('#stage-list').innerHTML = stages.map((s, i) =>
     `<div class="stage-item" id="stage-${s.id}"><span class="icon">○</span>${s.label}</div>`
   ).join('');
-  updateProgress(0, '开始生成……');
+  // V6.5: show the model this run will use
+  const selected = $('#project-model-select')?.selectedOptions?.[0]?.textContent ||
+    $('#new-project-model')?.selectedOptions?.[0]?.textContent ||
+    state.projectDetail?.llm_model_display;
+  const model = selected || '系统默认';
+  updateProgress(0, `开始生成……（本次使用：${model}）`);
 }
 
 function updateProgress(percent, text) {
@@ -327,6 +333,9 @@ async function loadProjectDetail() {
       status.status_cn === '失败' || status.status_cn === '生成失败' ? 'err' : 'warn'
     );
 
+    // V6.5: load project model selection
+    loadProjectModel();
+
     if (status.disclosure_ready) {
       showDisclosurePreview(status);
     } else if (status.batch_approved || status.status_cn === '待确认') {
@@ -342,6 +351,44 @@ async function loadProjectDetail() {
     }
   } catch (err) {
     notify('加载项目详情失败：' + err.message, true);
+  }
+}
+
+// ── Project Model Selection (V6.5) ──────────────────────────────
+async function loadProjectModel() {
+  const card = $('#project-model-card');
+  if (!card) return;
+  card.classList.remove('hidden');
+  try {
+    const [modelInfo, modelsData] = await Promise.all([
+      api(`/api/real-cases/${encodeURIComponent(state.caseId)}/model`),
+      api('/api/models'),
+    ]);
+    const select = $('#project-model-select');
+    select.innerHTML = (modelsData.models || []).map(m =>
+      `<option value="${esc(m.model_id)}" ${m.model_id === modelInfo.llm_model ? 'selected' : ''}>` +
+      `${esc(m.display_name)}</option>`
+    ).join('') || '<option value="">（无可用模型）</option>';
+    const suffix = modelInfo.is_default ? '（系统默认）' : '';
+    $('#project-model-current').innerHTML =
+      `当前项目使用：<b>${esc(modelInfo.display_name)}${suffix}</b>`;
+  } catch (err) {
+    $('#project-model-current').textContent = '模型信息加载失败：' + err.message;
+  }
+}
+
+async function saveProjectModel() {
+  const select = $('#project-model-select');
+  if (!select || !select.value) return notify('请选择模型。', true);
+  try {
+    const result = await api(
+      `/api/real-cases/${encodeURIComponent(state.caseId)}/model`,
+      jsonOptions('PUT', { llm_model: select.value })
+    );
+    notify(`模型已更新为：${result.llm_model}`);
+    loadProjectModel();
+  } catch (err) {
+    notify('保存模型失败：' + err.message, true);
   }
 }
 

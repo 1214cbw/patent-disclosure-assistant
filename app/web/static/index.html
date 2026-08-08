@@ -163,6 +163,20 @@
           <div id="project-files" class="file-list"></div>
         </div>
 
+        <!-- AI 模型选择 -->
+        <div id="project-model-card" class="panel hidden">
+          <h3>🤖 AI 模型</h3>
+          <p id="project-model-current" class="hint">正在加载模型信息……</p>
+          <div style="display:flex;gap:10px;align-items:flex-end;max-width:600px">
+            <div style="flex:1">
+              <label>选择模型</label>
+              <select id="project-model-select"></select>
+            </div>
+            <button class="secondary" id="btn-save-project-model" style="margin-bottom:2px">保存模型</button>
+          </div>
+          <p class="hint">生成交底书时将使用此处选择的模型。修改后点击"重新生成"即可生效。</p>
+        </div>
+
         <!-- 生成进度 -->
         <div id="generation-progress" class="panel hidden">
           <h3>生成进度</h3>

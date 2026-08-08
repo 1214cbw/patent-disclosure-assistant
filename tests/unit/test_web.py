@@ -43,9 +43,9 @@ def test_local_web_home_is_a_real_chinese_spa(local_web):
     response = web.home()
     assert response.status_code == 200
     body = Path(response.path).read_text(encoding="utf-8")
-    assert "Patent Agent" in body
-    assert "A1 技术理解" in body
-    assert "任务与恢复" in body
+    assert "专利技术交底书智能生成器" in body
+    assert "新建交底书" in body
+    assert "AI 模型" in body
 
 
 def test_settings_never_expose_api_key(local_web):

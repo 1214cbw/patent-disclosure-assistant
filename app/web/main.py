@@ -548,6 +548,11 @@ def disclosure_status(case_id: str):
     if batch_path.exists():
         batch_info = json.loads(batch_path.read_text(encoding="utf-8"))
 
+    # V6.5: project model selection for UI display
+    from patent_agent.llm.model_registry import get_model_info
+    project_model = getattr(manifest, "llm_model", "") or ""
+    model_info = get_model_info(project_model) if project_model else None
+
     return {
         "case_id": case_id,
         "title": manifest.paper_title,
@@ -561,6 +566,9 @@ def disclosure_status(case_id: str):
         "batch_info": batch_info,
         "disclosure_ready": output_docx.exists(),
         "download_url": f"/api/real-cases/{case_id}/download-disclosure" if output_docx.exists() else None,
+        "llm_model": project_model,
+        "llm_model_display": model_info.display_name if model_info else (project_model or settings.default_model),
+        "llm_model_recommended": model_info.recommended if model_info else False,
     }
 
 
@@ -610,7 +618,7 @@ def download_disclosure(case_id: str):
     output_dir = settings.output_root / "real_case" / case_id
     docx_path = output_dir / "技术交底书.docx"
     if not docx_path.exists():
-        raise HTTPException(404, "技术交底书尚未生成，请先点击"生成技术交底书"。")
+        raise HTTPException(404, "技术交底书尚未生成，请先点击“生成技术交底书”。")
     return FileResponse(
         docx_path,
         filename="技术交底书.docx",
