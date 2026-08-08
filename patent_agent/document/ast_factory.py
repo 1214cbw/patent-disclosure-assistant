@@ -81,9 +81,7 @@ def disclosure_to_ast(
                         PatentNode(type="figure_reference", target=figure_nodes[0].target),
                         PatentNode(type="text", value="所示。"),
                     ]))
-                for index, figure_node in enumerate(figure_nodes):
-                    if index:
-                        nodes.append(PatentNode(type="page_break"))
+                for figure_node in figure_nodes:
                     nodes.append(figure_node)
                 inserted_figures = True
         else:
@@ -107,9 +105,11 @@ def disclosure_to_ast(
                         type="paragraph",
                         value=f"本技术方案包含以下{len(figure_nodes)}幅附图：",
                     ))
-                for index, figure_node in enumerate(figure_nodes):
-                    if index > 0:
-                        nodes.append(PatentNode(type="page_break"))
+                # V6.7: no forced page breaks between figures - dynamic
+                # pagination keeps each Figure+Caption on one page (see
+                # DocumentRenderer keep_with_next) without creating blank
+                # pages after the figure block.
+                for figure_node in figure_nodes:
                     nodes.append(figure_node)
                 inserted_figures = True
 

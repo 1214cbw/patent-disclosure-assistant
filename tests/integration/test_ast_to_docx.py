@@ -26,7 +26,12 @@ def test_ast_to_docx_native_math_and_figure(tmp_path: Path):
     assert report["xml_pass"]
 
 
-def test_disclosure_ast_separates_consecutive_figures_with_page_breaks():
+def test_disclosure_ast_no_forced_page_break_between_figures():
+    """V6.7: figures must NOT be separated by forced page breaks.
+
+    Pagination is dynamic (Figure+Caption kept together by Word properties);
+    a forced break after the figure block creates a blank page.
+    """
     figures = [
         FigureSpec(id=f"FIG-{index:03d}", number=index, type="flowchart", title=f"图{index}", nodes=[], edges=[], source_ids=[], png_path=f"figure-{index}.png")
         for index in (1, 2)
@@ -44,5 +49,6 @@ def test_disclosure_ast_separates_consecutive_figures_with_page_breaks():
     figure_indexes = [index for index, node in enumerate(ast.nodes) if node.type == "figure"]
 
     assert len(figure_indexes) == 2
-    assert ast.nodes[figure_indexes[0] + 1].type == "page_break"
-    assert figure_indexes[1] == figure_indexes[0] + 2
+    between = ast.nodes[figure_indexes[0] + 1 : figure_indexes[1]]
+    assert all(node.type != "page_break" for node in between), \
+        "figure 之间不允许强制分页（会造成空白页）"

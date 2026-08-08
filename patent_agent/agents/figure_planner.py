@@ -53,17 +53,19 @@ class FigurePlanner:
             nodes=fig1_left + fig1_right, edges=fig1_edges, source_ids=[],
         ))
 
-        # ── Figure 2: Real source figure from original paper (V6.6) ──
-        # Prefer the vector-rendered extraction of paper Fig. 2
-        # ("Annotation of design variables for the first-layer magnetic
-        # barrier", page 2 left column). If it cannot be extracted
+        # ── Figure 2: Real source figure from original paper (V6.7) ──
+        # V6.7 re-crop via SourceFigureContentCropper (golden region):
+        # body prose above (y<377) and the original English caption
+        # (y>535.7) are excluded, figure body + hbs1 label + dimension
+        # arrows (y 393.7-525) fully preserved. If it cannot be extracted
         # reliably, mark the figure as omitted rather than faking it.
         from pathlib import Path
-        src_fig = Path("workspace/private_cases/REAL-PAPER-001/extracted_figures/fig2_design_variables.png")
+        src_fig = Path("workspace/private_cases/REAL-PAPER-001/extracted_figures/fig2_design_variables_v67.png")
         if src_fig.exists() and src_fig.stat().st_size > 10_000:
             figures.append(FigureSpec(
                 id="FIG-002", number=2, type="system",
-                title="转子设计变量标注示意图",
+                # V6.7: Word caption must read "图2 转子设计变量标注示意图（来源：原论文）"
+                title="转子设计变量标注示意图（来源：原论文）",
                 nodes=[FigureNode(id="R01", label="[原论文设计变量标注图]")],
                 edges=[],
                 source_ids=[],
@@ -119,17 +121,23 @@ class FigurePlanner:
             right_node_ids=[n.id for n in fig3_generation],
         ))
 
-        # ── Figure 4: Branch-merge interpolation ──
+        # ── Figure 4: Branch-merge interpolation (V6.7 semantic split) ──
+        # Keep the Z1/Z2 merge, but the former mixed node
+        # "VAE decoder + latent Z + output sequence" is split into three
+        # distinct sequential nodes: latent Z -> VAE decoder -> smooth
+        # transition topology sequence.
         fig4_nodes = [
             FigureNode(id="I1", label="转子拓扑A\nVAE编码\n$Z_1$"),
             FigureNode(id="I2", label="转子拓扑B\nVAE编码\n$Z_2$"),
-            FigureNode(id="I3", label="潜在空间线性插值\n$\\lambda \\in [0,1]$\n$Z=(1-\\lambda)Z_1+\\lambda Z_2$"),
-            FigureNode(id="I4", label="VAE解码器\n中间潜在变量 $Z$\n→平滑过渡拓扑序列"),
+            FigureNode(id="I3", label="中间潜在变量 $Z$\n$\\lambda \\in [0,1]$\n$Z=(1-\\lambda)Z_1+\\lambda Z_2$"),
+            FigureNode(id="I4", label="VAE解码器\n$Z \\rightarrow x'$"),
+            FigureNode(id="I5", label="平滑过渡拓扑序列"),
         ]
         fig4_edges = [
             FigureEdge(source="I1", target="I3"),
             FigureEdge(source="I2", target="I3"),
             FigureEdge(source="I3", target="I4"),
+            FigureEdge(source="I4", target="I5"),
         ]
         figures.append(FigureSpec(
             id="FIG-004", number=fig3_number + 1, type="flowchart",

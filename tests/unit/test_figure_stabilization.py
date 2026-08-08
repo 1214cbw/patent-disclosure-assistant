@@ -76,12 +76,14 @@ def test_source_figure_crop_integrity_test():
 def test_source_figure_aspect_ratio_test():
     """Embedded size must preserve the extracted figure's aspect ratio."""
     from PIL import Image
-    with Image.open(EXTRACTED_FIG2) as im:
+    # V6.7: source is the re-cropped v67 file (the planner's current png_path)
+    fig = next(f for f in _plan_motor_figures() if f.number == 2)
+    assert fig.provenance == "extracted" and fig.png_path
+    with Image.open(fig.png_path) as im:
         src_aspect = im.height / im.width
-    w_cm, h_cm = DocumentRenderer._figure_embed_size(str(EXTRACTED_FIG2))
+    w_cm, h_cm = DocumentRenderer._figure_embed_size(fig.png_path)
     assert abs((h_cm / w_cm) - src_aspect) < 0.01, "嵌入尺寸破坏了宽高比"
     # renderer output must keep aspect too
-    fig = next(f for f in _plan_motor_figures() if f.number == 2)
     spec = PatentFigureRenderer().render(fig, Path("tmp/fig_smoke_v66"))
     with Image.open(spec.png_path) as out:
         assert abs((out.height / out.width) - src_aspect) < 0.01
@@ -127,11 +129,14 @@ def test_figure4_branch_merge_layout_no_overlap_test():
     assert report["layout"] == "branch_merge"
     assert report["collisions"] == [], f"图4存在碰撞: {report['collisions'][:5]}"
     node_ids = {e["node_id"] for e in report["elements"] if e["kind"] == "node"}
-    assert {"I1", "I2", "I3", "I4"} <= node_ids, "图4缺少 I1/I2/I3/I4 节点"
+    assert {"I1", "I2", "I3", "I4", "I5"} <= node_ids, "图4缺少 I1-I5 节点（V6.7 语义拆分）"
     all_content = " ".join(e["content"] for e in report["elements"] if e["kind"] in ("text", "math"))
     assert "Z_1" in all_content or "Z1" in all_content, "缺少 Z1 输入"
     assert "Z_2" in all_content or "Z2" in all_content, "缺少 Z2 输入"
-    assert "插值" in all_content, "缺少插值公式"
+    assert "中间潜在变量" in all_content, "缺少中间潜在变量 Z 节点（V6.7 拆分）"
+    assert "VAE解码器" in all_content, "缺少 VAE 解码器节点（V6.7 拆分）"
+    assert "平滑过渡拓扑序列" in all_content, "缺少输出节点（V6.7 拆分）"
+    assert "lambda" in all_content or "\\lambda" in all_content, "缺少插值公式"
     assert FigureLayoutValidator().validate(report) == []
 
 

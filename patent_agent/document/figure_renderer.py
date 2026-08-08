@@ -205,6 +205,34 @@ class PatentFigureRenderer:
                     elements.append(LayoutElement('math', BBox(mx, seg_y, w, h), node_id=node_id, content=content, column=column))
                     seg_y += h + 6
 
+    # ── Dashed line helper (V6.7 parameter bridge) ─────────────
+
+    @staticmethod
+    def _dashed_polyline(draw, pts, dash=10, gap=7, width=2, color='black'):
+        """Draw a dashed polyline - PIL has no built-in dash support.
+
+        Used for the Fig.3 training->generation parameter bridge so it is
+        visually distinct from ordinary data-flow arrows (solid), without
+        re-layouting the two columns.
+        """
+        def draw_dash(x1, y1, x2, y2):
+            dx, dy = x2 - x1, y2 - y1
+            length = (dx * dx + dy * dy) ** 0.5
+            if length == 0:
+                return
+            nx, ny = dx / length, dy / length
+            pos, on = 0.0, True
+            while pos < length:
+                end = min(pos + (dash if on else gap), length)
+                if on:
+                    draw.line([(x1 + nx * pos, y1 + ny * pos),
+                               (x1 + nx * end, y1 + ny * end)],
+                              fill=color, width=width)
+                pos = end
+                on = not on
+        for i in range(len(pts) - 1):
+            draw_dash(pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1])
+
     # ── Reflow helper ──────────────────────────────────────────
 
     def _reflow(self, attempt: int, gap: int, canvas_w: int, canvas_h: int,
@@ -230,10 +258,6 @@ class PatentFigureRenderer:
             '<rect width="100%" height="100%" fill="white"/>',
             '<defs><marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">',
             '<polygon points="0 0, 10 3.5, 0 7" fill="black"/></marker></defs>']
-        if report.title_bbox:
-            tx, ty, tw, th = report.title_bbox
-            parts.append(f'<text x="{tx + tw // 2}" y="{ty + th}" text-anchor="middle" '
-                         f'font-family="Microsoft YaHei" font-size="16">{escape(figure.title)}</text>')
         for el in report.elements:
             bx, by, bw, bh = el.bbox.to_list()
             if el.kind == 'node':
@@ -319,13 +343,14 @@ class PatentFigureRenderer:
         while attempts < self.MAX_REFLOW_ATTEMPTS:
             canvas_w = max(800, max(n['box_w'] for n in processed) + self.MARGIN * 3)
             total_h = sum(n['box_h'] for n in processed) + max(0, len(processed) - 1) * gap
-            canvas_h = self.MARGIN * 2 + total_h + 90
+            # V6.7: no internal title - canvas top padding tightened
+            canvas_h = self.MARGIN * 2 + total_h + 20
             cx = canvas_w // 2
             img = Image.new('RGB', (canvas_w, canvas_h), 'white')
             draw = ImageDraw.Draw(img)
             elements = []
             boxes: dict[str, tuple[int, int, int, int]] = {}
-            y = self.MARGIN + 50
+            y = self.MARGIN
             for pn in processed:
                 x = cx - pn['box_w'] // 2
                 self._draw_node_content(img, draw, pn, x, y, main_font, elements, pn['id'])
@@ -336,11 +361,6 @@ class PatentFigureRenderer:
                 src, tgt = getattr(edge, 'source', ''), getattr(edge, 'target', '')
                 if src in boxes and tgt in boxes:
                     self._draw_straight_arrow(draw, boxes[src], boxes[tgt], elements, src, tgt)
-            # title
-            tb = temp.textbbox((0, 0), figure.title, font=small_font)
-            tw, th = tb[2] - tb[0], tb[3] - tb[1]
-            draw.text((cx - tw // 2, 14), figure.title, fill='black', font=small_font)
-            report.title_bbox = [cx - tw // 2, 14, tw, th]
             report.canvas = {'w': canvas_w, 'h': canvas_h}
             report.elements = elements
             report.collisions = detector.detect(elements)
@@ -386,7 +406,8 @@ class PatentFigureRenderer:
             canvas_w = max(900, left_w + right_w + col_gap + self.MARGIN * 3)
             left_h = sum(n['box_h'] for n in processed_l) + max(0, len(processed_l) - 1) * row_gap
             right_h = sum(n['box_h'] for n in processed_r) + max(0, len(processed_r) - 1) * row_gap
-            canvas_h = max(left_h, right_h) + self.MARGIN * 2 + 90
+            # V6.7: no internal title - canvas top padding tightened
+            canvas_h = max(left_h, right_h) + self.MARGIN * 2 + 20
 
             img = Image.new('RGB', (canvas_w, canvas_h), 'white')
             draw = ImageDraw.Draw(img)
@@ -396,7 +417,7 @@ class PatentFigureRenderer:
 
             # Left column (training)
             lx = self.MARGIN
-            ly = self.MARGIN + 50
+            ly = self.MARGIN
             for pn in processed_l:
                 self._draw_node_content(img, draw, pn, lx, ly, main_font, elements, pn['id'], 'left')
                 lboxes[pn['id']] = (lx, ly, lx + pn['box_w'], ly + pn['box_h'])
@@ -404,7 +425,7 @@ class PatentFigureRenderer:
 
             # Right column (generation)
             rx = canvas_w - self.MARGIN - right_w
-            ry = self.MARGIN + 50
+            ry = self.MARGIN
             for pn in processed_r:
                 self._draw_node_content(img, draw, pn, rx, ry, main_font, elements, pn['id'], 'right')
                 rboxes[pn['id']] = (rx, ry, rx + pn['box_w'], ry + pn['box_h'])
@@ -424,11 +445,6 @@ class PatentFigureRenderer:
                         self._draw_bridge_arrow(draw, boxes[src], boxes[tgt], gap_mid_x,
                                                 elements, src, tgt, edge.label, small_font)
 
-            # Title
-            tb = temp.textbbox((0, 0), figure.title, font=small_font)
-            tw, th = tb[2] - tb[0], tb[3] - tb[1]
-            draw.text(((canvas_w - tw) // 2, 14), figure.title, fill='black', font=small_font)
-            report.title_bbox = [(canvas_w - tw) // 2, 14, tw, th]
             report.canvas = {'w': canvas_w, 'h': canvas_h}
             report.elements = elements
             report.collisions = detector.detect(elements)
@@ -460,15 +476,18 @@ class PatentFigureRenderer:
         while attempts < self.MAX_REFLOW_ATTEMPTS:
             n = len(processed)
             cx = 0
-            if n >= 4:
+            if n >= 2:
+                # V6.7: inputs row (2) + sequential middle/output nodes (n-2).
+                # Fig.4 = I1,I2 (Z1/Z2) -> I3 (latent Z) -> I4 (VAE decoder)
+                # -> I5 (smooth topology sequence): each node distinct.
                 inputs_w = processed[0]['box_w'] + processed[1]['box_w'] + input_gap
-                merge_w = processed[2]['box_w']
-                output_w = processed[3]['box_w']
-                canvas_w = max(900, inputs_w, merge_w, output_w) + self.MARGIN * 2
+                mid_w = max((p['box_w'] for p in processed[2:]), default=0)
+                canvas_w = max(900, inputs_w, mid_w) + self.MARGIN * 2
                 cx = canvas_w // 2
                 input_h = max(processed[0]['box_h'], processed[1]['box_h'])
-                canvas_h = (self.MARGIN + 50 + input_h + row_gap + processed[2]['box_h']
-                            + row_gap + processed[3]['box_h'] + self.MARGIN + 40)
+                mid_h = sum(p['box_h'] for p in processed[2:]) + row_gap * max(0, n - 3)
+                # V6.7: no internal title - canvas top padding tightened
+                canvas_h = (self.MARGIN + input_h + row_gap + mid_h + self.MARGIN + 20)
             else:
                 canvas_w, canvas_h = 900, 800
                 cx = canvas_w // 2
@@ -477,7 +496,7 @@ class PatentFigureRenderer:
             draw = ImageDraw.Draw(img)
             elements = []
             boxes: dict[str, tuple[int, int, int, int]] = {}
-            y = self.MARGIN + 50
+            y = self.MARGIN
 
             if n >= 2:
                 left_w = processed[0]['box_w']
@@ -487,17 +506,15 @@ class PatentFigureRenderer:
                     self._draw_node_content(img, draw, pn, x, y, main_font, elements, pn['id'], 'input')
                     boxes[pn['id']] = (x, y, x + pn['box_w'], y + pn['box_h'])
                 y += max(processed[0]['box_h'], processed[1]['box_h']) + row_gap
-            if n >= 3:
-                mx = cx - processed[2]['box_w'] // 2
-                self._draw_node_content(img, draw, processed[2], mx, y, main_font, elements, processed[2]['id'], 'center')
-                boxes[processed[2]['id']] = (mx, y, mx + processed[2]['box_w'], y + processed[2]['box_h'])
-                y += processed[2]['box_h'] + row_gap
-            if n >= 4:
-                ox = cx - processed[3]['box_w'] // 2
-                self._draw_node_content(img, draw, processed[3], ox, y, main_font, elements, processed[3]['id'], 'output')
-                boxes[processed[3]['id']] = (ox, y, ox + processed[3]['box_w'], y + processed[3]['box_h'])
+            for idx in range(2, n):
+                mx = cx - processed[idx]['box_w'] // 2
+                col = 'center' if idx < n - 1 else 'output'
+                self._draw_node_content(img, draw, processed[idx], mx, y, main_font, elements,
+                                        processed[idx]['id'], col)
+                boxes[processed[idx]['id']] = (mx, y, mx + processed[idx]['box_w'], y + processed[idx]['box_h'])
+                y += processed[idx]['box_h'] + row_gap
 
-            # Edges: inputs -> merge (elbow), merge -> output (straight)
+            # Edges: inputs -> merge (elbow), sequential nodes (straight)
             for edge in edges:
                 src, tgt = getattr(edge, 'source', ''), getattr(edge, 'target', '')
                 if src not in boxes or tgt not in boxes:
@@ -510,11 +527,6 @@ class PatentFigureRenderer:
                 else:
                     self._draw_straight_arrow(draw, s, t, elements, src, tgt)
 
-            # Title
-            tb = temp.textbbox((0, 0), figure.title, font=small_font)
-            tw, th = tb[2] - tb[0], tb[3] - tb[1]
-            draw.text(((canvas_w - tw) // 2, 14), figure.title, fill='black', font=small_font)
-            report.title_bbox = [(canvas_w - tw) // 2, 14, tw, th]
             report.canvas = {'w': canvas_w, 'h': canvas_h}
             report.elements = elements
             report.collisions = detector.detect(elements)
@@ -572,14 +584,16 @@ class PatentFigureRenderer:
         Path: source right edge -> gap -> vertical in gap -> target left edge.
         Each segment is recorded separately so the arrow bbox never spans
         whole columns (no false collisions).
+
+        V6.7: drawn DASHED - the training->generation parameter bridge must
+        be visually distinct from ordinary data-flow arrows (solid) without
+        re-layouting the two columns. The arrowhead stays solid black.
         """
         s_cy = (s[1] + s[3]) // 2
         t_cy = (t[1] + t[3]) // 2
         s_rx = s[2]
         t_lx = t[0]
-        draw.line([(s_rx, s_cy), (gap_mid_x, s_cy)], fill='black', width=2)
-        draw.line([(gap_mid_x, s_cy), (gap_mid_x, t_cy)], fill='black', width=2)
-        draw.line([(gap_mid_x, t_cy), (t_lx - 6, t_cy)], fill='black', width=2)
+        self._dashed_polyline(draw, [(s_rx, s_cy), (gap_mid_x, s_cy), (gap_mid_x, t_cy), (t_lx - 6, t_cy)])
         arr = 8
         draw.polygon([(t_lx, t_cy), (t_lx - arr, t_cy - arr), (t_lx - arr, t_cy + arr)], fill='black')
         self._record_arrow(elements, [
