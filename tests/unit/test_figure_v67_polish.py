@@ -32,7 +32,7 @@ def _plan_motor_figures() -> list[FigureSpec]:
         steps=["motor rotor topology design", "latent diffusion training", "generation"],
         components=["motor", "rotor", "latent diffusion", "topology"],
     )
-    return FigurePlanner().from_understanding(u)
+    return FigurePlanner().from_understanding(u, case_id="REAL-PAPER-001")
 
 
 def _render(figure: FigureSpec, tmp_path: Path) -> dict:

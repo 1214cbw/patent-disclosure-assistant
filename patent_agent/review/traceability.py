@@ -5,7 +5,29 @@ from patent_agent.core.models import GroundedClaimSet, GroundedDisclosure, Techn
 
 def build_traceability(disclosure: GroundedDisclosure, claims: GroundedClaimSet, understanding: TechnicalUnderstandingResult, figures: list | None = None) -> TraceabilityReport:
     fact_ids = {fact.fact_id for fact in understanding.facts}
-    evidence_ids = {identifier for fact in understanding.facts for identifier in fact.evidence_ids}
+    # Evidence union covers every source in the understanding, not just
+    # facts: equations, steps, components, flows and parameters carry their
+    # own evidence ids that disclosure paragraphs / figures legitimately
+    # cite back to.
+    evidence_ids: set[str] = set()
+    for fact in understanding.facts:
+        evidence_ids.update(fact.evidence_ids)
+    for equation in understanding.equations:
+        evidence_ids.update(equation.evidence_ids)
+    for component in understanding.components:
+        evidence_ids.update(component.description.evidence_ids)
+    for step in understanding.steps:
+        evidence_ids.update(step.text.evidence_ids)
+    for flow in [*understanding.data_flows, *understanding.control_flows]:
+        evidence_ids.update(flow.relation.evidence_ids)
+    for parameter in understanding.parameters:
+        evidence_ids.update(parameter.evidence_ids)
+    for statement_list in (understanding.technical_field, understanding.technical_problems,
+                           understanding.system_overview, understanding.inputs,
+                           understanding.outputs, understanding.technical_effects,
+                           understanding.experiments, understanding.alternatives):
+        for statement in statement_list:
+            evidence_ids.update(statement.evidence_ids)
     links: list[TraceabilityLink] = []
     broken: list[str] = []
     for section in disclosure.sections:

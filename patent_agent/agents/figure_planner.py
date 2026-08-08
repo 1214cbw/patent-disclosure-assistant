@@ -3,12 +3,26 @@ from __future__ import annotations
 
 from patent_agent.core.models import FigureEdge, FigureNode, FigureSpec, TechnicalUnderstandingResult
 
+# V6.7 per-case source figures: only a crop verified against THAT case's own
+# source PDF may be used. A case with no registered crop gets an explicit
+# "omitted" placeholder - never another case's figure.
+SOURCE_FIGURE_2 = {
+    "REAL-PAPER-001": {
+        "path": "workspace/private_cases/REAL-PAPER-001/extracted_figures/fig2_design_variables_v67.png",
+        "title": "转子设计变量标注示意图（来源：原论文）",
+    },
+    "REAL-PAPER-002": {
+        "path": "workspace/private_cases/REAL-PAPER-002/extracted_figures/fig2_rotor_topology_002.png",
+        "title": "转子拓扑结构及其方形图像变换示意图（来源：原论文）",
+    },
+}
+
 
 class FigurePlanner:
-    def run(self, knowledge) -> list[FigureSpec]:
-        return self._from_knowledge(knowledge)
+    def run(self, knowledge, case_id: str | None = None) -> list[FigureSpec]:
+        return self._from_knowledge(knowledge, case_id=case_id)
 
-    def from_understanding(self, understanding: TechnicalUnderstandingResult) -> list[FigureSpec]:
+    def from_understanding(self, understanding: TechnicalUnderstandingResult, case_id: str | None = None) -> list[FigureSpec]:
         def _to_str(obj):
             if isinstance(obj, str): return obj
             for attr in ('text','description','name','statement'):
@@ -23,10 +37,10 @@ class FigurePlanner:
             ["motor","rotor","ldm","latent diffusion","topology",
              "电机","转子","拓扑","扩散","潜在"])
         if is_motor_ldm:
-            return self._motor_ldm_v64(steps_text, components_text)
+            return self._motor_ldm_v64(steps_text, components_text, case_id=case_id)
         return self._generic_flowchart(steps_text)
 
-    def _motor_ldm_v64(self, steps, components) -> list[FigureSpec]:
+    def _motor_ldm_v64(self, steps, components, case_id: str | None = None) -> list[FigureSpec]:
         figures: list[FigureSpec] = []
 
         # ── Figure 1: Compact horizontal process ──
@@ -53,31 +67,29 @@ class FigurePlanner:
             nodes=fig1_left + fig1_right, edges=fig1_edges, source_ids=[],
         ))
 
-        # ── Figure 2: Real source figure from original paper (V6.7) ──
-        # V6.7 re-crop via SourceFigureContentCropper (golden region):
-        # body prose above (y<377) and the original English caption
-        # (y>535.7) are excluded, figure body + hbs1 label + dimension
-        # arrows (y 393.7-525) fully preserved. If it cannot be extracted
-        # reliably, mark the figure as omitted rather than faking it.
+        # ── Figure 2: Real source figure from THIS case's own paper (V6.7) ──
+        # Only a crop verified against this case's source PDF may be used
+        # (SOURCE_FIGURE_2 registry). Without a registered crop the figure is
+        # explicitly omitted - never faked, never borrowed from another case.
         from pathlib import Path
-        src_fig = Path("workspace/private_cases/REAL-PAPER-001/extracted_figures/fig2_design_variables_v67.png")
-        if src_fig.exists() and src_fig.stat().st_size > 10_000:
+        registered = SOURCE_FIGURE_2.get(case_id or "")
+        src_fig = Path(registered["path"]).resolve() if registered else None
+        if src_fig is not None and src_fig.exists() and src_fig.stat().st_size > 10_000:
             figures.append(FigureSpec(
                 id="FIG-002", number=2, type="system",
-                # V6.7: Word caption must read "图2 转子设计变量标注示意图（来源：原论文）"
-                title="转子设计变量标注示意图（来源：原论文）",
-                nodes=[FigureNode(id="R01", label="[原论文设计变量标注图]")],
+                title=registered["title"],
+                nodes=[FigureNode(id="R01", label="[原论文转子拓扑结构图]")],
                 edges=[],
                 source_ids=[],
-                png_path=str(src_fig.resolve()),  # Real extracted paper figure
+                png_path=str(src_fig),  # Real extracted paper figure
                 provenance="extracted",
             ))
         else:
             # No reliable real figure -> explicit omission, never fake
             figures.append(FigureSpec(
                 id="FIG-002", number=2, type="system",
-                title="转子设计变量标注示意图（待用户补充原始结构图）",
-                nodes=[FigureNode(id="R01", label="[待补充：原始论文转子结构及设计变量标注图]")],
+                title="转子拓扑结构示意图（待用户补充原始结构图）",
+                nodes=[FigureNode(id="R01", label="[待补充：原始论文转子结构图]")],
                 edges=[],
                 source_ids=[],
                 provenance="omitted",
@@ -110,7 +122,7 @@ class FigurePlanner:
             # Training -> Generation connection
             FigureEdge(source="T5", target="G2", label="使用训练完成的U-Net参数"),
         ]
-        fig3_number = 3 if src_fig.exists() else 2
+        fig3_number = 3 if src_fig is not None and src_fig.exists() else 2
         figures.append(FigureSpec(
             id="FIG-003", number=fig3_number, type="flowchart",
             title="潜在扩散模型（LDM）训练与生成技术架构图",
@@ -159,7 +171,7 @@ class FigurePlanner:
                            title="本发明方法总体流程图",
                            nodes=nodes, edges=edges, source_ids=[])]
 
-    def _from_knowledge(self, knowledge, source_ids=None) -> list[FigureSpec]:
+    def _from_knowledge(self, knowledge, source_ids=None, case_id: str | None = None) -> list[FigureSpec]:
         steps = knowledge.steps if hasattr(knowledge,'steps') else []
         components = knowledge.components if hasattr(knowledge,'components') else []
         def _to_str(obj):
@@ -172,5 +184,5 @@ class FigurePlanner:
             ["motor","rotor","ldm","latent diffusion","topology",
              "电机","转子","拓扑","扩散","潜在"])
         if is_motor_ldm:
-            return self._motor_ldm_v64(steps_text, components_text)
+            return self._motor_ldm_v64(steps_text, components_text, case_id=case_id)
         return self._generic_flowchart(steps_text)

@@ -171,7 +171,7 @@ class RealCaseWorkflow:
         from patent_agent.agents import FigurePlanner
         from patent_agent.document.figure_renderer import PatentFigureRenderer
         from patent_agent.workflow.v2_pipeline import _ground_figure
-        figures = [_ground_figure(item, understanding) for item in FigurePlanner().run(knowledge)]
+        figures = [_ground_figure(item, understanding) for item in FigurePlanner().run(knowledge, case_id=case_id)]
         figures = [PatentFigureRenderer().render(item, output / "figures") for item in figures]
         (output / "figures.json").write_text(json.dumps([item.model_dump(mode="json") for item in figures], ensure_ascii=False, indent=2), encoding="utf-8")
         draft = grounded_disclosure_to_draft(disclosure, knowledge, figures); tree = grounded_claims_to_tree(claims); renderer = DocumentRenderer(self.settings.template_root); disclosure_docx = renderer.render(disclosure_to_ast(case_id, draft, legacy_demo_mode=True), output / "技术交底书.docx"); claims_docx = renderer.render(claims_to_ast(case_id, tree), output / "权利要求草案.docx"); validator = PatentDocxValidator(); validation = validator.validate(disclosure_docx, export_pdf=True); claims_validation = validator.inspect_word(claims_docx, export_pdf=True)
@@ -201,9 +201,12 @@ class RealCaseWorkflow:
             raise RuntimeError("REAL_CASE_FINAL_QUALITY_GATE_FAILED")
         final_review = HumanReviewManager(case_dir)
         final_review.machine.configure("FINAL", [])
-        if final_review.machine.records["FINAL"].status == CheckpointStatus.NOT_STARTED: final_review.machine.transition("FINAL", CheckpointStatus.GENERATED)
-        final_review.machine.transition("FINAL", CheckpointStatus.UNDER_REVIEW)
-        final_review.machine.transition("FINAL", CheckpointStatus.APPROVED, reviewed_ids=[])
+        # Idempotent: re-running finalize on an already-validated case must
+        # not replay the FINAL transitions.
+        if final_review.machine.records["FINAL"].status != CheckpointStatus.APPROVED:
+            if final_review.machine.records["FINAL"].status == CheckpointStatus.NOT_STARTED: final_review.machine.transition("FINAL", CheckpointStatus.GENERATED)
+            final_review.machine.transition("FINAL", CheckpointStatus.UNDER_REVIEW)
+            final_review.machine.transition("FINAL", CheckpointStatus.APPROVED, reviewed_ids=[])
         final_review.machine.save(final_review.state_path)
         _mark_current(case_dir, "knowledge", "candidate", "strategy", "disclosure", "claim_feature", "claim", "support_matrix", "scope_review", "figure", "traceability")
         return output

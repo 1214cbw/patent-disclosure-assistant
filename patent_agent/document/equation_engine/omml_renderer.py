@@ -49,8 +49,11 @@ def run(text: str, *, bold: bool = False, normal: bool = False) -> etree._Elemen
     return node
 
 
-GREEK = {"psi": "ψ", "alpha": "α", "beta": "β", "lambda": "λ", "omega": "ω", "Delta": "Δ"}
-SYMBOLS = {"partial": "∂", "sin": "sin", "cos": "cos", "tan": "tan", "to": "→", "ge": "≥", "le": "≤", "leq": "≤", "geq": "≥", "ldots": "…", "cdots": "⋯", "times": "×", "pm": "±", "infty": "∞", "min": "min"}
+GREEK = {"psi": "ψ", "alpha": "α", "beta": "β", "lambda": "λ", "omega": "ω", "Delta": "Δ",
+         "gamma": "γ", "phi": "φ", "theta": "θ"}
+SYMBOLS = {"partial": "∂", "sin": "sin", "cos": "cos", "tan": "tan", "to": "→", "ge": "≥", "le": "≤", "leq": "≤", "geq": "≥", "ldots": "…", "cdots": "⋯", "times": "×", "pm": "±", "infty": "∞", "min": "min",
+           "max": "max", "odot": "⊙", "|": "‖"}
+ACCENTS = {"hat": "^", "bar": "‾", "vec": "→", "dot": ".", "tilde": "~", "ddot": ".."}
 
 
 class LatexParseError(ValueError):
@@ -158,6 +161,9 @@ class Parser:
                 # Spacing is intentionally not emitted as an empty math run:
                 # Word represents that as an editable dotted placeholder.
                 return []
+            if command in {"%", "$", "&", "_", "#", "{", "}", "~", "^"}:
+                # escaped literal characters
+                return run(command)
             if command == "frac":
                 node = el("f")
                 num, den = self.argument(), self.argument()
@@ -179,9 +185,16 @@ class Parser:
                 return run(GREEK[command])
             if command in SYMBOLS:
                 return run(SYMBOLS[command], normal=command in {"sin", "cos", "tan", "min"})
-            if command in {"mathbf", "mathrm"}:
+            if command in ACCENTS:
+                node = el("acc")
+                props = el("accPr"); props.append(el("chr", val=ACCENTS[command]))
+                node.append(props)
+                node.append(math_arg(self.argument()))
+                return node
+            if command in {"mathbf", "mathrm", "text", "textnormal", "mathbb", "mathcal"}:
                 group = self.argument()
-                return self.style(group, bold=command == "mathbf", normal=command == "mathrm")
+                return self.style(group, bold=command == "mathbf",
+                                  normal=command != "mathbf")
             if command == "left":
                 left = self.delimiter()
                 inside = self.parse(stop_right=True)
@@ -217,10 +230,12 @@ class Parser:
             node = el("limLow"); node.append(math_arg([run("lim", normal=True)])); node.append(self.container("lim", lower)); return node
         if isinstance(base, list):
             base = math_arg(base)
+        # Never nest m:e inside m:e: Word rejects nested math args.
+        base_arg = base if base.tag == q("e") else math_arg(base)
         if lower is not None and upper is not None:
-            node = el("sSubSup"); node.append(math_arg(base)); node.append(self.container("sub", lower)); node.append(self.container("sup", upper)); return node
+            node = el("sSubSup"); node.append(base_arg); node.append(self.container("sub", lower)); node.append(self.container("sup", upper)); return node
         node = el("sSub" if lower is not None else "sSup")
-        node.append(math_arg(base))
+        node.append(base_arg)
         node.append(self.container("sub" if lower is not None else "sup", lower if lower is not None else upper))
         return node
 

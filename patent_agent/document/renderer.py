@@ -19,6 +19,11 @@ class DocumentRenderer:
         self.equations = EquationEngine()
         # Lazy-init math detector
         self._math_detector = None
+        # Reference registry: equation/figure id -> display number, filled
+        # while rendering (ids may be semantic names like eq_vae_loss with
+        # no embedded digits, so number extraction from the id is unreliable).
+        self._equation_numbers: dict[str, int] = {}
+        self._figure_numbers: dict[str, int] = {}
 
     @property
     def math_detector(self):
@@ -52,9 +57,13 @@ class DocumentRenderer:
                 # Use MathSpanDetector to render text with inline OMML
                 self._render_text_with_math(paragraph, node.value)
         elif node.type == "display_equation":
-            if node.number is not None: self.equations.insert_numbered(document, node.latex, node.number)
-            else: self.equations.insert_display(document, node.latex)
+            if node.number is not None:
+                self._equation_numbers[node.target] = node.number
+                self.equations.insert_numbered(document, node.latex, node.number)
+            else:
+                self.equations.insert_display(document, node.latex)
         elif node.type == "figure":
+            self._figure_numbers[node.target] = node.number
             paragraph = document.add_paragraph(); paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
             # V6.6: aspect-ratio-aware embed size; never exceed usable page
             width, height = self._figure_embed_size(node.path)
@@ -109,8 +118,17 @@ class DocumentRenderer:
                     run.italic = True
                     set_run_font(run)
 
-    @staticmethod
-    def _ref_number(target: str) -> int:
+    def _ref_number(self, target: str) -> int:
+        """Resolve a cross-reference to its rendered number.
+
+        Prefer the number registered when the target node was rendered
+        (ids like ``eq_vae_loss`` carry no digits); fall back to digit
+        extraction for targets that were never rendered.
+        """
+        if target in self._equation_numbers:
+            return self._equation_numbers[target]
+        if target in self._figure_numbers:
+            return self._figure_numbers[target]
         digits = "".join(ch for ch in target if ch.isdigit())
         return int(digits or "0")
 
