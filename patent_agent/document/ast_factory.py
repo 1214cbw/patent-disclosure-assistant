@@ -20,16 +20,25 @@ def disclosure_to_ast(
         PatentNode(type="heading", value=draft.title, level=0)
     ]
 
-    figure_nodes = [
-        PatentNode(
+    figure_nodes = []
+    for figure in draft.figures:
+        # V6.6: omitted figures (e.g. 待用户补充的真实结构图) become an
+        # explicit placeholder note, never a fake rendering.
+        provenance = getattr(figure, "provenance", "") or "generated"
+        if provenance == "omitted" or not figure.png_path:
+            figure_nodes.append(PatentNode(
+                type="paragraph",
+                value=f"图{figure.number}  {figure.title} —— 本图为原始论文结构图，"
+                      f"当前版本未嵌入，待用户上传真实截图后补充。",
+            ))
+            continue
+        figure_nodes.append(PatentNode(
             type="figure",
             target=figure.id,
             number=figure.number,
             path=figure.png_path,
             value=figure.title,
-        )
-        for figure in draft.figures
-    ]
+        ))
     equation_nodes = [
         PatentNode(
             type="display_equation",

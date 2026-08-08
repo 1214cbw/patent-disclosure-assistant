@@ -56,8 +56,14 @@ class DocumentRenderer:
             else: self.equations.insert_display(document, node.latex)
         elif node.type == "figure":
             paragraph = document.add_paragraph(); paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            paragraph.add_run().add_picture(node.path, width=Cm(13.5))
+            # V6.6: aspect-ratio-aware embed size; never exceed usable page
+            width, height = self._figure_embed_size(node.path)
+            paragraph.paragraph_format.keep_with_next = True
+            paragraph.paragraph_format.keep_together = True
+            paragraph.add_run().add_picture(node.path, width=width, height=height)
             caption = document.add_paragraph(style="Patent Caption"); caption.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            caption.paragraph_format.keep_with_next = False
+            caption.paragraph_format.keep_together = True
             # Strip duplicate "图N" prefix from value if present
             import re
             figure_title = node.value or ""
@@ -107,4 +113,30 @@ class DocumentRenderer:
     def _ref_number(target: str) -> int:
         digits = "".join(ch for ch in target if ch.isdigit())
         return int(digits or "0")
+
+    @staticmethod
+    def _figure_embed_size(image_path: str):
+        """Compute embed size (cm) preserving aspect ratio.
+
+        Max width 13.5cm; max height limited to usable A4 page height so a
+        tall figure is never silently clipped by Word (the 'looks cropped'
+        failure mode). Returns (width_cm, height_cm).
+        """
+        from PIL import Image as PILImage
+        MAX_W_CM = 13.5
+        MAX_H_CM = 23.0  # A4 29.7cm - 2*~2.5cm margins - caption space
+        try:
+            with PILImage.open(image_path) as im:
+                iw, ih = im.size
+        except Exception:
+            return Cm(13.5), None
+        if iw <= 0 or ih <= 0:
+            return Cm(13.5), None
+        aspect = ih / iw
+        w_cm = MAX_W_CM
+        h_cm = w_cm * aspect
+        if h_cm > MAX_H_CM:
+            h_cm = MAX_H_CM
+            w_cm = h_cm / aspect
+        return Cm(max(4.0, w_cm)), Cm(max(3.0, h_cm))
 

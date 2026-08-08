@@ -288,27 +288,73 @@ class DisclosureOnlyPipeline:
             fig_output_dir = output_dir / "figures"
             fig_output_dir.mkdir(parents=True, exist_ok=True)
 
-            # Use content plan's figure plan for domain-specific figures
-            for fp in content_plan.figure_plan:
+            # V6.6: prefer the semantic FigurePlanner specs (layout-aware,
+            # real-source-figure aware) for motor/LDM disclosures; fall back
+            # to the generic content-plan chains otherwise.
+            specs: list[FigureSpec] = []
+            try:
+                from patent_agent.agents.figure_planner import FigurePlanner
+                planned_specs = FigurePlanner().from_understanding(understanding)
+                if len(planned_specs) >= 3 and any(
+                    s.layout in ("two_column", "branch_merge") for s in planned_specs
+                ):
+                    specs = planned_specs
+            except Exception as exc:
+                event["warnings"].append(f"FigurePlanner failed, using generic plan: {exc}")
+                specs = []
+
+            if not specs:
+                for fp in content_plan.figure_plan:
+                    try:
+                        nodes = self._build_figure_nodes(fp, feature_tree, understanding)
+                        edges = self._build_figure_edges(fp, nodes)
+                        specs.append(FigureSpec(
+                            id=fp["figure_id"],
+                            number=fp["number"],
+                            type=fp.get("type", "flowchart"),
+                            title=fp["title_cn"],
+                            nodes=nodes,
+                            edges=edges,
+                            source_ids=[],
+                        ))
+                    except Exception as exc:
+                        event["warnings"].append(f"Figure {fp.get('figure_id')} plan failed: {exc}")
+
+            for spec in specs:
                 try:
-                    # Build FigureSpec from content plan
-                    nodes = self._build_figure_nodes(fp, feature_tree, understanding)
-                    edges = self._build_figure_edges(fp, nodes)
-                    spec = FigureSpec(
-                        id=fp["figure_id"],
-                        number=fp["number"],
-                        type=fp.get("type", "flowchart"),
-                        title=fp["title_cn"],
-                        nodes=nodes,
-                        edges=edges,
-                        source_ids=[],
-                    )
+                    if getattr(spec, "provenance", "") == "omitted":
+                        # explicit placeholder, never a fake rendering
+                        figures.append(spec)
+                        continue
                     rendered = PatentFigureRenderer().render(spec, fig_output_dir)
                     figures.append(rendered)
                 except Exception as exc:
-                    event["warnings"].append(f"Figure {fp.get('figure_id')} failed: {exc}")
+                    event["warnings"].append(f"Figure {spec.id} failed: {exc}")
 
-            event["output"] = {"planned": len(content_plan.figure_plan), "rendered": len(figures)}
+            # V6.6: layout / semantic / source validation report
+            try:
+                from patent_agent.document.figure_layout import (
+                    FigureLayoutValidator, FigureSemanticValidator, FigureSourceValidator,
+                )
+                from patent_agent.document.figure_renderer import _layout_report_path
+                fig_issues = []
+                for spec in figures:
+                    report_path = _layout_report_path(fig_output_dir, spec.number)
+                    if report_path.exists():
+                        from patent_agent.document.figure_layout import LayoutReport
+                        report = LayoutReport.from_file(report_path)
+                    else:
+                        report = None
+                    fig_issues += FigureLayoutValidator().validate(report)
+                    fig_issues += FigureSemanticValidator().validate(spec, report)
+                fig_issues += FigureSourceValidator().validate(figures)
+                validation_report = _write_figure_validation_report(output_dir, figures, fig_issues)
+                event["output"]["validation_issues"] = len(fig_issues)
+                event["output"]["figure_validation_report"] = str(validation_report)
+            except Exception as exc:
+                event["warnings"].append(f"Figure validation failed: {exc}")
+
+            event["output"] = {"planned": len(specs), "rendered": len(figures)}
 
         # ── Stage 4b: Post-process disclosure (cleanup unwanted sections) ──
         disclosure = _cleanup_disclosure_sections(disclosure)
@@ -571,6 +617,57 @@ class DisclosureOnlyPipeline:
 
 
 # ── helpers ──────────────────────────────────────────────────────
+
+
+def _write_figure_validation_report(output_dir: Path, figures, issues) -> Path:
+    """Write figure_validation_report.md next to the output docx."""
+    from patent_agent.document.figure_layout import FigureLayoutValidator, FigureSemanticValidator, FigureSourceValidator
+    lines = [
+        "# Figure Validation Report (V6.6)",
+        "",
+        f"- 生成时间: {utc_now()}",
+        f"- 图数量: {len(figures)}",
+        f"- 发现问题: {len(issues)}",
+        "",
+        "## 每张图验证结果",
+        "",
+    ]
+    by_figure: dict[int, list] = {}
+    general: list = []
+    for issue in issues:
+        fid = getattr(issue, "figure", "") or ""
+        m = _extract_figure_number(fid)
+        if m:
+            by_figure.setdefault(m, []).append(issue)
+        else:
+            general.append(issue)
+
+    for fig in figures:
+        prov = getattr(fig, "provenance", "") or "generated"
+        layout = getattr(fig, "layout", "auto") or "auto"
+        lines.append(f"### 图{fig.number} {fig.title}")
+        lines.append(f"- 来源: {prov}")
+        lines.append(f"- 布局: {layout}")
+        lines.append(f"- 节点数: {len(fig.nodes)}  连接数: {len(fig.edges)}")
+        fig_issues = by_figure.get(fig.number, [])
+        lines.append(f"- 问题数: {len(fig_issues)}")
+        for issue in fig_issues:
+            lines.append(f"  - [{issue.severity}] {issue.code}: {issue.message}")
+        lines.append("")
+    if general:
+        lines.append("## 全局问题")
+        for issue in general:
+            lines.append(f"- [{issue.severity}] {issue.code}: {issue.message}")
+        lines.append("")
+    path = output_dir / "figure_validation_report.md"
+    path.write_text("\n".join(lines), encoding="utf-8")
+    return path
+
+
+def _extract_figure_number(fid: str) -> int | None:
+    import re
+    m = re.search(r"(\d+)", fid or "")
+    return int(m.group(1)) if m else None
 
 
 def _minimal_strategy_for_disclosure(understanding):

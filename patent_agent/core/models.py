@@ -561,6 +561,11 @@ class FigureSpec(BaseModel):
     source_ids: list[str]
     png_path: str = ""
     svg_path: str = ""
+    # V6.6 figure stabilization
+    layout: str = "auto"  # auto | vertical | two_column | branch_merge
+    provenance: str = "generated"  # generated | extracted | uploaded | omitted
+    left_node_ids: list[str] = Field(default_factory=list)  # two_column semantic split
+    right_node_ids: list[str] = Field(default_factory=list)
 
 
 class DisclosureDraft(BaseModel):

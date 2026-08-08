@@ -53,24 +53,33 @@ class FigurePlanner:
             nodes=fig1_left + fig1_right, edges=fig1_edges, source_ids=[],
         ))
 
-        # ── Figure 2: Real source figure from original paper ──
-        # Use extracted PDF figure if available
+        # ── Figure 2: Real source figure from original paper (V6.6) ──
+        # Prefer the vector-rendered extraction of paper Fig. 2
+        # ("Annotation of design variables for the first-layer magnetic
+        # barrier", page 2 left column). If it cannot be extracted
+        # reliably, mark the figure as omitted rather than faking it.
         from pathlib import Path
-        src_fig = Path("workspace/private_cases/REAL-PAPER-001/extracted_figures/page2_img2.png")
-        if src_fig.exists():
-            # Use the real paper figure for design variables
+        src_fig = Path("workspace/private_cases/REAL-PAPER-001/extracted_figures/fig2_design_variables.png")
+        if src_fig.exists() and src_fig.stat().st_size > 10_000:
             figures.append(FigureSpec(
                 id="FIG-002", number=2, type="system",
-                title="转子设计变量标注示意图（来源：原论文）",
-                nodes=[FigureNode(id="R01", label="[原始论文转子结构及设计变量图]")],
+                title="转子设计变量标注示意图",
+                nodes=[FigureNode(id="R01", label="[原论文设计变量标注图]")],
                 edges=[],
                 source_ids=[],
-                png_path=str(src_fig.resolve()),  # Pre-set source image path
+                png_path=str(src_fig.resolve()),  # Real extracted paper figure
+                provenance="extracted",
             ))
         else:
-            # No real figure available -> DON'T create fake one
-            # Skip figure 2 entirely
-            pass
+            # No reliable real figure -> explicit omission, never fake
+            figures.append(FigureSpec(
+                id="FIG-002", number=2, type="system",
+                title="转子设计变量标注示意图（待用户补充原始结构图）",
+                nodes=[FigureNode(id="R01", label="[待补充：原始论文转子结构及设计变量标注图]")],
+                edges=[],
+                source_ids=[],
+                provenance="omitted",
+            ))
 
         # ── Figure 3: Two-column training/generation ──
         fig3_training = [
@@ -99,10 +108,15 @@ class FigurePlanner:
             # Training -> Generation connection
             FigureEdge(source="T5", target="G2", label="使用训练完成的U-Net参数"),
         ]
+        fig3_number = 3 if src_fig.exists() else 2
         figures.append(FigureSpec(
-            id="FIG-003", number=3 if src_fig.exists() else 2, type="flowchart",
+            id="FIG-003", number=fig3_number, type="flowchart",
             title="潜在扩散模型（LDM）训练与生成技术架构图",
             nodes=fig3_training + fig3_generation, edges=fig3_edges, source_ids=[],
+            layout="two_column",
+            provenance="generated",
+            left_node_ids=[n.id for n in fig3_training],
+            right_node_ids=[n.id for n in fig3_generation],
         ))
 
         # ── Figure 4: Branch-merge interpolation ──
@@ -118,9 +132,11 @@ class FigurePlanner:
             FigureEdge(source="I3", target="I4"),
         ]
         figures.append(FigureSpec(
-            id="FIG-004", number=4 if src_fig.exists() else 3, type="flowchart",
+            id="FIG-004", number=fig3_number + 1, type="flowchart",
             title="潜在空间插值与拓扑探索示意图",
             nodes=fig4_nodes, edges=fig4_edges, source_ids=[],
+            layout="branch_merge",
+            provenance="generated",
         ))
 
         return figures
