@@ -305,6 +305,20 @@ def local_generation_drift(text: str, source: str) -> list[str]:
         if not explicit_source_range:
             reasons.append("range synthesized from unstructured numeric evidence")
             break
+    chinese_counts = {
+        "一": 1, "二": 2, "三": 3, "四": 4, "五": 5,
+        "六": 6, "七": 7, "八": 8, "九": 9, "十": 10,
+    }
+    for match in re.finditer(
+        r"([一二三四五六七八九十]|\d+)个?[^。]{0,36}设计[（(]?[^。]{0,12}"
+        r"设计([A-Z])至(?:设计)?([A-Z])",
+        text,
+    ):
+        declared = chinese_counts.get(match.group(1), int(match.group(1)) if match.group(1).isdigit() else 0)
+        enumerated = ord(match.group(3)) - ord(match.group(2)) + 1
+        if declared != enumerated:
+            reasons.append("internally inconsistent count and label range")
+            break
     return reasons
 
 

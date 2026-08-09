@@ -747,6 +747,14 @@ def test_abstract_response_category_requires_local_response_evidence():
     assert "UNSUPPORTED_GENERALIZATION" in _codes(report)
 
 
+def test_declared_count_must_match_alphabetic_label_range():
+    report = _validate([_plan()], generated_texts=[{
+        "text": "[SECTION:07-01] 验证步骤V1：选定八个代表性设计（设计A至设计G）。",
+        "source_text": "Eight representative designs A through H are evaluated.",
+    }])
+    assert "UNSUPPORTED_GENERALIZATION" in _codes(report)
+
+
 def test_binary_or_segmented_image_expansion_requires_local_evidence():
     report = _validate([_plan()], generated_texts=[{
         "text": "[SECTION:05-09] 输入可以是二值或分割图像。",
