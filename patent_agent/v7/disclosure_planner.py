@@ -607,7 +607,10 @@ class PatentDisclosurePlanner:
                 + "；".join(instructions) + "。"
             )
         raise RuntimeError(
-            "V7_DISCLOSURE_EVIDENCE_VOCABULARY_FAILED: 段落含非案例证据词汇或自行构造公式"
+            "V7_DISCLOSURE_EVIDENCE_VOCABULARY_FAILED: "
+            f"inline_formula={has_inline_formula}; "
+            f"unsupported_terms={unsupported[:12]}; "
+            f"unsupported_parameters={unsupported_parameters[:12]}"
         )
 
     def _generate_section(self, case_id, sec, understanding, evidence_store, strategy):
@@ -821,7 +824,10 @@ class PatentDisclosurePlanner:
             texts = self._llm_paragraphs(
                 "以代理师友好列表形式，标注需重点说明的核心技术特征、"
                 "术语定义建议、支持证据位置及注意事项。不得声称某项技术细节未提供，"
-                "除非输入的支持缺口明确列出该缺失项。", source, 3)
+                "除非输入的支持缺口明确列出该缺失项。仅复述输入已明确的定义和边界，"
+                "不得增加示例、常用取值、求解器、材料、可选实现或行业惯例。"
+                "不得输出等式或行内公式，规范公式由系统从当前案例公式注册表另行插入。"
+                "不要使用Markdown代码标记或HTML上下标标签。", source, 3)
             for t in texts:
                 paragraphs.append(para(t))
 
