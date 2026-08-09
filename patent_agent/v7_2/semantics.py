@@ -228,6 +228,34 @@ def _semantic_strings(value) -> list[str]:
     return []
 
 
+def _method_stage(statement: str) -> int:
+    """Order reviewed method steps by generic dependency role, stably."""
+    text = statement.lower()
+    if any(term in text for term in ("prepare", "construct", "acquire", "collect", "parameterize")):
+        return 10
+    if any(term in text for term in ("train", "calibrate", "fit")):
+        return 20
+    if any(term in text for term in ("generate", "synthesize", "produce candidate")):
+        return 30
+    if any(term in text for term in ("search", "evaluate", "calculate", "measure", "screen")):
+        return 40
+    if any(term in text for term in ("optimize", "pareto", "select final")):
+        return 50
+    return 35
+
+
+def enrich_registry(bundle: SemanticPlanningBundle, source_texts: Iterable[str]) -> None:
+    """Add current raw evidence to a case-local semantic registry in place."""
+    texts = [str(text) for text in source_texts if str(text).strip()]
+    bundle.registry.source_texts = list(dict.fromkeys(bundle.registry.source_texts + texts))
+    bundle.registry.supported_parameters = sorted(set(bundle.registry.supported_parameters) | set().union(*(
+        _parameters(text) for text in texts
+    )))
+    bundle.registry.source_terms = sorted(set(bundle.registry.source_terms) | set().union(*(
+        _latin_terms(text) for text in texts
+    )))
+
+
 def _role_for_category(category: str) -> SemanticRole:
     key = _norm(category)
     patterns: list[tuple[tuple[str, ...], SemanticRole]] = [
@@ -507,6 +535,8 @@ class EvidenceBoundEmbodimentPlanner:
             )
             for index, step in enumerate(method_steps, 1)
         ] or understanding_facts
+        if method_steps:
+            facts = sorted(facts, key=lambda fact: _method_stage(fact.statement))
         required: list[RequiredFeature] = []
         for index, statement in enumerate(getattr(strategy, "independent_claim_core", []) or [], 1):
             evidence_ids = list(getattr(statement, "evidence_ids", []) or [])
@@ -542,15 +572,7 @@ class EvidenceBoundEmbodimentPlanner:
             input_objects=inputs or None, output_objects=outputs or None,
         )
         bundle.section5_fact_clusters = [{fact.fact_id} for fact in understanding_facts]
-        full_source_texts = _semantic_strings(understanding)
-        bundle.registry.source_texts = list(dict.fromkeys(
-            bundle.registry.source_texts + full_source_texts))
-        bundle.registry.supported_parameters = sorted(set(bundle.registry.supported_parameters) | set().union(*(
-            _parameters(text) for text in full_source_texts
-        )))
-        bundle.registry.source_terms = sorted(set(bundle.registry.source_terms) | set().union(*(
-            _latin_terms(text) for text in full_source_texts
-        )))
+        enrich_registry(bundle, _semantic_strings(understanding))
         return bundle
 
 
@@ -656,6 +678,7 @@ class PatentSemanticsValidator:
             re.compile(r"以.{0,30}(?:目标|需求).{0,15}为条件.{0,20}(?:生成|解码)"),
         ]
         source_joined = "\n".join(registry.source_texts)
+        source_parameter_text = re.sub(r"[\s,，]", "", source_joined.lower()).replace("×", "x")
         dimension_aliases = {
             "二维": ("二维", "2d", "2-d", "two-dimensional"),
             "三维": ("三维", "3d", "3-d", "three-dimensional"),
@@ -763,26 +786,38 @@ class PatentSemanticsValidator:
                     ))
             if section_id.startswith(("05-", "07-")):
                 for parameter in _parameters(scoped_text):
-                    if _norm(parameter) not in supported_parameters:
+                    signature = re.sub(r"[\s,，]", "", parameter.lower()).replace("×", "x")
+                    numbers = re.findall(r"\d+(?:\.\d+)?", signature)
+                    unit = "".join(re.findall(r"[a-z%]+", signature))
+                    supported = (signature in source_parameter_text or (
+                        bool(numbers)
+                        and all(number in source_parameter_text for number in numbers)
+                        and (not unit or unit in source_parameter_text)
+                    ))
+                    if not supported:
                         findings.append(SemanticFinding(
                             code="UNSUPPORTED_PARAMETER",
-                            message=f"Generated exact parameter lacks source support: {parameter}"
+                            message=(f"Generated exact parameter lacks source support in {section_id}: "
+                                     f"{parameter} | {scoped_text[:100]}")
                         ))
                 source_lower = source_joined.lower()
                 for generated_term, aliases in dimension_aliases.items():
                     if generated_term in scoped_text and not any(alias in source_lower for alias in aliases):
                         findings.append(SemanticFinding(
                             code="UNSUPPORTED_PARAMETER",
-                            message=f"Generated dimensionality lacks source support: {generated_term}"
+                            message=(f"Generated dimensionality lacks source support in {section_id}: "
+                                     f"{generated_term} | {scoped_text[:100]}")
                         ))
             if not section_id.startswith("09") and unsupported_expansion(scoped_text):
                 findings.append(SemanticFinding(
-                    code="UNSUPPORTED_GENERALIZATION", message="Generated prose expands the source domain."
+                    code="UNSUPPORTED_GENERALIZATION",
+                    message=f"Generated prose expands the source domain in {section_id}: {scoped_text[:120]}"
                 ))
             if (section_id.startswith(("05-", "07-")) and online_pattern.search(scoped_text)
                     and ScenarioRole.ONLINE_CONTROL not in supported_scenarios):
                 findings.append(SemanticFinding(
-                    code="SCENARIO_DRIFT", message="Generated prose introduces an unsupported online scenario."
+                    code="SCENARIO_DRIFT",
+                    message=f"Generated prose introduces an unsupported online scenario in {section_id}: {scoped_text[:120]}"
                 ))
             if (section_id.startswith(("05-", "07-")) and alternative_pattern.search(scoped_text)
                     and not registry.supported_alternatives):
@@ -862,5 +897,5 @@ __all__ = [
     "PatentSemanticsReport", "PatentSemanticsValidator", "RequiredFeature",
     "ScenarioRole", "SemanticFact", "SemanticPlanningBundle", "SemanticRegistry",
     "SemanticRole", "TechnicalRole", "TechnicalRoleEntry",
-    "required_features_from_claims", "validate_bundle",
+    "enrich_registry", "required_features_from_claims", "validate_bundle",
 ]

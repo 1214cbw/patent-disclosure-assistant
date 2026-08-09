@@ -435,8 +435,9 @@ class PatentDisclosurePlanner:
             understanding, evidence_store
         )
         section_titles = self.generate_section_titles(clusters)
-        from patent_agent.v7_2.semantics import EvidenceBoundEmbodimentPlanner
+        from patent_agent.v7_2.semantics import EvidenceBoundEmbodimentPlanner, enrich_registry
         self.semantic_bundle = EvidenceBoundEmbodimentPlanner().plan(understanding, strategy)
+        enrich_registry(self.semantic_bundle, source_texts)
         plan = self.build_plan(
             understanding, strategy, figures, clusters, title=title,
             section_titles=section_titles,
@@ -658,8 +659,8 @@ class PatentDisclosurePlanner:
                 facts_text = "- " + step.processing
                 evidence_ids = list(step.evidence_ids)
                 excerpts = self._evidence_excerpts(evidence_store, evidence_ids, limit=6)
-                previous_fact = (embodiment.ordered_steps[index - 2].processing
-                                 if index > 1 else "；".join(embodiment.input_objects))
+                previous_facts = ([step.processing for step in embodiment.ordered_steps[:index - 1]]
+                                  if index > 1 else embodiment.input_objects)
                 next_fact = (embodiment.ordered_steps[index].processing
                              if index < len(embodiment.ordered_steps)
                              else "；".join(embodiment.output_objects))
@@ -671,8 +672,10 @@ class PatentDisclosurePlanner:
                 context = (
                     f"### 当前步骤事实\n{facts_text}\n\n"
                     f"### 原始证据摘录\n{excerpts}\n\n"
-                    f"### 技术链位置\n上游来源事实：{previous_fact}\n"
+                    f"### 已完成的前序事实\n" + "\n".join(f"- {item}" for item in previous_facts) + "\n"
                     f"下游目标事实：{next_fact}\n"
+                    "当前步骤只可选取证据实际支持的前序输入，不要求机械承接紧邻步骤；"
+                    "若存在并行训练分支，应回接相应的数据准备步骤。"
                     f"{chain_requirement}"
                 )
                 texts = self._llm_paragraphs(
@@ -680,7 +683,8 @@ class PatentDisclosurePlanner:
                     "典型参数、传感器、在线控制场景、数据类型或求解器。明确本步骤输入、处理、"
                     "输出及输出如何进入下一步骤。若当前步骤包含模型训练，必须区分训练数据与"
                     "后续推理输入，不得把上游生成候选自动写成训练样本。最后一步严禁出现"
-                    "‘后续步骤’或‘下游’；不得把结构层数改写为空间维度。不要自行写步骤编号。", context, 1)
+                    "‘后续步骤’或‘下游’；不得使用‘实时’描述离线计算；不得把结构层数改写为空间维度。"
+                    "不要自行写步骤编号。", context, 1)
                 if not texts:
                     raise RuntimeError("V7_2_EMBODIMENT_STEP_EMPTY")
                 body = re.sub(r"^\s*(?:步骤)?S\d+\s*[：:、.．]?\s*", "", "".join(texts))

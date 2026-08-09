@@ -438,3 +438,18 @@ def test_final_step_cannot_claim_a_nonexistent_downstream_step():
         "[SECTION:07-01] S3：获得最终输出，并将其作为后续步骤的输入。"
     ])
     assert "PRIMARY_EMBODIMENT_INCOMPLETE" in _codes(report)
+
+
+def test_reviewed_training_branch_is_ordered_before_candidate_generation():
+    understanding = SimpleNamespace(
+        facts=[], alternatives=[], inputs=[], outputs=[],
+        steps=[
+            SimpleNamespace(step_id="GEN", text=SimpleNamespace(
+                text="Generate candidate objects", evidence_ids=["EV-G"])),
+            SimpleNamespace(step_id="TRAIN", text=SimpleNamespace(
+                text="Train the predictor on the prepared dataset", evidence_ids=["EV-T"])),
+        ],
+    )
+    bundle = EvidenceBoundEmbodimentPlanner().plan(
+        understanding, SimpleNamespace(independent_claim_core=[]))
+    assert [step.fact_ids for step in bundle.embodiments[0].ordered_steps] == [["TRAIN"], ["GEN"]]
