@@ -33,6 +33,9 @@ from patent_agent.v7.language_gate import _clean_html
 
 CJK = re.compile(r"[一-鿿]")
 FORMULA_PREFIX = re.compile(r"^(FORMULA|SYMBOL|PARAM)\s+", re.MULTILINE)
+GENERATED_FORMULA = re.compile(
+    r"\\\(|\\\[|\$[^$]+\$|[=＝≤≥≦≧]|[∑∫√∥⊙]"
+)
 
 STOPWORDS = {
     "the", "a", "an", "and", "or", "of", "for", "with", "from", "by", "to",
@@ -66,6 +69,10 @@ def _align_period_qualifier(text: str, source: str) -> str:
     if electrical and not mechanical:
         return text.replace("机械周期", "电周期")
     return text
+
+
+def _contains_generated_formula(text: str) -> bool:
+    return bool(GENERATED_FORMULA.search(text))
 
 
 def _collect_evidence_ids(value) -> set[str]:
@@ -544,7 +551,7 @@ class PatentDisclosurePlanner:
                 if p.strip() and len(p.strip()) > 12 and not p.strip().startswith(("#", "```"))
             ]
             has_inline_formula = any(
-                re.search(r"\\\(|\\\[|\$[^$]+\$", p) for p in paragraphs
+                _contains_generated_formula(p) for p in paragraphs
             )
             unsupported: list[str] = []
             if paragraphs and self.evidence_fingerprint is not None:
@@ -558,7 +565,8 @@ class PatentDisclosurePlanner:
             instructions: list[str] = []
             if has_inline_formula:
                 instructions.append(
-                    "正文不得输出\\(...\\)、\\[...\\]或$...$公式；规范公式由系统从当前案例公式注册表单独插入"
+                    "正文不得输出等号、不等式、求和/积分符号或任何行内公式；"
+                    "规范公式由系统从当前案例公式注册表单独插入"
                 )
             if unsupported:
                 instructions.append(

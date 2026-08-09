@@ -2,7 +2,11 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-from patent_agent.v7.disclosure_planner import PatentDisclosurePlanner, _align_period_qualifier
+from patent_agent.v7.disclosure_planner import (
+    PatentDisclosurePlanner,
+    _align_period_qualifier,
+    _contains_generated_formula,
+)
 from patent_agent.agents.technical_understanding_v2 import _retrieve_task_context
 from patent_agent.v7_2.semantics import (
     EmbodimentPlan,
@@ -656,3 +660,8 @@ def test_evidence_supported_example_marker_is_not_itself_an_alternative():
         "source_text": "For example, the source input image is 512x512 pixels.",
     }])
     assert "UNSUPPORTED_ALTERNATIVE" not in _codes(report)
+
+
+def test_fullwidth_equation_is_detected_before_language_gate():
+    assert _contains_generated_formula("依下式计算：T(θk)＝(3/2)Pn[ψd(θk)iq－ψq(θk)id]。")
+    assert not _contains_generated_formula("根据各位置磁链和电流计算电磁转矩。")
