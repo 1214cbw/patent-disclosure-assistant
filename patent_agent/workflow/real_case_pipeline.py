@@ -34,16 +34,28 @@ def _semantic_paragraph_inputs(disclosure, understanding, evidence) -> list[dict
     fact_text_by_id.update({
         step.step_id: str(step.text.text) for step in understanding.steps
     })
-    return [{
-        "text": f"[SECTION:{section.section_id}] {paragraph.text}",
-        "source_text": "\n".join([
-            *(evidence_by_id[evidence_id] for evidence_id in paragraph.evidence_ids
-              if evidence_id in evidence_by_id),
-            *(fact_text_by_id[fact_id] for fact_id in paragraph.fact_ids
-              if fact_id in fact_text_by_id),
-        ]),
-    } for section in disclosure.sections if section.section_id != "01"
-        for paragraph in section.paragraphs]
+    items: list[dict[str, str]] = []
+    for section in disclosure.sections:
+        if section.section_id == "01":
+            continue
+        paragraph_sources: list[str] = []
+        for paragraph in section.paragraphs:
+            local_source = "\n".join([
+                *(evidence_by_id[evidence_id] for evidence_id in paragraph.evidence_ids
+                  if evidence_id in evidence_by_id),
+                *(fact_text_by_id[fact_id] for fact_id in paragraph.fact_ids
+                  if fact_id in fact_text_by_id),
+            ])
+            paragraph_sources.append(local_source)
+            items.append({
+                "text": f"[SECTION:{section.section_id}] {paragraph.text}",
+                "source_text": local_source,
+            })
+        items.append({
+            "text": f"[SECTION:{section.section_id}] {section.title}",
+            "source_text": "\n".join(paragraph_sources),
+        })
+    return items
 
 
 class RealCaseWorkflow:

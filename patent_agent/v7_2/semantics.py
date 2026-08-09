@@ -526,7 +526,7 @@ class EvidenceBoundEmbodimentPlanner:
             and str(getattr(fact, "review_status", "")) != "REJECTED"
         ]
         method_steps = list(getattr(understanding, "steps", []) or [])
-        facts = [
+        method_facts = [
             SemanticFact(
                 fact_id=str(getattr(step, "step_id", f"METHOD-STEP-{index:03d}")),
                 category="technical_step",
@@ -535,13 +535,24 @@ class EvidenceBoundEmbodimentPlanner:
             )
             for index, step in enumerate(method_steps, 1)
         ] or understanding_facts
+        validation_facts = [
+            SemanticFact(
+                fact_id=f"VALIDATION-{index:03d}", category="experiment",
+                statement=str(getattr(item, "text", item)),
+                evidence_ids=list(getattr(item, "evidence_ids", []) or []),
+            )
+            for index, item in enumerate(getattr(understanding, "experiments", []) or [], 1)
+            if getattr(item, "evidence_ids", None)
+        ]
+        facts = method_facts + validation_facts
         if method_steps:
-            facts = sorted(facts, key=lambda fact: _method_stage(fact.statement))
+            facts = sorted(method_facts, key=lambda fact: _method_stage(fact.statement)) + validation_facts
         required: list[RequiredFeature] = []
         for index, statement in enumerate(getattr(strategy, "independent_claim_core", []) or [], 1):
             evidence_ids = list(getattr(statement, "evidence_ids", []) or [])
             fact_ids = [
-                fact.fact_id for fact in facts if set(fact.evidence_ids) & set(evidence_ids)
+                fact.fact_id for fact in method_facts
+                if set(fact.evidence_ids) & set(evidence_ids)
             ]
             # A reviewed strategy feature may be grounded directly in source
             # evidence that the A1 summarizer did not promote into its compact
@@ -549,12 +560,15 @@ class EvidenceBoundEmbodimentPlanner:
             # instead of declaring it unsupported or inventing missing prose.
             if not fact_ids and evidence_ids:
                 derived_id = f"STRATEGY-FEATURE-{index:03d}"
-                facts.append(SemanticFact(
+                derived_fact = SemanticFact(
                     fact_id=derived_id,
                     category="required_feature",
                     statement=str(getattr(statement, "text", "")),
                     evidence_ids=evidence_ids,
-                ))
+                )
+                insert_at = len(method_facts)
+                method_facts.append(derived_fact)
+                facts.insert(insert_at, derived_fact)
                 fact_ids = [derived_id]
             required.append(RequiredFeature(
                 feature_id=f"RF-{index:03d}", fact_ids=fact_ids,
@@ -698,6 +712,9 @@ class PatentSemanticsValidator:
         alternative_pattern = re.compile(r"可采用|可以采用|可选用|典型取值|例如")
         speculative_pending_pattern = re.compile(
             r"(?:可包含|可以包含|可选(?:为|用)?).{0,100}(?:待.{0,20}(?:补充|确认)|具体.{0,20}待)"
+        )
+        operating_range_expansion_pattern = re.compile(
+            r"任何(?:情况下|工况)|全(?:部)?(?:转速|速度|工况|操作条件)范围"
         )
 
         for plan in embodiments:
@@ -867,6 +884,13 @@ class PatentSemanticsValidator:
                         code="UNSUPPORTED_ALTERNATIVE",
                         message=(f"Generated speculative option is not cured by marking details pending "
                                  f"in {section_id}: {scoped_text[:120]}")
+                    ))
+                if (operating_range_expansion_pattern.search(scoped_text)
+                        and not operating_range_expansion_pattern.search(supporting_source)):
+                    findings.append(SemanticFinding(
+                        code="UNSUPPORTED_GENERALIZATION",
+                        message=(f"Generated operating-point scope expansion lacks local evidence in "
+                                 f"{section_id}: {scoped_text[:120]}")
                     ))
             if not section_id.startswith("09") and unsupported_expansion(scoped_text, supporting_source):
                 findings.append(SemanticFinding(

@@ -374,6 +374,9 @@ class PatentDisclosurePlanner:
                 if section_titles is not None and index <= len(section_titles)
                 else f"技术环节{index}"
             )
+            semantic_title = _align_period_qualifier(
+                semantic_title, "\n".join(_clean_statement(fact) for fact in cluster)
+            )
             plan.append({
                 "section_id": f"05-{index:02d}",
                 "title": f"5.{index} {semantic_title}",
@@ -650,6 +653,7 @@ class PatentDisclosurePlanner:
                 "不得自行增加二值、梯度或其他输出形式；使用‘例如’时，该例子必须逐字存在于事实或证据。"
                 "不得把比例、分数、区间或角度自行换算成来源未明示的具体数值；"
                 "机械周期、电周期等物理限定必须逐字保持证据含义，不得互换；"
+                "仅针对特定目标工况、速度或边界得到的结论，不得扩大为任何情况下或全范围均成立；"
                 "不得先臆测某参数可包含的项目再标注‘待补充’，证据未列出的项目直接不写。"
                 "条件调制参数的接收模块与用途必须保持事实原有角色，不得把预测或调制网络改写为生成网络。"
                 "上述边界仅用于约束写作，正文不得复述‘不得’、‘未改写’、‘不涉及’等元说明。"

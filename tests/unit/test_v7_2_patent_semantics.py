@@ -3,6 +3,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 from patent_agent.v7.disclosure_planner import _align_period_qualifier
+from patent_agent.agents.technical_understanding_v2 import _retrieve_task_context
 from patent_agent.v7_2.semantics import (
     EmbodimentPlan,
     EmbodimentStep,
@@ -539,3 +540,44 @@ def test_period_qualifier_is_aligned_to_local_evidence():
     assert _align_period_qualifier(
         "在完整60°电周期内评估。", "complete 60 degree mechanical period"
     ) == "在完整60°机械周期内评估。"
+
+
+def test_specific_target_condition_cannot_expand_to_full_speed_range():
+    report = _validate([_plan()], generated_texts=[{
+        "text": "[SECTION:05-08] 该约束保证设计在全转速范围内均可行。",
+        "source_text": "The constraint applies at the 8000-r/min target condition.",
+    }])
+    assert "UNSUPPORTED_GENERALIZATION" in _codes(report)
+
+
+def test_experiments_become_validation_steps_not_primary_steps():
+    grounded = lambda text, evidence: SimpleNamespace(
+        text=text, evidence_ids=evidence, review_status="ACCEPTED")
+    understanding = SimpleNamespace(
+        facts=[],
+        steps=[SimpleNamespace(step_id="step-1", text=grounded("Process input into output.", ["ev-core"]))],
+        experiments=[grounded("Validate the output against an independent test.", ["ev-val"])],
+        alternatives=[], inputs=[], outputs=[], parameters=[], equations=[],
+        technical_field=[], technical_problems=[], system_overview=[], components=[],
+        data_flows=[], control_flows=[], technical_effects=[], uncertainties=[],
+    )
+    strategy = SimpleNamespace(independent_claim_core=[])
+    bundle = EvidenceBoundEmbodimentPlanner().plan(understanding, strategy)
+    assert len(bundle.embodiments[0].ordered_steps) == 1
+    assert len(bundle.embodiments[0].validation_steps) == 1
+    assert bundle.embodiments[0].validation_steps[0].semantic_role == SemanticRole.VALIDATION
+
+
+def test_whole_source_context_keeps_late_pages_and_excludes_references():
+    chunks = [
+        SimpleNamespace(evidence_id="early", section_title="Method", page=1,
+                        block_type="paragraph", raw_text="early method"),
+        SimpleNamespace(evidence_id="late", section_title="Validation", page=12,
+                        block_type="paragraph", raw_text="late validation"),
+        SimpleNamespace(evidence_id="ref", section_title="References", page=13,
+                        block_type="paragraph", raw_text="citation noise"),
+    ]
+    store = SimpleNamespace(all=lambda scope: chunks)
+    context = _retrieve_task_context(store, max_chars=1000)
+    ids = {item["evidence_id"] for item in context["evidence"]}
+    assert ids == {"early", "late"}
