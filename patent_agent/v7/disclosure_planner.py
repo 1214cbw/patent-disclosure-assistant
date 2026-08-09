@@ -429,7 +429,14 @@ class PatentDisclosurePlanner:
         title = self.generate_title(understanding, strategy)
         facts_all = [f for f in (getattr(understanding, "facts", []) or [])
                      if getattr(f, "review_status", None) != ReviewStatus.REJECTED]
-        clusters = cluster_facts(facts_all)
+        # Section 3/4 own problem statements and system overviews. Section 5
+        # is reserved for concrete mechanisms; broad overview facts otherwise
+        # invite unsupported architectural elaboration and duplicate Section 4.
+        detailed_facts = [fact for fact in facts_all if not any(
+            token in re.sub(r"[^a-z]", "", str(getattr(fact, "category", "")).lower())
+            for token in ("problem", "system", "overview")
+        )]
+        clusters = cluster_facts(detailed_facts or facts_all)
         source_texts = [_clean_statement(f) for f in facts_all]
         if evidence_store is not None:
             source_texts.extend(
@@ -446,6 +453,9 @@ class PatentDisclosurePlanner:
         from patent_agent.v7_2.semantics import EvidenceBoundEmbodimentPlanner, enrich_registry
         self.semantic_bundle = EvidenceBoundEmbodimentPlanner().plan(understanding, strategy)
         enrich_registry(self.semantic_bundle, source_texts)
+        self.semantic_bundle.section5_fact_clusters = [
+            {str(getattr(fact, "fact_id", "")) for fact in cluster} for cluster in clusters
+        ]
         plan = self.build_plan(
             understanding, strategy, figures, clusters, title=title,
             section_titles=section_titles,
@@ -693,6 +703,7 @@ class PatentDisclosurePlanner:
                     "输出及输出如何进入下一步骤。若当前步骤包含模型训练，必须区分训练数据与"
                     "后续推理输入，不得把上游生成候选自动写成训练样本。最后一步严禁出现"
                     "‘后续步骤’或‘下游’；不得使用‘实时’描述离线计算；不得把结构层数改写为空间维度。"
+                    "不得把离线搜索所得参数称为控制策略或控制器；不得为具名算法增加来源未写明的变体或策略修饰语。"
                     "不要自行写步骤编号。", context, 1)
                 if not texts:
                     raise RuntimeError("V7_2_EMBODIMENT_STEP_EMPTY")
@@ -727,7 +738,8 @@ class PatentDisclosurePlanner:
             source = "### 核心发明点\n" + "\n".join(core) + "\n\n### 策略信息\n" + "\n".join(extra)
             texts = self._llm_paragraphs(
                 "以代理师友好列表形式，标注需重点说明的核心技术特征、"
-                "术语定义建议、支持证据位置及注意事项。", source, 3)
+                "术语定义建议、支持证据位置及注意事项。不得声称某项技术细节未提供，"
+                "除非输入的支持缺口明确列出该缺失项。", source, 3)
             for t in texts:
                 paragraphs.append(para(t))
 

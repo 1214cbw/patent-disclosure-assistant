@@ -460,3 +460,10 @@ def test_background_domain_qualifier_is_removed_only_when_source_absent():
     text = "采用有限元进行多物理场性能评估。"
     assert _remove_unsupported_domain_expansion(text, "finite-element evaluation") == "采用有限元进行性能评估。"
     assert _remove_unsupported_domain_expansion(text, "multiphysics evaluation") == text
+
+
+def test_offline_search_output_cannot_be_promoted_to_control_strategy():
+    report = _validate([_plan()], generated_texts=[
+        "[SECTION:07-01] S2：离线搜索得到最优控制策略。"
+    ])
+    assert "SCENARIO_DRIFT" in _codes(report)

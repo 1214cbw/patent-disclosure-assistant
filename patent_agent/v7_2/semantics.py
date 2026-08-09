@@ -675,6 +675,7 @@ class PatentSemanticsValidator:
             re.compile(r"(?:电磁|力学|热)[、,，](?:电磁|力学|热).{0,8}多物理场|多物理场(?:性能)?(?:预测|约束|推断|评估)"),
             re.compile(r"(?:电磁|热|机械|力学)(?:或|、|，)(?:电磁|热|机械|力学)性能(?:预测|推断|评估)"),
             re.compile(r"(?:二值|连续)[、,，或/]*(?:梯度|连续|二值).{0,8}(?:图|输出|结构)"),
+            re.compile(r"二值(?:像素|图像|表示)"),
             re.compile(r"以.{0,30}(?:目标|需求).{0,15}为条件.{0,20}(?:生成|解码)"),
         ]
         source_joined = "\n".join(registry.source_texts)
@@ -688,6 +689,7 @@ class PatentSemanticsValidator:
             return any(pattern.search(text) and not pattern.search(source_joined)
                        for pattern in expansion_patterns)
         online_pattern = re.compile(r"实时(?:采集|控制|获取)|每(?:个|次)控制周期|位置传感器|观测器")
+        control_promotion_pattern = re.compile(r"最优控制策略|在线控制策略|控制器")
         alternative_pattern = re.compile(r"可采用|可以采用|可选用|典型取值|例如")
 
         for plan in embodiments:
@@ -818,6 +820,12 @@ class PatentSemanticsValidator:
                 findings.append(SemanticFinding(
                     code="SCENARIO_DRIFT",
                     message=f"Generated prose introduces an unsupported online scenario in {section_id}: {scoped_text[:120]}"
+                ))
+            if (section_id.startswith(("05-", "07-")) and control_promotion_pattern.search(scoped_text)
+                    and ScenarioRole.ONLINE_CONTROL not in supported_scenarios):
+                findings.append(SemanticFinding(
+                    code="SCENARIO_DRIFT",
+                    message=f"Generated prose promotes offline output to control strategy in {section_id}: {scoped_text[:120]}"
                 ))
             if (section_id.startswith(("05-", "07-")) and alternative_pattern.search(scoped_text)
                     and not registry.supported_alternatives):
