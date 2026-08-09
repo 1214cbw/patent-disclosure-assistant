@@ -367,3 +367,38 @@ def test_claim_support_can_resolve_evidence_outside_compact_fact_list():
         steps=[SimpleNamespace(text=SimpleNamespace(evidence_ids=["EV-STEP"]))],
     )
     assert _collect_evidence_ids(understanding) == {"EV-FACT", "EV-STEP"}
+
+
+def test_planner_prefers_reviewed_method_chain_over_fact_category_sequence():
+    understanding = SimpleNamespace(
+        facts=[SimpleNamespace(
+            fact_id="F-IMPL", category="implementation",
+            statement="Implementation environment detail", evidence_ids=["EV-I"],
+            review_status="LOCKED",
+        )],
+        steps=[
+            SimpleNamespace(step_id="STEP-1", text=SimpleNamespace(
+                text="Prepare the technical input", evidence_ids=["EV-1"])),
+            SimpleNamespace(step_id="STEP-2", text=SimpleNamespace(
+                text="Process the input into a candidate", evidence_ids=["EV-2"])),
+            SimpleNamespace(step_id="STEP-3", text=SimpleNamespace(
+                text="Evaluate the candidate and obtain the final result", evidence_ids=["EV-3"])),
+        ],
+        inputs=[SimpleNamespace(text="Starting technical object")],
+        outputs=[SimpleNamespace(text="Selected technical result")],
+        alternatives=[],
+    )
+    strategy = SimpleNamespace(independent_claim_core=[])
+    bundle = EvidenceBoundEmbodimentPlanner().plan(understanding, strategy)
+    primary = bundle.embodiments[0]
+    assert [step.fact_ids for step in primary.ordered_steps] == [
+        ["STEP-1"], ["STEP-2"], ["STEP-3"]]
+    assert primary.input_objects == ["Starting technical object"]
+    assert primary.output_objects == ["Selected technical result"]
+
+
+def test_pending_substantive_primary_step_fails_generated_text_gate():
+    report = _validate([_plan()], generated_texts=[
+        "S3：本步骤的输入、处理及输出待发明人补充。"
+    ])
+    assert "PRIMARY_EMBODIMENT_INCOMPLETE" in _codes(report)

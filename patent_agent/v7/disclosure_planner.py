@@ -650,24 +650,30 @@ class PatentDisclosurePlanner:
             fact_by_id = {getattr(fact, "fact_id", ""): fact for fact in sec["facts"]}
             for index, step in enumerate(embodiment.ordered_steps, 1):
                 step_facts = [fact_by_id[fid] for fid in step.fact_ids if fid in fact_by_id]
-                facts_text = self._facts_text(step_facts, 12)
-                evidence_ids = sorted({ev for fact in step_facts for ev in fact.evidence_ids})
+                facts_text = "- " + step.processing
+                evidence_ids = list(step.evidence_ids)
                 excerpts = self._evidence_excerpts(evidence_store, evidence_ids, limit=6)
+                previous_fact = (embodiment.ordered_steps[index - 2].processing
+                                 if index > 1 else "；".join(embodiment.input_objects))
+                next_fact = (embodiment.ordered_steps[index].processing
+                             if index < len(embodiment.ordered_steps)
+                             else "；".join(embodiment.output_objects))
                 context = (
                     f"### 当前步骤事实\n{facts_text}\n\n"
                     f"### 原始证据摘录\n{excerpts}\n\n"
-                    f"### 技术链位置\n步骤S{index}；"
-                    f"上游：{'起始输入' if index == 1 else f'S{index - 1}输出'}；"
-                    f"下游：{'最终技术结果' if index == len(embodiment.ordered_steps) else f'S{index + 1}输入'}"
+                    f"### 技术链位置\n上游来源事实：{previous_fact}\n"
+                    f"下游目标事实：{next_fact}\n"
+                    "必须仅依据上述事实写明当前步骤如何承接上游并向下游交付技术输出。"
                 )
                 texts = self._llm_paragraphs(
                     "V7.2完整实施例中的单一技术步骤。仅重述给定事实，不得添加可选模型、"
                     "典型参数、传感器、在线控制场景、数据类型或求解器。明确本步骤输入、处理、"
-                    "输出及输出如何进入下一步骤。以步骤编号开头。", context, 1)
+                    "输出及输出如何进入下一步骤。不要自行写步骤编号。", context, 1)
                 if not texts:
                     raise RuntimeError("V7_2_EMBODIMENT_STEP_EMPTY")
+                body = re.sub(r"^\s*(?:步骤)?S\d+\s*[：:、.．]?\s*", "", "".join(texts))
                 paragraphs.append(para(
-                    f"S{index}：" + "".join(texts),
+                    f"S{index}：" + body,
                     facts=step.fact_ids, evidence=step.evidence_ids,
                 ))
             for index, step in enumerate(embodiment.validation_steps, 1):

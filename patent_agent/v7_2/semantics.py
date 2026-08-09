@@ -295,6 +295,8 @@ class EvidenceBoundEmbodimentPlanner:
         required_features: list[RequiredFeature] | None = None,
         invention_type: str = "method",
         supported_alternatives: list[str] | None = None,
+        input_objects: list[str] | None = None,
+        output_objects: list[str] | None = None,
     ) -> SemanticPlanningBundle:
         required_features = required_features or [
             RequiredFeature(
@@ -396,7 +398,7 @@ class EvidenceBoundEmbodimentPlanner:
             ))
 
         if nodes:
-            nodes[-1].output_types = ["final-technical-result"]
+            nodes[-1].output_types = list(output_objects or ["final-technical-result"])
         edges = [
             InventionEdge(
                 source=nodes[index].node_id, target=nodes[index + 1].node_id,
@@ -433,14 +435,14 @@ class EvidenceBoundEmbodimentPlanner:
         primary = EmbodimentPlan(
             embodiment_id="EMB-001", title=title_by_type.get(invention_type, "技术方法的完整实施过程"),
             embodiment_type=invention_type, is_primary=True, scenario=scenario,
-            input_objects=nodes[0].input_types if nodes else [],
-            output_objects=nodes[-1].output_types if nodes else [],
+            input_objects=list(input_objects or (nodes[0].input_types if nodes else [])),
+            output_objects=list(output_objects or (nodes[-1].output_types if nodes else [])),
             ordered_steps=steps,
             required_feature_ids=[item.feature_id for item in required_features],
             fact_ids=sorted({fact_id for node in nodes for fact_id in node.fact_ids}),
             evidence_ids=sorted({ev for node in nodes for ev in node.evidence_ids}),
             validation_steps=validation_steps, excluded_content=excluded,
-            final_technical_result=nodes[-1].output_types[0] if nodes else "",
+            final_technical_result=(output_objects or nodes[-1].output_types)[0] if nodes else "",
         )
         graph = InventionCoreGraph(
             nodes=nodes, edges=edges,
@@ -470,7 +472,7 @@ class EvidenceBoundEmbodimentPlanner:
         )
 
     def plan(self, understanding, strategy, invention_type: str | None = None) -> SemanticPlanningBundle:
-        facts = [
+        understanding_facts = [
             SemanticFact(
                 fact_id=str(fact.fact_id), category=str(fact.category),
                 statement=str(fact.statement), evidence_ids=list(fact.evidence_ids),
@@ -479,6 +481,16 @@ class EvidenceBoundEmbodimentPlanner:
             if str(getattr(fact, "review_status", "")) != "ReviewStatus.REJECTED"
             and str(getattr(fact, "review_status", "")) != "REJECTED"
         ]
+        method_steps = list(getattr(understanding, "steps", []) or [])
+        facts = [
+            SemanticFact(
+                fact_id=str(getattr(step, "step_id", f"METHOD-STEP-{index:03d}")),
+                category="technical_step",
+                statement=str(getattr(getattr(step, "text", step), "text", getattr(step, "text", step))),
+                evidence_ids=list(getattr(getattr(step, "text", step), "evidence_ids", []) or []),
+            )
+            for index, step in enumerate(method_steps, 1)
+        ] or understanding_facts
         required: list[RequiredFeature] = []
         for index, statement in enumerate(getattr(strategy, "independent_claim_core", []) or [], 1):
             evidence_ids = list(getattr(statement, "evidence_ids", []) or [])
@@ -506,8 +518,15 @@ class EvidenceBoundEmbodimentPlanner:
             str(getattr(item, "text", "")) for item in getattr(understanding, "alternatives", []) or []
             if getattr(item, "evidence_ids", None)
         ]
-        resolved_type = invention_type or infer_invention_type(facts)
-        return self.plan_from_facts(facts, required or None, resolved_type, alternatives)
+        resolved_type = invention_type or infer_invention_type(understanding_facts or facts)
+        inputs = [str(getattr(item, "text", item)) for item in getattr(understanding, "inputs", []) or []]
+        outputs = [str(getattr(item, "text", item)) for item in getattr(understanding, "outputs", []) or []]
+        bundle = self.plan_from_facts(
+            facts, required or None, resolved_type, alternatives,
+            input_objects=inputs or None, output_objects=outputs or None,
+        )
+        bundle.section5_fact_clusters = [{fact.fact_id} for fact in understanding_facts]
+        return bundle
 
 
 class PatentSemanticsValidator:
@@ -687,6 +706,11 @@ class PatentSemanticsValidator:
 
         for text in generated_texts or []:
             is_validation_text = bool(re.match(r"\s*(?:验证步骤|validation\s+step)", text, re.I))
+            if not is_validation_text and re.search(r"(?:具体事实|输入|处理|输出).{0,12}待.{0,8}(?:补充|确认)", text):
+                findings.append(SemanticFinding(
+                    code="PRIMARY_EMBODIMENT_INCOMPLETE",
+                    message="Generated primary step leaves its substantive implementation pending."
+                ))
             if expansion_pattern.search(text):
                 findings.append(SemanticFinding(
                     code="UNSUPPORTED_GENERALIZATION", message="Generated prose expands the source domain."

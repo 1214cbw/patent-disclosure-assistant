@@ -18,7 +18,9 @@ def _shares_region(ids_a, ids_b) -> bool:
 
 
 def build_traceability(disclosure: GroundedDisclosure, claims: GroundedClaimSet, understanding: TechnicalUnderstandingResult, figures: list | None = None) -> TraceabilityReport:
-    fact_ids = {fact.fact_id for fact in understanding.facts}
+    fact_ids = {fact.fact_id for fact in understanding.facts} | {
+        str(getattr(step, "step_id", "")) for step in understanding.steps
+    }
     # Evidence union covers every source in the understanding, not just
     # facts: equations, steps, components, flows and parameters carry their
     # own evidence ids that disclosure paragraphs / figures legitimately
