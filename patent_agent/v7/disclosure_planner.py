@@ -214,6 +214,7 @@ class PatentDisclosurePlanner:
         self.term_normalizer = None
         self.evidence_fingerprint = None
         self.semantic_bundle = None
+        self.case_source_text = ""
 
     # ── title ────────────────────────────────────────────────────────────
     def generate_title(self, understanding, strategy) -> str:
@@ -382,7 +383,9 @@ class PatentDisclosurePlanner:
                 else f"技术环节{index}"
             )
             semantic_title = _align_period_qualifier(
-                semantic_title, "\n".join(_clean_statement(fact) for fact in cluster)
+                semantic_title,
+                "\n".join(_clean_statement(fact) for fact in cluster)
+                + "\n" + self.case_source_text,
             )
             plan.append({
                 "section_id": f"05-{index:02d}",
@@ -456,7 +459,8 @@ class PatentDisclosurePlanner:
         # invite unsupported architectural elaboration and duplicate Section 4.
         detailed_facts = [fact for fact in facts_all if not any(
             token in re.sub(r"[^a-z]", "", str(getattr(fact, "category", "")).lower())
-            for token in ("problem", "system", "overview")
+            for token in ("problem", "system", "overview", "result", "experiment",
+                          "validation", "metric", "limitation")
         )]
         clusters = cluster_facts(detailed_facts or facts_all)
         source_texts = [_clean_statement(f) for f in facts_all]
@@ -465,6 +469,7 @@ class PatentDisclosurePlanner:
                 str(getattr(chunk, "raw_text", "") or getattr(chunk, "normalized_text", ""))
                 for chunk in evidence_store.all()
             )
+        self.case_source_text = "\n".join(source_texts)
         from patent_agent.v7_1.quality import TechnicalTerminologyNormalizer
         self.term_normalizer = TechnicalTerminologyNormalizer.from_source_texts(source_texts)
         from patent_agent.v7.cross_case import build_case_evidence_fingerprint
@@ -667,7 +672,8 @@ class PatentDisclosurePlanner:
                 "上述边界仅用于约束写作，正文不得复述‘不得’、‘未改写’、‘不涉及’等元说明。"
                 "第一段的第一句话用'本环节'开头描述该环节主题。", context, 4)
             for t in texts:
-                paragraphs.append(para(_align_period_qualifier(t, context)))
+                paragraphs.append(para(_align_period_qualifier(
+                    t, context + "\n" + self.case_source_text)))
 
         elif kind == "figures":
             fig_lines = []
@@ -734,7 +740,8 @@ class PatentDisclosurePlanner:
                     raise RuntimeError("V7_2_EMBODIMENT_STEP_EMPTY")
                 body = re.sub(
                     r"^\s*(?:步骤)?S\d+\s*[：:、.．]?\s*", "",
-                    _align_period_qualifier("".join(texts), context),
+                    _align_period_qualifier(
+                        "".join(texts), context + "\n" + self.case_source_text),
                 )
                 paragraphs.append(para(
                     f"S{index}：" + body,

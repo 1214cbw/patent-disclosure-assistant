@@ -599,3 +599,29 @@ def test_title_retry_uses_overlength_feedback_instead_of_same_cached_prompt():
         understanding, strategy)
     assert title == "一种转子拓扑优化方法"
     assert "上一次名称" in prompts[1]
+
+
+def test_section_heading_number_is_not_treated_as_exact_parameter():
+    report = _validate([_plan()], generated_texts=[{
+        "text": "[SECTION:05-10] 5.10 测试集预测精度",
+        "source_text": "Prediction accuracy on the test set.",
+    }])
+    assert "UNSUPPORTED_PARAMETER" not in _codes(report)
+
+
+def test_unique_case_period_qualifier_can_resolve_local_ellipsis():
+    registry = _registry(source_texts=["The source defines a 60 degree mechanical period."])
+    report = _validate([_plan()], registry=registry, generated_texts=[{
+        "text": "[SECTION:07-01] S2：在完整机械周期内计算指标。",
+        "source_text": "Compute metrics over the complete period from 0 to 60 degrees.",
+    }])
+    assert "UNSUPPORTED_PARAMETER" not in _codes(report)
+
+
+def test_case_supported_mechanical_period_does_not_allow_electrical_period():
+    registry = _registry(source_texts=["The source defines a 60 degree mechanical period."])
+    report = _validate([_plan()], registry=registry, generated_texts=[{
+        "text": "[SECTION:07-01] S2：在完整电周期内计算指标。",
+        "source_text": "Compute metrics over the complete period from 0 to 60 degrees.",
+    }])
+    assert "UNSUPPORTED_PARAMETER" in _codes(report)

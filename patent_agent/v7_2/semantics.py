@@ -818,6 +818,8 @@ class PatentSemanticsValidator:
             if section_id.startswith(("05-", "07-")):
                 parameter_scope = re.sub(
                     r"^\s*(?:步骤)?S\d+\s*[：:、.．]?\s*", "", scoped_text)
+                parameter_scope = re.sub(
+                    r"^\s*\d+(?:\.\d+)+\s+", "", parameter_scope)
                 local_parameter_text = re.sub(
                     r"[^a-z0-9.%]+", "", supporting_source.lower().replace("×", "x"))
                 for parameter in _parameters(parameter_scope):
@@ -855,8 +857,16 @@ class PatentSemanticsValidator:
                     "电周期": ("电周期", "electrical period"),
                     "机械周期": ("机械周期", "mechanical period"),
                 }
+                case_source_lower = source_joined.lower()
                 for generated_term, aliases in period_aliases.items():
-                    if generated_term in scoped_text and not any(alias in source_lower for alias in aliases):
+                    opposite = "电周期" if generated_term == "机械周期" else "机械周期"
+                    unique_case_support = (
+                        any(alias in case_source_lower for alias in aliases)
+                        and not any(alias in case_source_lower for alias in period_aliases[opposite])
+                    )
+                    if (generated_term in scoped_text
+                            and not any(alias in source_lower for alias in aliases)
+                            and not unique_case_support):
                         findings.append(SemanticFinding(
                             code="UNSUPPORTED_PARAMETER",
                             message=(f"Generated period qualifier lacks source support in {section_id}: "
