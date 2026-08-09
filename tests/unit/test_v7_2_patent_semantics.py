@@ -4,6 +4,7 @@ from types import SimpleNamespace
 
 from patent_agent.v7.disclosure_planner import (
     PatentDisclosurePlanner,
+    _align_polysemous_roles,
     _align_period_qualifier,
     _contains_generated_formula,
 )
@@ -446,7 +447,7 @@ def test_final_step_cannot_claim_a_nonexistent_downstream_step():
     assert "PRIMARY_EMBODIMENT_INCOMPLETE" in _codes(report)
 
 
-def test_reviewed_training_branch_is_ordered_before_candidate_generation():
+def test_reviewed_method_step_order_is_preserved():
     understanding = SimpleNamespace(
         facts=[], alternatives=[], inputs=[], outputs=[],
         steps=[
@@ -458,7 +459,7 @@ def test_reviewed_training_branch_is_ordered_before_candidate_generation():
     )
     bundle = EvidenceBoundEmbodimentPlanner().plan(
         understanding, SimpleNamespace(independent_claim_core=[]))
-    assert [step.fact_ids for step in bundle.embodiments[0].ordered_steps] == [["TRAIN"], ["GEN"]]
+    assert [step.fact_ids for step in bundle.embodiments[0].ordered_steps] == [["GEN"], ["TRAIN"]]
 
 
 def test_background_domain_qualifier_is_removed_only_when_source_absent():
@@ -546,6 +547,42 @@ def test_period_qualifier_is_aligned_to_local_evidence():
     ) == "在完整60°机械周期内评估。"
 
 
+def test_angle_qualifier_is_aligned_to_local_evidence():
+    assert _align_period_qualifier(
+        "在0°至60°电角度内评估。", "0 to 60 degrees of mechanical angle"
+    ) == "在0°至60°机械角度内评估。"
+
+
+def test_generator_model_pair_is_not_translated_as_electrical_machine():
+    assert _align_polysemous_roles(
+        "形成发电机–代理模型组合。", "Each generator-surrogate combination is evaluated."
+    ) == "形成生成模型–代理模型组合。"
+
+
+def test_online_control_prose_is_rejected_for_offline_case():
+    report = _validate([_plan()], generated_texts=[{
+        "text": "[SECTION:05-08] 当前控制周期获取转速反馈并动态切换限制模式。",
+        "source_text": "Offline constraints are evaluated at two fixed target speeds.",
+    }])
+    assert "SCENARIO_DRIFT" in _codes(report)
+
+
+def test_binary_or_segmented_image_expansion_requires_local_evidence():
+    report = _validate([_plan()], generated_texts=[{
+        "text": "[SECTION:05-09] 输入可以是二值或分割图像。",
+        "source_text": "The source uses a color material image.",
+    }])
+    assert "UNSUPPORTED_GENERALIZATION" in _codes(report)
+
+
+def test_chinese_step_to_downstream_training_relation_requires_local_evidence():
+    report = _validate([_plan()], generated_texts=[{
+        "text": "[SECTION:07-01] S1：该数据集供下一步骤的代理模型训练使用。",
+        "source_text": "Prepare a dataset containing topology images and performance values.",
+    }])
+    assert "UNSUPPORTED_GENERALIZATION" in _codes(report)
+
+
 def test_specific_target_condition_cannot_expand_to_full_speed_range():
     report = _validate([_plan()], generated_texts=[{
         "text": "[SECTION:05-08] 该约束保证设计在全转速范围内均可行。",
@@ -570,6 +607,30 @@ def test_experiments_become_validation_steps_not_primary_steps():
     assert len(bundle.embodiments[0].ordered_steps) == 1
     assert len(bundle.embodiments[0].validation_steps) == 1
     assert bundle.embodiments[0].validation_steps[0].semantic_role == SemanticRole.VALIDATION
+
+
+def test_reviewed_final_validation_is_isolated_and_overlap_is_deduplicated():
+    grounded = lambda text, evidence: SimpleNamespace(
+        text=text, evidence_ids=evidence, review_status="ACCEPTED")
+    understanding = SimpleNamespace(
+        facts=[],
+        steps=[
+            SimpleNamespace(step_id="PREP", text=grounded("Prepare source data.", ["ev-1"])),
+            SimpleNamespace(step_id="TRAIN", text=grounded("Train a model.", ["ev-2"])),
+            SimpleNamespace(step_id="OPT", text=grounded("Optimize candidate outputs.", ["ev-3"])),
+            SimpleNamespace(step_id="VERIFY", text=grounded(
+                "Validate the selected output by independent analysis.", ["ev-4"])),
+        ],
+        experiments=[grounded("Validation of the selected output.", ["ev-4", "ev-5"])],
+        alternatives=[], inputs=[], outputs=[], parameters=[], equations=[],
+        technical_field=[], technical_problems=[], system_overview=[], components=[],
+        data_flows=[], control_flows=[], technical_effects=[], uncertainties=[],
+    )
+    bundle = EvidenceBoundEmbodimentPlanner().plan(
+        understanding, SimpleNamespace(independent_claim_core=[]))
+    primary = bundle.embodiments[0]
+    assert [step.fact_ids for step in primary.ordered_steps] == [["PREP"], ["TRAIN"], ["OPT"]]
+    assert [step.fact_ids for step in primary.validation_steps] == [["VERIFY"]]
 
 
 def test_whole_source_context_keeps_late_pages_and_excludes_references():

@@ -30,6 +30,7 @@ from patent_agent.core.models import (
     ReviewStatus,
 )
 from patent_agent.v7.language_gate import _clean_html
+from patent_agent.v7.translation_roles import TRANSLATION_ROLE_RULES
 
 CJK = re.compile(r"[一-鿿]")
 FORMULA_PREFIX = re.compile(r"^(FORMULA|SYMBOL|PARAM)\s+", re.MULTILINE)
@@ -60,14 +61,32 @@ def _cn_number(value: int) -> str:
 
 
 def _align_period_qualifier(text: str, source: str) -> str:
-    """Conservatively align a generated period qualifier to local evidence."""
+    """Conservatively align generated period/angle qualifiers to evidence."""
     source_lower = source.lower()
     mechanical = "机械周期" in source or "mechanical period" in source_lower
     electrical = "电周期" in source or "electrical period" in source_lower
     if mechanical and not electrical:
-        return text.replace("电周期", "机械周期")
-    if electrical and not mechanical:
-        return text.replace("机械周期", "电周期")
+        text = text.replace("电周期", "机械周期")
+    elif electrical and not mechanical:
+        text = text.replace("机械周期", "电周期")
+    mechanical_angle = "机械角度" in source or "mechanical angle" in source_lower
+    electrical_angle = "电角度" in source or "electrical angle" in source_lower
+    if mechanical_angle and not electrical_angle:
+        text = text.replace("电角度", "机械角度")
+    elif electrical_angle and not mechanical_angle:
+        text = text.replace("机械角度", "电角度")
+    return text
+
+
+def _align_polysemous_roles(text: str, source: str) -> str:
+    """Apply evidence-local translation-role rules without case branching."""
+    source_lower = source.lower()
+    for rule in TRANSLATION_ROLE_RULES:
+        role_supported = any(re.search(pattern, source_lower) for pattern in rule["source_role_patterns"])
+        contrary_supported = any(re.search(pattern, source_lower) for pattern in rule["contrary_role_patterns"])
+        if role_supported and not contrary_supported:
+            for generated, replacement in rule["replacements"]:
+                text = text.replace(generated, replacement)
     return text
 
 
@@ -673,15 +692,18 @@ class PatentDisclosurePlanner:
                 "也不得把来源中的单一预测量改写成电磁、机械、热或其他性能类别，"
                 "不得自行增加二值、梯度或其他输出形式；使用‘例如’时，该例子必须逐字存在于事实或证据。"
                 "不得把比例、分数、区间或角度自行换算成来源未明示的具体数值；"
-                "机械周期、电周期等物理限定必须逐字保持证据含义，不得互换；"
+                "机械周期、电周期、机械角度、电角度等物理限定必须逐字保持证据含义，不得互换；"
                 "仅针对特定目标工况、速度或边界得到的结论，不得扩大为任何情况下或全范围均成立；"
                 "不得先臆测某参数可包含的项目再标注‘待补充’，证据未列出的项目直接不写。"
                 "条件调制参数的接收模块与用途必须保持事实原有角色，不得把预测或调制网络改写为生成网络。"
+                "离线设计、搜索或评估不得改写为当前控制周期中的反馈控制、实时切换、在线保护或运行控制。"
+                "多义英文技术名词必须依据其与模型、网络、代理或物理设备的局部关系选择中文含义。"
                 "上述边界仅用于约束写作，正文不得复述‘不得’、‘未改写’、‘不涉及’等元说明。"
                 "第一段的第一句话用'本环节'开头描述该环节主题。", context, 4)
             for t in texts:
-                paragraphs.append(para(_align_period_qualifier(
-                    t, context + "\n" + self.case_source_text)))
+                aligned_source = context + "\n" + self.case_source_text
+                paragraphs.append(para(_align_polysemous_roles(
+                    _align_period_qualifier(t, aligned_source), aligned_source)))
 
         elif kind == "figures":
             fig_lines = []
@@ -740,7 +762,7 @@ class PatentDisclosurePlanner:
                     "‘后续步骤’或‘下游’；不得使用‘实时’描述离线计算；不得把结构层数改写为空间维度。"
                     "当前步骤输入必须使用当前步骤事实直接列出的对象，不得把其他前序处理结果自动附加为修饰语；"
                     "描述输入时只写当前事实给出的对象，不得补写该对象来自何种上游分析、数据集或处理方法；"
-                    "机械周期、电周期等物理限定必须与证据完全一致。"
+                    "机械周期、电周期、机械角度、电角度等物理限定必须与证据完全一致。"
                     "不得声称当前输出用于训练某一后续模型，除非当前步骤事实或证据明确写明该训练关系；"
                     "不得把离线搜索所得参数称为控制策略或控制器；不得为具名算法增加来源未写明的变体或策略修饰语。"
                     "这些限制仅约束写作，正文不得复述限制或进行合规自证。不要自行写步骤编号。", context, 1)
@@ -748,8 +770,11 @@ class PatentDisclosurePlanner:
                     raise RuntimeError("V7_2_EMBODIMENT_STEP_EMPTY")
                 body = re.sub(
                     r"^\s*(?:步骤)?S\d+\s*[：:、.．]?\s*", "",
-                    _align_period_qualifier(
-                        "".join(texts), context + "\n" + self.case_source_text),
+                    _align_polysemous_roles(
+                        _align_period_qualifier(
+                            "".join(texts), context + "\n" + self.case_source_text),
+                        context + "\n" + self.case_source_text,
+                    ),
                 )
                 paragraphs.append(para(
                     f"S{index}：" + body,

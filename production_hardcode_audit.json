@@ -287,7 +287,7 @@
     {
       "term": "LDM",
       "file": "patent_agent/v7/cross_case.py",
-      "line/module": "patent_agent/v7/cross_case.py:186",
+      "line/module": "patent_agent/v7/cross_case.py:201",
       "category": "documentation",
       "status": "allowed",
       "allowed / forbidden": "allowed",
@@ -346,11 +346,29 @@
       "status": "allowed",
       "allowed / forbidden": "allowed",
       "resolution": "Non-executable documentation; does not control planning or validation."
+    },
+    {
+      "term": "motor",
+      "file": "patent_agent/v7/translation_roles.py",
+      "line/module": "patent_agent/v7/translation_roles.py:16",
+      "category": "auxiliary_vocabulary_data",
+      "status": "allowed",
+      "allowed / forbidden": "allowed",
+      "resolution": "Auxiliary signal only; evidence-derived fingerprint is the primary gate."
+    },
+    {
+      "term": "motor",
+      "file": "patent_agent/v7/translation_roles.py",
+      "line/module": "patent_agent/v7/translation_roles.py:18",
+      "category": "auxiliary_vocabulary_data",
+      "status": "allowed",
+      "allowed / forbidden": "allowed",
+      "resolution": "Auxiliary signal only; evidence-derived fingerprint is the primary gate."
     }
   ],
   "summary": {
-    "occurrences": 38,
-    "allowed": 38,
+    "occurrences": 40,
+    "allowed": 40,
     "forbidden": 0,
     "pass": true
   }

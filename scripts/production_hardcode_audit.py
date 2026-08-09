@@ -33,6 +33,7 @@ VOCABULARY_MODULES = {
     "patent_agent/v7/concepts.py",
     "patent_agent/document/math_registry.py",
     "patent_agent/document/chinese_validator.py",
+    "patent_agent/v7/translation_roles.py",
 }
 
 

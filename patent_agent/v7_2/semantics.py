@@ -228,20 +228,13 @@ def _semantic_strings(value) -> list[str]:
     return []
 
 
-def _method_stage(statement: str) -> int:
-    """Order reviewed method steps by generic dependency role, stably."""
-    text = statement.lower()
-    if any(term in text for term in ("prepare", "construct", "acquire", "collect", "parameterize")):
-        return 10
-    if any(term in text for term in ("train", "calibrate", "fit")):
-        return 20
-    if any(term in text for term in ("generate", "synthesize", "produce candidate")):
-        return 30
-    if any(term in text for term in ("search", "evaluate", "calculate", "measure", "screen")):
-        return 40
-    if any(term in text for term in ("optimize", "pareto", "select final")):
-        return 50
-    return 35
+def _is_validation_method_step(statement: str) -> bool:
+    """Identify an explicitly reviewed verification step without domain vocabulary."""
+    return bool(re.search(
+        r"\b(?:validat(?:e|es|ed|ing|ion)|verif(?:y|ies|ied|ying|ication))\b",
+        statement,
+        re.I,
+    ))
 
 
 def enrich_registry(bundle: SemanticPlanningBundle, source_texts: Iterable[str]) -> None:
@@ -535,12 +528,20 @@ class EvidenceBoundEmbodimentPlanner:
         method_facts = [
             SemanticFact(
                 fact_id=str(getattr(step, "step_id", f"METHOD-STEP-{index:03d}")),
-                category="technical_step",
+                category=("validation" if _is_validation_method_step(
+                    str(getattr(getattr(step, "text", step), "text", getattr(step, "text", step)))
+                ) else "technical_step"),
                 statement=str(getattr(getattr(step, "text", step), "text", getattr(step, "text", step))),
                 evidence_ids=list(getattr(getattr(step, "text", step), "evidence_ids", []) or []),
             )
             for index, step in enumerate(method_steps, 1)
         ] or understanding_facts
+        validation_method_facts = [
+            fact for fact in method_facts if _role_for_category(fact.category) == SemanticRole.EXPERIMENT
+        ]
+        primary_method_facts = [
+            fact for fact in method_facts if _role_for_category(fact.category) != SemanticRole.EXPERIMENT
+        ]
         validation_facts = [
             SemanticFact(
                 fact_id=f"VALIDATION-{index:03d}", category="experiment",
@@ -549,15 +550,17 @@ class EvidenceBoundEmbodimentPlanner:
             )
             for index, item in enumerate(getattr(understanding, "experiments", []) or [], 1)
             if getattr(item, "evidence_ids", None)
+            and not any(
+                set(getattr(item, "evidence_ids", []) or []) & set(fact.evidence_ids)
+                for fact in validation_method_facts
+            )
         ]
         facts = method_facts + validation_facts
-        if method_steps:
-            facts = sorted(method_facts, key=lambda fact: _method_stage(fact.statement)) + validation_facts
         required: list[RequiredFeature] = []
         for index, statement in enumerate(getattr(strategy, "independent_claim_core", []) or [], 1):
             evidence_ids = list(getattr(statement, "evidence_ids", []) or [])
             fact_ids = [
-                fact.fact_id for fact in method_facts
+                fact.fact_id for fact in primary_method_facts
                 if set(fact.evidence_ids) & set(evidence_ids)
             ]
             # A reviewed strategy feature may be grounded directly in source
@@ -572,8 +575,9 @@ class EvidenceBoundEmbodimentPlanner:
                     statement=str(getattr(statement, "text", "")),
                     evidence_ids=evidence_ids,
                 )
-                insert_at = len(method_facts)
+                insert_at = len(primary_method_facts)
                 method_facts.append(derived_fact)
+                primary_method_facts.append(derived_fact)
                 facts.insert(insert_at, derived_fact)
                 fact_ids = [derived_id]
             required.append(RequiredFeature(
@@ -719,6 +723,7 @@ class PatentSemanticsValidator:
             re.compile(r"(?:电磁|热|机械|力学)(?:或|、|，)(?:电磁|热|机械|力学)性能(?:预测|推断|评估)"),
             re.compile(r"(?:二值|连续)[、,，或/]*(?:梯度|连续|二值).{0,8}(?:图|输出|结构)"),
             re.compile(r"二值(?:像素|图像|表示)"),
+            re.compile(r"(?:二值.{0,6}|分割)(?:图像|图|表示)"),
             re.compile(r"以.{0,30}(?:目标|需求).{0,15}为条件.{0,20}(?:生成|解码)"),
         ]
         source_joined = "\n".join(registry.source_texts)
@@ -736,7 +741,19 @@ class PatentSemanticsValidator:
         downstream_training_pattern = re.compile(
             r"(?:用于|供).{0,30}(?:后续)?[^。；]{0,40}训练"
         )
-        online_pattern = re.compile(r"实时(?:采集|控制|获取)|每(?:个|次)控制周期|位置传感器|观测器")
+        downstream_step_training_pattern = re.compile(
+            r"(?:下一步骤|后续步骤|下游).{0,30}训练|供.{0,20}(?:下一步骤|后续步骤|下游).{0,30}训练"
+        )
+        source_downstream_training_pattern = re.compile(
+            r"(?:下一步骤|后续步骤|下游|next\s+step|following\s+step|subsequent|downstream)"
+            r".{0,50}(?:训练|train)",
+            re.I,
+        )
+        online_pattern = re.compile(
+            r"实时|每(?:个|次)控制周期|当前(?:控制)?周期|位置传感器|观测器|"
+            r"(?:获取|采集|接收).{0,12}反馈|动态.{0,18}(?:切换|选择|启用)|"
+            r"启用.{0,12}(?:策略|约束|模式)"
+        )
         control_promotion_pattern = re.compile(r"最优控制策略|在线控制策略|控制器")
         alternative_pattern = re.compile(r"可采用|可以采用|可选用|典型取值")
         speculative_pending_pattern = re.compile(
@@ -885,10 +902,15 @@ class PatentSemanticsValidator:
                 period_aliases = {
                     "电周期": ("电周期", "electrical period"),
                     "机械周期": ("机械周期", "mechanical period"),
+                    "电角度": ("电角度", "electrical angle"),
+                    "机械角度": ("机械角度", "mechanical angle"),
                 }
                 case_source_lower = source_joined.lower()
                 for generated_term, aliases in period_aliases.items():
-                    opposite = "电周期" if generated_term == "机械周期" else "机械周期"
+                    opposite = {
+                        "电周期": "机械周期", "机械周期": "电周期",
+                        "电角度": "机械角度", "机械角度": "电角度",
+                    }[generated_term]
                     unique_case_support = (
                         any(alias in case_source_lower for alias in aliases)
                         and not any(alias in case_source_lower for alias in period_aliases[opposite])
@@ -917,6 +939,13 @@ class PatentSemanticsValidator:
                             message=(f"Generated downstream training relation lacks local evidence in "
                                      f"{section_id}: {relation.group(0)[:120]}")
                         ))
+                if (downstream_step_training_pattern.search(scoped_text)
+                        and not source_downstream_training_pattern.search(supporting_source)):
+                    findings.append(SemanticFinding(
+                        code="UNSUPPORTED_GENERALIZATION",
+                        message=(f"Generated step-to-downstream-training relation lacks local evidence in "
+                                 f"{section_id}: {scoped_text[:120]}")
+                    ))
                 if (speculative_pending_pattern.search(scoped_text)
                         and not speculative_pending_pattern.search(supporting_source)):
                     findings.append(SemanticFinding(
