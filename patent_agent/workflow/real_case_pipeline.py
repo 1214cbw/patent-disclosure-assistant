@@ -240,11 +240,16 @@ class RealCaseWorkflow:
                                          self.provider, cache_dir=llm_cache_dir)
         from patent_agent.v7_2.semantics import validate_bundle
         semantic_bundle = planner.semantic_bundle
-        generated_embodiment_texts = [
-            f"[SECTION:{section.section_id}] {paragraph.text}" for section in disclosure.sections
-            if section.section_id != "01"
-            for paragraph in section.paragraphs
-        ]
+        evidence_by_id = {chunk.evidence_id: str(chunk.raw_text or chunk.normalized_text)
+                          for chunk in evidence.all()}
+        generated_embodiment_texts = [{
+            "text": f"[SECTION:{section.section_id}] {paragraph.text}",
+            "source_text": "\n".join(
+                evidence_by_id[evidence_id] for evidence_id in paragraph.evidence_ids
+                if evidence_id in evidence_by_id
+            ),
+        } for section in disclosure.sections if section.section_id != "01"
+            for paragraph in section.paragraphs]
         semantic_report = validate_bundle(
             semantic_bundle, claims=claims, generated_texts=generated_embodiment_texts)
         self.store.save_stage(case_id, "p1_invention_core_graph", semantic_bundle.graph)

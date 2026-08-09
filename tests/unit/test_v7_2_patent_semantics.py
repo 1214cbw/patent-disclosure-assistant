@@ -467,3 +467,20 @@ def test_offline_search_output_cannot_be_promoted_to_control_strategy():
         "[SECTION:07-01] S2：离线搜索得到最优控制策略。"
     ])
     assert "SCENARIO_DRIFT" in _codes(report)
+
+
+def test_generated_parameter_must_match_paragraph_local_evidence():
+    registry = _registry(source_texts=["Another section mentions π/4."])
+    report = _validate([_plan()], registry=registry, generated_texts=[{
+        "text": "[SECTION:05-02] 本环节采用π/4和π/8。",
+        "source_text": "This paragraph supports a half pole pitch without exact radians.",
+    }])
+    assert "UNSUPPORTED_PARAMETER" in _codes(report)
+
+
+def test_generated_parameter_passes_when_local_evidence_supports_it():
+    report = _validate([_plan()], generated_texts=[{
+        "text": "[SECTION:05-02] 图像尺寸为512×512像素。",
+        "source_text": "Topology images are 512x512 pixels.",
+    }])
+    assert "UNSUPPORTED_PARAMETER" not in _codes(report)

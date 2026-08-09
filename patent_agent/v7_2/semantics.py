@@ -677,16 +677,16 @@ class PatentSemanticsValidator:
             re.compile(r"(?:二值|连续)[、,，或/]*(?:梯度|连续|二值).{0,8}(?:图|输出|结构)"),
             re.compile(r"二值(?:像素|图像|表示)"),
             re.compile(r"以.{0,30}(?:目标|需求).{0,15}为条件.{0,20}(?:生成|解码)"),
+            re.compile(r"调制参数.{0,30}(?:生成网络|条件生成)"),
         ]
         source_joined = "\n".join(registry.source_texts)
-        source_parameter_text = re.sub(r"[\s,，]", "", source_joined.lower()).replace("×", "x")
         dimension_aliases = {
             "二维": ("二维", "2d", "2-d", "two-dimensional"),
             "三维": ("三维", "3d", "3-d", "three-dimensional"),
         }
 
-        def unsupported_expansion(text: str) -> bool:
-            return any(pattern.search(text) and not pattern.search(source_joined)
+        def unsupported_expansion(text: str, supporting_source: str) -> bool:
+            return any(pattern.search(text) and not pattern.search(supporting_source)
                        for pattern in expansion_patterns)
         online_pattern = re.compile(r"实时(?:采集|控制|获取)|每(?:个|次)控制周期|位置传感器|观测器")
         control_promotion_pattern = re.compile(r"最优控制策略|在线控制策略|控制器")
@@ -699,7 +699,7 @@ class PatentSemanticsValidator:
                         code="SCENARIO_DRIFT", message=f"Unsupported scenario: {step.scenario.value}",
                         embodiment_id=plan.embodiment_id, step_id=step.step_id,
                     ))
-                if unsupported_expansion(step.processing):
+                if unsupported_expansion(step.processing, source_joined):
                     findings.append(SemanticFinding(
                         code="UNSUPPORTED_GENERALIZATION", message="Cross-domain data expansion is unsupported.",
                         embodiment_id=plan.embodiment_id, step_id=step.step_id,
@@ -767,7 +767,11 @@ class PatentSemanticsValidator:
                     message="Section 7 maps Section 5 modules one-to-one into embodiments.",
                 ))
 
-        for text in generated_texts or []:
+        for item in generated_texts or []:
+            text = str(item.get("text", "")) if isinstance(item, dict) else str(item)
+            local_source = (str(item.get("source_text", ""))
+                            if isinstance(item, dict) else source_joined)
+            supporting_source = local_source or source_joined
             section_match = re.match(r"\[SECTION:([^]]+)]\s*", text)
             section_id = section_match.group(1) if section_match else "07-UNSCOPED"
             scoped_text = text[section_match.end():] if section_match else text
@@ -787,14 +791,16 @@ class PatentSemanticsValidator:
                         message="Generated final step falsely declares a downstream implementation step."
                     ))
             if section_id.startswith(("05-", "07-")):
+                local_parameter_text = re.sub(
+                    r"[\s,，]", "", supporting_source.lower()).replace("×", "x")
                 for parameter in _parameters(scoped_text):
                     signature = re.sub(r"[\s,，]", "", parameter.lower()).replace("×", "x")
                     numbers = re.findall(r"\d+(?:\.\d+)?", signature)
                     unit = "".join(re.findall(r"[a-z%]+", signature))
-                    supported = (signature in source_parameter_text or (
+                    supported = (signature in local_parameter_text or (
                         bool(numbers)
-                        and all(number in source_parameter_text for number in numbers)
-                        and (not unit or unit in source_parameter_text)
+                        and all(number in local_parameter_text for number in numbers)
+                        and (not unit or unit in local_parameter_text)
                     ))
                     if not supported:
                         findings.append(SemanticFinding(
@@ -802,7 +808,7 @@ class PatentSemanticsValidator:
                             message=(f"Generated exact parameter lacks source support in {section_id}: "
                                      f"{parameter} | {scoped_text[:100]}")
                         ))
-                source_lower = source_joined.lower()
+                source_lower = supporting_source.lower()
                 for generated_term, aliases in dimension_aliases.items():
                     if generated_term in scoped_text and not any(alias in source_lower for alias in aliases):
                         findings.append(SemanticFinding(
@@ -810,7 +816,18 @@ class PatentSemanticsValidator:
                             message=(f"Generated dimensionality lacks source support in {section_id}: "
                                      f"{generated_term} | {scoped_text[:100]}")
                         ))
-            if not section_id.startswith("09") and unsupported_expansion(scoped_text):
+                period_aliases = {
+                    "电周期": ("电周期", "electrical period"),
+                    "机械周期": ("机械周期", "mechanical period"),
+                }
+                for generated_term, aliases in period_aliases.items():
+                    if generated_term in scoped_text and not any(alias in source_lower for alias in aliases):
+                        findings.append(SemanticFinding(
+                            code="UNSUPPORTED_PARAMETER",
+                            message=(f"Generated period qualifier lacks source support in {section_id}: "
+                                     f"{generated_term} | {scoped_text[:100]}")
+                        ))
+            if not section_id.startswith("09") and unsupported_expansion(scoped_text, supporting_source):
                 findings.append(SemanticFinding(
                     code="UNSUPPORTED_GENERALIZATION",
                     message=f"Generated prose expands the source domain in {section_id}: {scoped_text[:120]}"
