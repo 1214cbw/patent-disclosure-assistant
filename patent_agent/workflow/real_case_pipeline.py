@@ -22,6 +22,30 @@ from patent_agent.search import ManualImportProvider
 from patent_agent.agents.novelty_analysis_v2 import GroundedNoveltyAnalysisAgent
 
 
+def _semantic_paragraph_inputs(disclosure, understanding, evidence) -> list[dict[str, str]]:
+    """Pair each generated paragraph with only its reviewed, case-local support."""
+    evidence_by_id = {
+        chunk.evidence_id: str(chunk.raw_text or chunk.normalized_text)
+        for chunk in evidence.all()
+    }
+    fact_text_by_id = {
+        fact.fact_id: str(fact.statement) for fact in understanding.facts
+    }
+    fact_text_by_id.update({
+        step.step_id: str(step.text.text) for step in understanding.steps
+    })
+    return [{
+        "text": f"[SECTION:{section.section_id}] {paragraph.text}",
+        "source_text": "\n".join([
+            *(evidence_by_id[evidence_id] for evidence_id in paragraph.evidence_ids
+              if evidence_id in evidence_by_id),
+            *(fact_text_by_id[fact_id] for fact_id in paragraph.fact_ids
+              if fact_id in fact_text_by_id),
+        ]),
+    } for section in disclosure.sections if section.section_id != "01"
+        for paragraph in section.paragraphs]
+
+
 class RealCaseWorkflow:
     """Human-gated real-case workflow. No method auto-discovers input or auto-approves."""
 
@@ -240,16 +264,8 @@ class RealCaseWorkflow:
                                          self.provider, cache_dir=llm_cache_dir)
         from patent_agent.v7_2.semantics import validate_bundle
         semantic_bundle = planner.semantic_bundle
-        evidence_by_id = {chunk.evidence_id: str(chunk.raw_text or chunk.normalized_text)
-                          for chunk in evidence.all()}
-        generated_embodiment_texts = [{
-            "text": f"[SECTION:{section.section_id}] {paragraph.text}",
-            "source_text": "\n".join(
-                evidence_by_id[evidence_id] for evidence_id in paragraph.evidence_ids
-                if evidence_id in evidence_by_id
-            ),
-        } for section in disclosure.sections if section.section_id != "01"
-            for paragraph in section.paragraphs]
+        generated_embodiment_texts = _semantic_paragraph_inputs(
+            disclosure, understanding, evidence)
         semantic_report = validate_bundle(
             semantic_bundle, claims=claims, generated_texts=generated_embodiment_texts)
         self.store.save_stage(case_id, "p1_invention_core_graph", semantic_bundle.graph)
@@ -410,11 +426,8 @@ class RealCaseWorkflow:
         semantic_bundle = SemanticPlanningBundle.model_validate_json(
             self.store.latest_stage_path(case_id, "p1_semantic_bundle").read_text(encoding="utf-8")
         )
-        generated_embodiment_texts = [
-            paragraph.text for section in disclosure.sections
-            if section.section_id.startswith("07-")
-            for paragraph in section.paragraphs
-        ]
+        generated_embodiment_texts = _semantic_paragraph_inputs(
+            disclosure, understanding, evidence)
         semantic_report = validate_bundle(
             semantic_bundle, claims=claims, generated_texts=generated_embodiment_texts)
         if semantic_report.status != "PASS":

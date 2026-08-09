@@ -484,3 +484,19 @@ def test_generated_parameter_passes_when_local_evidence_supports_it():
         "source_text": "Topology images are 512x512 pixels.",
     }])
     assert "UNSUPPORTED_PARAMETER" not in _codes(report)
+
+
+def test_embodiment_step_number_is_not_treated_as_parameter():
+    report = _validate([_plan()], generated_texts=[{
+        "text": "[SECTION:07-01] S3：训练模型并输出潜在样本。",
+        "source_text": "Train the model and output latent samples.",
+    }])
+    assert "UNSUPPORTED_PARAMETER" not in _codes(report)
+
+
+def test_generated_downstream_training_relation_requires_local_evidence():
+    report = _validate([_plan()], generated_texts=[{
+        "text": "[SECTION:07-01] S3：所得样本用于后续FiLM模型训练。",
+        "source_text": "Train flow matching to generate new latent samples.",
+    }])
+    assert "UNSUPPORTED_GENERALIZATION" in _codes(report)

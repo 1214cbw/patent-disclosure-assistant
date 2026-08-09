@@ -677,7 +677,6 @@ class PatentSemanticsValidator:
             re.compile(r"(?:二值|连续)[、,，或/]*(?:梯度|连续|二值).{0,8}(?:图|输出|结构)"),
             re.compile(r"二值(?:像素|图像|表示)"),
             re.compile(r"以.{0,30}(?:目标|需求).{0,15}为条件.{0,20}(?:生成|解码)"),
-            re.compile(r"调制参数.{0,30}(?:生成网络|条件生成)"),
         ]
         source_joined = "\n".join(registry.source_texts)
         dimension_aliases = {
@@ -688,6 +687,12 @@ class PatentSemanticsValidator:
         def unsupported_expansion(text: str, supporting_source: str) -> bool:
             return any(pattern.search(text) and not pattern.search(supporting_source)
                        for pattern in expansion_patterns)
+        role_drift_pattern = re.compile(
+            r"调制参数.{0,30}(?:输入|送入|用于).{0,15}(?:生成网络|条件生成)"
+        )
+        downstream_training_pattern = re.compile(
+            r"(?:用于|供).{0,30}(?:后续)?[^。；]{0,40}训练"
+        )
         online_pattern = re.compile(r"实时(?:采集|控制|获取)|每(?:个|次)控制周期|位置传感器|观测器")
         control_promotion_pattern = re.compile(r"最优控制策略|在线控制策略|控制器")
         alternative_pattern = re.compile(r"可采用|可以采用|可选用|典型取值|例如")
@@ -791,9 +796,11 @@ class PatentSemanticsValidator:
                         message="Generated final step falsely declares a downstream implementation step."
                     ))
             if section_id.startswith(("05-", "07-")):
+                parameter_scope = re.sub(
+                    r"^\s*(?:步骤)?S\d+\s*[：:、.．]?\s*", "", scoped_text)
                 local_parameter_text = re.sub(
                     r"[\s,，]", "", supporting_source.lower()).replace("×", "x")
-                for parameter in _parameters(scoped_text):
+                for parameter in _parameters(parameter_scope):
                     signature = re.sub(r"[\s,，]", "", parameter.lower()).replace("×", "x")
                     numbers = re.findall(r"\d+(?:\.\d+)?", signature)
                     unit = "".join(re.findall(r"[a-z%]+", signature))
@@ -826,6 +833,22 @@ class PatentSemanticsValidator:
                             code="UNSUPPORTED_PARAMETER",
                             message=(f"Generated period qualifier lacks source support in {section_id}: "
                                      f"{generated_term} | {scoped_text[:100]}")
+                        ))
+                if (role_drift_pattern.search(scoped_text)
+                        and not role_drift_pattern.search(supporting_source)):
+                    findings.append(SemanticFinding(
+                        code="UNSUPPORTED_GENERALIZATION",
+                        message=(f"Generated component role lacks source support in {section_id}: "
+                                 f"{scoped_text[:120]}")
+                    ))
+                for relation in downstream_training_pattern.finditer(scoped_text):
+                    relation_terms = _latin_terms(relation.group(0))
+                    source_relation_terms = _latin_terms(supporting_source)
+                    if relation_terms - source_relation_terms:
+                        findings.append(SemanticFinding(
+                            code="UNSUPPORTED_GENERALIZATION",
+                            message=(f"Generated downstream training relation lacks local evidence in "
+                                     f"{section_id}: {relation.group(0)[:120]}")
                         ))
             if not section_id.startswith("09") and unsupported_expansion(scoped_text, supporting_source):
                 findings.append(SemanticFinding(
