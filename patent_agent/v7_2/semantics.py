@@ -772,7 +772,7 @@ class PatentSemanticsValidator:
             re.I,
         )
         online_pattern = re.compile(
-            r"实时|每(?:个|次)控制周期|当前(?:控制)?周期|位置传感器|观测器|"
+            r"实时|在线|每(?:个|次)控制周期|当前(?:控制)?周期|位置传感器|观测器|"
             r"(?:获取|采集|接收).{0,12}反馈|动态.{0,18}(?:切换|选择|启用)|"
             r"启用.{0,12}(?:策略|约束|模式)"
         )
@@ -783,6 +783,24 @@ class PatentSemanticsValidator:
         )
         operating_range_expansion_pattern = re.compile(
             r"任何(?:情况下|工况)|全(?:部)?(?:转速|速度|工况|操作条件)范围"
+        )
+        normalized_metric_pattern = re.compile(
+            r"(?:相对于|除以|归一化于).{0,16}(?:平均|均值).{0,12}(?:比例|比率|百分比|脉动)|"
+            r"(?:比例|比率|百分比).{0,12}(?:平均|均值)",
+        )
+        pending_numeric_pattern = re.compile(
+            r"(?:具体)?(?:数值|数据|结果).{0,12}待(?:发明人)?补充|"
+            r"待(?:发明人)?.{0,12}补充.{0,12}(?:数值|数据|结果)"
+        )
+        target_satisfaction_pattern = re.compile(
+            r"(?:生成|获得|输出).{0,30}符合.{0,12}(?:目标|要求|需求)|"
+            r"符合.{0,12}(?:目标|要求|需求).{0,24}(?:拓扑|样本|输出|设计|编码)"
+        )
+        source_target_support_pattern = re.compile(
+            r"(?:目标|要求|需求).{0,30}(?:生成|输出|设计)|"
+            r"(?:condition(?:ed|al)?|target[- ]conditioned|satisf(?:y|ies|ying|ied))"
+            r".{0,40}(?:target|objective|requirement|design|output)",
+            re.I,
         )
 
         for plan in embodiments:
@@ -968,6 +986,27 @@ class PatentSemanticsValidator:
                     findings.append(SemanticFinding(
                         code="UNSUPPORTED_GENERALIZATION",
                         message=(f"Generated operating-point scope expansion lacks local evidence in "
+                                 f"{section_id}: {scoped_text[:120]}")
+                    ))
+                if (normalized_metric_pattern.search(scoped_text)
+                        and not normalized_metric_pattern.search(supporting_source)):
+                    findings.append(SemanticFinding(
+                        code="UNSUPPORTED_GENERALIZATION",
+                        message=(f"Generated metric normalization lacks local evidence in "
+                                 f"{section_id}: {scoped_text[:120]}")
+                    ))
+                if (pending_numeric_pattern.search(scoped_text)
+                        and len(re.findall(r"\d+(?:\.\d+)?", supporting_source)) >= 2):
+                    findings.append(SemanticFinding(
+                        code="UNSUPPORTED_GENERALIZATION",
+                        message=(f"Generated prose marks locally available numeric evidence as pending in "
+                                 f"{section_id}: {scoped_text[:120]}")
+                    ))
+                if (target_satisfaction_pattern.search(scoped_text)
+                        and not source_target_support_pattern.search(supporting_source)):
+                    findings.append(SemanticFinding(
+                        code="UNSUPPORTED_GENERALIZATION",
+                        message=(f"Generated target-satisfaction relation lacks local evidence in "
                                  f"{section_id}: {scoped_text[:120]}")
                     ))
             if not section_id.startswith("09") and unsupported_expansion(scoped_text, supporting_source):

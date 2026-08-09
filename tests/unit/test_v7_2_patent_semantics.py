@@ -583,6 +583,46 @@ def test_online_control_prose_is_rejected_for_offline_case():
     assert "SCENARIO_DRIFT" in _codes(report)
 
 
+def test_online_identification_is_rejected_for_offline_constraints():
+    report = _validate([_plan()], generated_texts=[{
+        "text": "[SECTION:05-08] 在线识别当前工况下需要启用的限制条件。",
+        "source_text": "Offline constraints are evaluated at two fixed target speeds.",
+    }])
+    assert "SCENARIO_DRIFT" in _codes(report)
+
+
+def test_unconditional_generation_cannot_become_target_satisfying_generation():
+    report = _validate([_plan()], generated_texts=[{
+        "text": "[SECTION:05-01] 生成符合多目标要求的拓扑编码。",
+        "source_text": "Generate latent samples from base noise without conditioning.",
+    }])
+    assert "UNSUPPORTED_GENERALIZATION" in _codes(report)
+
+
+def test_target_satisfying_generation_passes_with_local_conditional_evidence():
+    report = _validate([_plan()], generated_texts=[{
+        "text": "[SECTION:05-01] 生成符合目标要求的设计。",
+        "source_text": "A conditional generator produces a design satisfying the target objective.",
+    }])
+    assert "UNSUPPORTED_GENERALIZATION" not in _codes(report)
+
+
+def test_metric_cannot_be_normalized_by_mean_without_local_evidence():
+    report = _validate([_plan()], generated_texts=[{
+        "text": "[SECTION:07-01] 以最大值与最小值之差相对于平均值的比例确定脉动。",
+        "source_text": "Torque ripple is the difference between maximum and minimum torque.",
+    }])
+    assert "UNSUPPORTED_GENERALIZATION" in _codes(report)
+
+
+def test_available_numeric_validation_results_cannot_be_marked_pending():
+    report = _validate([_plan()], generated_texts=[{
+        "text": "[SECTION:07-01] 两项指标均改善，具体数值待发明人补充。",
+        "source_text": "HV increases from 0.7003 to 0.8041 and IGD falls from 0.1004 to 0.0561.",
+    }])
+    assert "UNSUPPORTED_GENERALIZATION" in _codes(report)
+
+
 def test_binary_or_segmented_image_expansion_requires_local_evidence():
     report = _validate([_plan()], generated_texts=[{
         "text": "[SECTION:05-09] 输入可以是二值或分割图像。",
