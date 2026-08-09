@@ -561,7 +561,7 @@ class PatentDisclosurePlanner:
             "### 输出\n输出纯中文正文段落，每段之间用空行分隔。不要输出章节标题。"
         )
         feedback = ""
-        for _attempt in range(3):
+        for attempt in range(3):
             active_prompt = prompt + feedback
             text = _text_retry(self.provider, system_prompt=CHINESE_STYLE_RULES,
                                user_prompt=active_prompt, cache_dir=self.cache_dir)
@@ -592,7 +592,10 @@ class PatentDisclosurePlanner:
                     "删除参考材料未出现的英文技术词或英文展开（包括："
                     + "、".join(unsupported[:12]) + "）；不得用近义英文替换"
                 )
-            feedback = "\n\n上一次输出未通过证据边界检查。请重新撰写：" + "；".join(instructions) + "。"
+            feedback = (
+                f"\n\n第{attempt + 1}次输出未通过证据边界检查。请重新撰写："
+                + "；".join(instructions) + "。"
+            )
         raise RuntimeError(
             "V7_DISCLOSURE_EVIDENCE_VOCABULARY_FAILED: 段落含非案例证据词汇或自行构造公式"
         )
@@ -687,7 +690,8 @@ class PatentDisclosurePlanner:
             context = f"### 该环节的技术事实（英文原文）\n{facts_text}\n\n### 原始证据摘录\n{excerpts}"
             texts = self._llm_paragraphs(
                 "技术方案详细说明的一个环节：把事实组织成连贯的技术逻辑"
-                "（输入→处理→输出），包含关键参数与公式（公式保留原文）。"
+                "（输入→处理→输出），包含关键参数；计算关系仅用自然语言说明，"
+                "规范公式由系统从当前案例公式注册表另行插入，正文不得重复公式。"
                 "不得把无条件生成改写为按目标条件生成，不得把单一物理量预测扩大为多物理场预测，"
                 "也不得把来源中的单一预测量改写成电磁、机械、热或其他性能类别，"
                 "不得自行增加二值、梯度或其他输出形式；使用‘例如’时，该例子必须逐字存在于事实或证据。"
