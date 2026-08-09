@@ -42,6 +42,7 @@ from patent_agent.v7.cross_case import (
     FigureSemanticValidator,
     FormulaScopeValidator,
     PlaceholderLeakValidator,
+    build_case_evidence_fingerprint,
     case_concepts_from_understanding,
 )
 from patent_agent.v7.disclosure_planner import (
@@ -368,6 +369,44 @@ def test_cross_case_artifact_isolation():
     with pytest.raises(V7GateError) as exc:
         _gate_run(contaminated, own_concepts=own)
     assert exc.value.code == "CROSS_CASE_CONTAMINATION"
+
+
+def test_fixed_family_signal_yields_to_current_raw_source_evidence():
+    """A comparison concept found only in raw current-case evidence is not
+    foreign merely because compact A1 facts omitted it."""
+    from types import SimpleNamespace
+    evidence = SimpleNamespace(all=lambda: [SimpleNamespace(
+        evidence_id="EV-RAW-1",
+        raw_text="A generative adversarial network is evaluated only as a baseline.",
+        normalized_text="",
+    )])
+    fingerprint = build_case_evidence_fingerprint(
+        flow_matching_understanding(), evidence)
+    validator = CrossCaseContaminationValidator(
+        case_concepts_from_understanding(flow_matching_understanding()),
+        {"SIBLING": {"generative_gan"}}, fingerprint)
+    disclosure = nine_section_disclosure(
+        contaminated_invention="生成对抗网络仅用于比较验证。")
+    assert validator.validate(disclosure=disclosure).passed
+
+
+def test_generated_figure_accepts_direct_current_evidence_provenance():
+    from types import SimpleNamespace
+    from patent_agent.core.models import FigureNode, FigureSpec
+    evidence = SimpleNamespace(all=lambda: [SimpleNamespace(
+        evidence_id="EV-RAW-2", raw_text="Supported component relation.",
+        normalized_text="",
+    )])
+    fingerprint = build_case_evidence_fingerprint(
+        flow_matching_understanding(), evidence)
+    figure = FigureSpec(
+        id="FIG-DIRECT", number=1, type="system", title="组件关系图",
+        nodes=[FigureNode(id="N1", label="组件", evidence_ids=["EV-RAW-2"])],
+        edges=[], source_ids=["EV-RAW-2"], source_fact_ids=[], provenance="generated",
+    )
+    validator = CrossCaseContaminationValidator(
+        case_concepts_from_understanding(flow_matching_understanding()), {}, fingerprint)
+    assert validator.validate(figures=[figure]).passed
 
 
 def test_cross_case_figure_isolation():

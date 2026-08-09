@@ -40,6 +40,7 @@ class EvidenceFingerprint:
     technical_tokens: frozenset[str] = frozenset()
     fact_ids: frozenset[str] = frozenset()
     evidence_ids: frozenset[str] = frozenset()
+    case_concepts: frozenset[str] = frozenset()
 
 
 _COMMON_LATIN = {
@@ -91,15 +92,18 @@ def _all_strings(value) -> list[str]:
 def build_case_evidence_fingerprint(understanding, evidence_store=None) -> EvidenceFingerprint:
     blocks: list[str] = _all_strings(understanding)
     facts = list(getattr(understanding, "facts", []) or [])
+    evidence_chunks = []
     if evidence_store is not None:
-        blocks.extend(str(chunk.raw_text or chunk.normalized_text) for chunk in evidence_store.all())
+        evidence_chunks = list(evidence_store.all())
+        blocks.extend(str(chunk.raw_text or chunk.normalized_text) for chunk in evidence_chunks)
     return EvidenceFingerprint(
         technical_tokens=frozenset().union(*(_latin_tokens(block) for block in blocks)) if blocks else frozenset(),
         fact_ids=frozenset(str(getattr(fact, "fact_id", "")) for fact in facts),
-        evidence_ids=frozenset(
+        evidence_ids=frozenset({
             str(evidence_id) for fact in facts
             for evidence_id in (getattr(fact, "evidence_ids", []) or [])
-        ),
+        } | {str(getattr(chunk, "evidence_id", "")) for chunk in evidence_chunks}),
+        case_concepts=frozenset(detect_case_concepts(blocks)),
     )
 
 
@@ -136,6 +140,9 @@ class CrossCaseContaminationValidator:
         result = ContaminationResult()
         joined = "\n".join(_texts_of(disclosure, claims, figures)).lower()
         for concept in sorted(self.forbidden):
+            if (self.evidence_fingerprint is not None
+                    and concept in self.evidence_fingerprint.case_concepts):
+                continue
             for kw in CONCEPT_FAMILIES[concept]["en"] + CONCEPT_FAMILIES[concept]["zh"]:
                 if kw.lower() in joined:
                     result.foreign_concepts.append(concept)
@@ -160,9 +167,17 @@ class CrossCaseContaminationValidator:
                 if str(getattr(figure, "provenance", "generated")) != "generated":
                     continue
                 fact_ids = set(getattr(figure, "source_fact_ids", []) or [])
-                if not fact_ids or not fact_ids <= set(self.evidence_fingerprint.fact_ids):
+                evidence_ids = {
+                    str(evidence_id)
+                    for item in list(getattr(figure, "nodes", []) or [])
+                    + list(getattr(figure, "edges", []) or [])
+                    for evidence_id in (getattr(item, "evidence_ids", []) or [])
+                }
+                facts_valid = bool(fact_ids) and fact_ids <= set(self.evidence_fingerprint.fact_ids)
+                evidence_valid = bool(evidence_ids) and evidence_ids <= set(self.evidence_fingerprint.evidence_ids)
+                if not (facts_valid or evidence_valid):
                     result.foreign_concepts.append(str(getattr(figure, "id", "figure")))
-                    result.details.append("生成图缺少有效的当前案例 source_fact_ids")
+                    result.details.append("生成图缺少有效的当前案例 fact/evidence provenance")
         result.passed = not result.foreign_concepts
         return result
 
@@ -206,7 +221,9 @@ class FigureSemanticValidator:
             )
             joined = (title + " " + labels).lower()
             for concept, fam in CONCEPT_FAMILIES.items():
-                if concept in self.case_concepts:
+                if (concept in self.case_concepts
+                        or (self.evidence_fingerprint is not None
+                            and concept in self.evidence_fingerprint.case_concepts)):
                     continue
                 for kw in fam["en"] + fam["zh"]:
                     if kw.lower() in joined:
