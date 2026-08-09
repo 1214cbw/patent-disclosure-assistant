@@ -667,6 +667,13 @@ def test_generator_model_pair_is_not_translated_as_electrical_machine():
     ) == "形成生成模型–代理模型组合。"
 
 
+def test_evidence_local_named_model_translation_is_normalized():
+    assert _align_polysemous_roles(
+        "比较基于条件的卷积神经网络与替代模型。",
+        "Compare Concat-CNN with the surrogate model.",
+    ) == "比较拼接卷积神经网络与代理模型。"
+
+
 def test_online_control_prose_is_rejected_for_offline_case():
     report = _validate([_plan()], generated_texts=[{
         "text": "[SECTION:05-08] 当前控制周期获取转速反馈并动态切换限制模式。",
@@ -767,6 +774,14 @@ def test_malformed_evidence_enumeration_is_rejected():
     report = _validate([_plan()], generated_texts=[{
         "text": "[SECTION:07-01] 验证步骤V1：设计G的预测值为及其误差等数据亦已获取。",
         "source_text": "Design G has complete numeric results.",
+    }])
+    assert "UNSUPPORTED_GENERALIZATION" in _codes(report)
+
+
+def test_discrete_operating_points_cannot_become_continuous_scope():
+    report = _validate([_plan()], generated_texts=[{
+        "text": "[SECTION:07-01] 验证步骤V5：证明其在多转速区域内均有效。",
+        "source_text": "Results are reported at 3000 and 8000 r/min.",
     }])
     assert "UNSUPPORTED_GENERALIZATION" in _codes(report)
 

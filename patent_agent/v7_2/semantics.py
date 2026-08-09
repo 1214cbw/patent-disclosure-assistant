@@ -333,6 +333,10 @@ def local_generation_drift(text: str, source: str) -> list[str]:
             reasons.append("declared item count does not match enumerated design labels")
     if re.search(r"为及其|为\s*(?:，|。|；)|等(?:数据|结果)亦已获取", text):
         reasons.append("incomplete or malformed evidence enumeration")
+    multi_point_scope = re.compile(r"多[一-鿿]{1,8}(?:区域|范围|域)(?:内)?")
+    source_continuous_scope = re.compile(r"\b(?:range|region|domain|across)\b|区域|范围|域", re.I)
+    if multi_point_scope.search(text) and not source_continuous_scope.search(source):
+        reasons.append("discrete operating points expanded into a continuous scope")
     return reasons
 
 

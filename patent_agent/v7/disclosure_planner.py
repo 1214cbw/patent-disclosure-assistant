@@ -83,7 +83,10 @@ def _align_polysemous_roles(text: str, source: str) -> str:
     source_lower = source.lower()
     for rule in TRANSLATION_ROLE_RULES:
         role_supported = any(re.search(pattern, source_lower) for pattern in rule["source_role_patterns"])
-        contrary_supported = any(re.search(pattern, source_lower) for pattern in rule["contrary_role_patterns"])
+        contrary_supported = any(
+            re.search(pattern, source_lower)
+            for pattern in rule.get("contrary_role_patterns", ())
+        )
         if role_supported and not contrary_supported:
             for generated, replacement in rule["replacements"]:
                 text = text.replace(generated, replacement)
@@ -909,7 +912,7 @@ class PatentDisclosurePlanner:
                     require_evidence_entailment=True,
                 )
                 paragraphs.append(para(
-                    f"验证步骤V{index}：" + "".join(texts),
+                    f"验证步骤V{index}：" + _align_polysemous_roles("".join(texts), context),
                     facts=step.fact_ids, evidence=step.evidence_ids,
                 ))
 
