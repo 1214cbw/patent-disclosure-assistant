@@ -14,6 +14,7 @@ from pathlib import Path
 
 
 TERMS = {
+    "case identifier": r"\bREAL-PAPER-\d+\b",
     "FlowVAE": r"\bFlowV\s*AE\b",
     "FiLM": r"\bFiLM\b",
     "rotor": r"\brotor\b|转子",
@@ -22,6 +23,7 @@ TERMS = {
     "flux linkage": r"flux[ -]?linkage|磁链",
     "voltage constraint": r"voltage constraint|电压约束",
     "LDM": r"\bLDM\b|latent diffusion|潜在扩散",
+    "PMa-SynRM": r"\bPMa-SynRM\b",
 }
 
 VOCABULARY_MODULES = {
@@ -88,6 +90,7 @@ def audit(root: Path) -> dict:
                         "line/module": f"{relative}:{getattr(node, 'lineno', 0)}",
                         "category": category,
                         "status": status,
+                        "allowed / forbidden": status,
                         "resolution": resolution,
                     })
     forbidden = [record for record in records if record["status"] == "forbidden"]

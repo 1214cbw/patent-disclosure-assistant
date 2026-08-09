@@ -10,7 +10,6 @@ from typing import Any
 
 from patent_agent.document.math_registry import (
     EXCLUDED_ACRONYMS,
-    REAL_PAPER_001_SYMBOLS,
     UNITS,
     MathSymbol,
     build_symbol_map,
@@ -22,7 +21,7 @@ class MathSpanDetector:
     """Detect and convert plain math tokens to inline OMML annotations."""
 
     def __init__(self, symbols: list[MathSymbol] | None = None):
-        self.symbols = symbols or REAL_PAPER_001_SYMBOLS
+        self.symbols = list(symbols or [])
         self.symbol_map = build_symbol_map(self.symbols)
         # Build sorted pattern (longest first to avoid partial matches)
         self._build_patterns()
@@ -51,7 +50,7 @@ class MathSpanDetector:
             else:
                 # Latin variables: CJK-aware boundary (NOT \b which fails on Chinese)
                 patterns.append(r'(?<![a-zA-Z0-9])' + form + r'(?![a-zA-Z0-9])')
-        self.detect_pattern = re.compile('|'.join(patterns))
+        self.detect_pattern = re.compile('|'.join(patterns) if patterns else r"(?!x)x")
 
     def convert_paragraph(
         self, text: str,

@@ -48,27 +48,49 @@ _COMMON_LATIN = {
     "method", "model", "output", "process", "system", "that", "the", "their",
     "then", "this", "through", "using", "with", "without", "input", "step",
     "training", "value", "values", "result", "results", "technical", "technology",
+    "context", "element", "elements", "estimation", "experiment", "experiments",
+    "finite", "formula", "function", "implementation", "limitation", "limitations",
+    "moment", "specification", "specifications", "trick",
 }
 
 
 def _latin_tokens(text: str) -> set[str]:
-    return {
-        token.lower() for token in re.findall(r"[A-Za-z][A-Za-z0-9-]{3,}", text)
-        if token.lower() not in _COMMON_LATIN
-    }
+    text = re.sub(r"(?<=[A-Za-z0-9])_(?=[A-Za-z0-9])", "", text)
+    tokens: set[str] = set()
+    for raw in re.findall(r"[A-Za-z][A-Za-z0-9]*(?:-[A-Za-z0-9]+)*", text):
+        canonical = raw.lower().replace("-", "")
+        variants = {canonical}
+        if len(canonical) > 5 and canonical.endswith("s"):
+            variants.add(canonical[:-1])
+        tokens.update(token for token in variants if len(token) >= 4 and token not in _COMMON_LATIN)
+    return tokens
+
+
+def _all_strings(value) -> list[str]:
+    """Collect source-derived strings from a model without knowing its schema.
+
+    TechnicalUnderstanding evolves between releases.  A recursive walk keeps
+    equations, parameters, experiments and limitations in the case-local
+    fingerprint instead of silently reducing it to only facts and steps.
+    """
+    if value is None:
+        return []
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, dict):
+        return [text for item in value.values() for text in _all_strings(item)]
+    if isinstance(value, (list, tuple, set)):
+        return [text for item in value for text in _all_strings(item)]
+    if hasattr(value, "model_dump"):
+        return _all_strings(value.model_dump())
+    if hasattr(value, "__dict__"):
+        return _all_strings(vars(value))
+    return []
 
 
 def build_case_evidence_fingerprint(understanding, evidence_store=None) -> EvidenceFingerprint:
-    blocks: list[str] = []
+    blocks: list[str] = _all_strings(understanding)
     facts = list(getattr(understanding, "facts", []) or [])
-    for fact in facts:
-        blocks.append(str(getattr(fact, "statement", "")))
-    for name in ("steps", "components", "data_flows", "control_flows", "inputs", "outputs"):
-        for item in getattr(understanding, name, []) or []:
-            blocks.append(_obj_text(item))
-            relation = getattr(item, "relation", None)
-            if relation is not None:
-                blocks.append(_obj_text(relation))
     if evidence_store is not None:
         blocks.extend(str(chunk.raw_text or chunk.normalized_text) for chunk in evidence_store.all())
     return EvidenceFingerprint(

@@ -45,6 +45,16 @@ STOPWORDS = {
 
 CN_NUMERALS = ["一", "二", "三", "四", "五", "六", "七", "八", "九", "十"]
 
+
+def _cn_number(value: int) -> str:
+    digits = ["零", "一", "二", "三", "四", "五", "六", "七", "八", "九"]
+    if value < 10:
+        return digits[value]
+    if value < 20:
+        return "十" + (digits[value % 10] if value % 10 else "")
+    tens, ones = divmod(value, 10)
+    return digits[tens] + "十" + (digits[ones] if ones else "")
+
 CHINESE_STYLE_RULES = """
 ## 中文专利交底书撰写规则（严格遵守）
 
@@ -161,6 +171,7 @@ class PatentDisclosurePlanner:
         self.max_title_cjk = max_title_cjk
         self.cache_dir = cache_dir
         self.term_normalizer = None
+        self.evidence_fingerprint = None
 
     # ── title ────────────────────────────────────────────────────────────
     def generate_title(self, understanding, strategy) -> str:
@@ -212,9 +223,12 @@ class PatentDisclosurePlanner:
             "仅输出JSON对象：{\"titles\":[\"标题一\",\"标题二\"]}"
         )
         last_titles: list[str] = []
-        for _ in range(2):
+        for attempt in range(2):
+            active_prompt = prompt if attempt == 0 else prompt + (
+                f"\n必须按输入顺序输出恰好{len(clusters)}个非空中文标题。重试标识：2。"
+            )
             text = _text_retry(self.provider, system_prompt=CHINESE_STYLE_RULES,
-                               user_prompt=prompt, cache_dir=self.cache_dir)
+                               user_prompt=active_prompt, cache_dir=self.cache_dir)
             match = re.search(r"\{.*\}", text, re.S)
             try:
                 data = json.loads(match.group(0) if match else text)
@@ -228,10 +242,42 @@ class PatentDisclosurePlanner:
                 return last_titles
         raise ValueError(f"SECTION_TITLE_GATE_FAILED: {last_titles!r}")
 
+    def generate_phase_titles(self, phases: list[str]) -> dict[str, str]:
+        """Translate source category keys into semantic Chinese headings."""
+        if not phases:
+            return {}
+        prompt = (
+            "V7.1_EMBODIMENT_TITLE_SCHEMA\n"
+            "请把下列来源材料中的实施阶段/类别标识改写为简洁、完整、名词性的中文专利小标题。"
+            "不得原样保留英文类别键，不得增加材料未支持的技术事实。\n"
+            f"类别：{json.dumps(phases, ensure_ascii=False)}\n"
+            "仅输出JSON对象：{\"titles\":[\"中文标题一\",\"中文标题二\"]}"
+        )
+        last: list[str] = []
+        for attempt in range(2):
+            active_prompt = prompt if attempt == 0 else prompt + (
+                f"\n必须按输入顺序输出恰好{len(phases)}个非空中文标题。重试标识：2。"
+            )
+            text = _text_retry(self.provider, system_prompt=CHINESE_STYLE_RULES,
+                               user_prompt=active_prompt, cache_dir=self.cache_dir)
+            match = re.search(r"\{.*\}", text, re.S)
+            try:
+                last = [str(item).strip() for item in json.loads(
+                    match.group(0) if match else text
+                ).get("titles", [])]
+            except (json.JSONDecodeError, AttributeError, TypeError):
+                last = []
+            if (len(last) == len(phases)
+                    and all(CJK.search(title) and not re.search(r"[A-Za-z]{3,}", title)
+                            for title in last)):
+                return dict(zip(phases, last))
+        raise ValueError(f"EMBODIMENT_TITLE_GATE_FAILED: {last!r}")
+
     # ── content plan ─────────────────────────────────────────────────────
     def build_plan(
         self, understanding, strategy, figures, clusters, title: str = "",
         section_titles: list[str] | None = None,
+        phase_titles: dict[str, str] | None = None,
     ) -> list[dict]:
         """Build the full 9-section disclosure plan.
 
@@ -305,8 +351,12 @@ class PatentDisclosurePlanner:
             phase_groups.setdefault(_phase_of(cluster), []).append(cluster)
         for index, (phase, groups) in enumerate(phase_groups.items(), 1):
             group_facts = [f for g in groups for f in g]
+            cn = _cn_number(index)
+            semantic_phase = (phase_titles or {}).get(phase, phase)
             plan.append({
-                "section_id": f"07-{index:02d}", "title": "", "kind": "embodiment",
+                "section_id": f"07-{index:02d}",
+                "title": f"7. 实施例{cn}：{semantic_phase}",
+                "kind": "embodiment",
                 "facts": group_facts, "evidence_ids": ev_ids(group_facts),
                 "phase": phase,
             })
@@ -345,10 +395,17 @@ class PatentDisclosurePlanner:
             )
         from patent_agent.v7_1.quality import TechnicalTerminologyNormalizer
         self.term_normalizer = TechnicalTerminologyNormalizer.from_source_texts(source_texts)
+        from patent_agent.v7.cross_case import build_case_evidence_fingerprint
+        self.evidence_fingerprint = build_case_evidence_fingerprint(
+            understanding, evidence_store
+        )
         section_titles = self.generate_section_titles(clusters)
+        phase_keys = list(dict.fromkeys(_phase_of(cluster) for cluster in clusters))
+        phase_titles = self.generate_phase_titles(phase_keys)
         plan = self.build_plan(
             understanding, strategy, figures, clusters, title=title,
             section_titles=section_titles,
+            phase_titles=phase_titles,
         )
 
         sections: list[GroundedSection] = []
@@ -396,15 +453,41 @@ class PatentDisclosurePlanner:
             f"不是逐句翻译）\n{context}\n\n"
             "### 输出\n输出纯中文正文段落，每段之间用空行分隔。不要输出章节标题。"
         )
-        text = _text_retry(self.provider, system_prompt=CHINESE_STYLE_RULES,
-                           user_prompt=prompt, cache_dir=self.cache_dir)
-        paragraphs = [
-            p.strip() for p in re.split(r"\n\s*\n", text)
-            if p.strip() and len(p.strip()) > 12 and not p.strip().startswith(("#", "```"))
-        ]
-        if not paragraphs:
-            raise RuntimeError("V7_DISCLOSURE_LLM_EMPTY: 中文生成返回空段落")
-        return paragraphs
+        feedback = ""
+        for _attempt in range(3):
+            active_prompt = prompt + feedback
+            text = _text_retry(self.provider, system_prompt=CHINESE_STYLE_RULES,
+                               user_prompt=active_prompt, cache_dir=self.cache_dir)
+            paragraphs = [
+                p.strip() for p in re.split(r"\n\s*\n", text)
+                if p.strip() and len(p.strip()) > 12 and not p.strip().startswith(("#", "```"))
+            ]
+            has_inline_formula = any(
+                re.search(r"\\\(|\\\[|\$[^$]+\$", p) for p in paragraphs
+            )
+            unsupported: list[str] = []
+            if paragraphs and self.evidence_fingerprint is not None:
+                from patent_agent.v7.cross_case import _latin_tokens
+                output_tokens = set().union(*(_latin_tokens(p) for p in paragraphs))
+                unsupported = sorted(
+                    output_tokens - set(self.evidence_fingerprint.technical_tokens)
+                )
+            if paragraphs and not has_inline_formula and not unsupported:
+                return paragraphs
+            instructions: list[str] = []
+            if has_inline_formula:
+                instructions.append(
+                    "正文不得输出\\(...\\)、\\[...\\]或$...$公式；规范公式由系统从当前案例公式注册表单独插入"
+                )
+            if unsupported:
+                instructions.append(
+                    "删除参考材料未出现的英文技术词或英文展开（包括："
+                    + "、".join(unsupported[:12]) + "）；不得用近义英文替换"
+                )
+            feedback = "\n\n上一次输出未通过证据边界检查。请重新撰写：" + "；".join(instructions) + "。"
+        raise RuntimeError(
+            "V7_DISCLOSURE_EVIDENCE_VOCABULARY_FAILED: 段落含非案例证据词汇或自行构造公式"
+        )
 
     def _generate_section(self, case_id, sec, understanding, evidence_store, strategy):
         kind = sec["kind"]
@@ -570,7 +653,7 @@ class PatentDisclosurePlanner:
             num = int(sec["section_id"].split("-")[1])
             return f"5.{num} 技术环节{num}"
         if kind == "embodiment":
-            cn = CN_NUMERALS[min(int(sec["section_id"].split("-")[1]) - 1, 9)]
+            cn = _cn_number(int(sec["section_id"].split("-")[1]))
             return f"7. 实施例{cn}：{sec.get('phase', '')}详细说明"
         return sec["title"]
 

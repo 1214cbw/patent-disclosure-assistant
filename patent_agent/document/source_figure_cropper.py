@@ -46,28 +46,14 @@ class CropResult:
         return asdict(self)
 
 
-# Golden crops verified manually: page index (0-based), column-relative
-# candidate rect (x0, y0, x1, y1) in PDF points.
-GOLDEN_CROPS: dict[str, dict] = {
-    # REAL-PAPER-001 Fig.2 "Annotation of design variables for the
-    # first-layer magnetic barrier" (paper page 2, left column).
-    # Verified row-level ink analysis: body prose lines end at y=376.9,
-    # figure vector cluster spans y[391.9-525.0] x[66.7-287.6] (46
-    # drawings, incl. the in-figure hbs1 label at y[477-491]), original
-    # English caption "Fig. 2. Annotation..." starts at y=536.2.
-    "REAL-PAPER-001:2:fig2": {
-        "page": 1,
-        "candidate": [55.0, 380.0, 300.0, 540.0],
-        "margin_pt": 6.0,
-    },
-}
-
-
 class SourceFigureContentCropper:
     """Crop a figure out of a source PDF, excluding surrounding text."""
 
-    def __init__(self, pdf_path: str | Path):
+    def __init__(self, pdf_path: str | Path, *, golden_crops: dict[str, dict] | None = None):
         self.pdf_path = Path(pdf_path)
+        # Reviewed crop coordinates are case-local input data.  Production
+        # code never owns a paper/case-specific coordinate registry.
+        self.golden_crops = dict(golden_crops or {})
 
     @staticmethod
     def _dense_cluster_bbox(drawings: list) -> fitz.Rect:
@@ -243,7 +229,7 @@ class SourceFigureContentCropper:
     def crop_golden(self, key: str, *, dpi: int = 300,
                     output: str | Path | None = None) -> CropResult:
         """Crop using a registered golden region (validated by analysis)."""
-        golden = GOLDEN_CROPS.get(key)
+        golden = self.golden_crops.get(key)
         if golden is None:
             raise KeyError(f"no golden crop registered for {key!r}")
         bbox, method = self.figure_bbox(golden["page"], golden["candidate"],

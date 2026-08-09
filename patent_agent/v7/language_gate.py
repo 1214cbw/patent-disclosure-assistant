@@ -27,6 +27,7 @@ CJK_CHAR = re.compile(r"[一-鿿]")
 LATIN_CHAR = re.compile(r"[A-Za-z]")
 GREEK_CHAR = re.compile(r"[Ͱ-Ͽἀ-῿]")
 HTML_TAG = re.compile(r"</?[A-Za-z][^>]*>")
+LATEX_MATH = re.compile(r"\\\([^)]*\\\)|\\\[[^]]*\\\]|\$[^$]+\$", re.S)
 
 # First-occurrence term pattern "中文（English Full Name，缩写）": a parenthetical
 # group of pure-English content whose final segment (after ，or ,) is a symbol
@@ -124,7 +125,9 @@ class ChinesePatentLanguageValidator:
         """Return (is_chinese_ok, english_block_text)."""
         if not text.strip():
             return True, None
-        cleaned = _strip_first_occurrence(text)
+        # Formula bodies may contain LaTeX command names (mathbf, frac, ...)
+        # but are not English prose. Formula integrity is enforced separately.
+        cleaned = LATEX_MATH.sub("", _strip_first_occurrence(text))
         words = ENGLISH_WORD.findall(cleaned)
         if len(words) < EN_BLOCK_MIN_WORDS:
             return True, None
@@ -166,11 +169,23 @@ class ChinesePatentLanguageValidator:
     ) -> LanguageGateResult:
         """Validate a GroundedDisclosure (sections -> paragraphs + title)."""
         texts: list[str] = []
+        heading_issues: list[str] = []
         for section in getattr(disclosure, "sections", []) or []:
-            texts.append(str(section.title))
+            heading = str(section.title)
+            texts.append(heading)
+            cleaned_heading = _strip_first_occurrence(heading)
+            raw_words = [word for word in ENGLISH_WORD.findall(cleaned_heading)
+                         if word not in GENERAL_ABBREVIATIONS and not _is_symbol_tail(word)]
+            if raw_words:
+                heading_issues.append(
+                    f"{context}章节标题含未中文化类别词: {heading[:100]}"
+                )
             for paragraph in getattr(section, "paragraphs", []) or []:
                 texts.append(str(getattr(paragraph, "text", "")))
         result = self.validate_texts(texts, context=context)
+        if heading_issues:
+            result.passed = False
+            result.issues.extend(heading_issues)
         result.title_cjk_ok = self.validate_title(str(getattr(disclosure, "title", "")))
         if not result.title_cjk_ok:
             result.passed = False

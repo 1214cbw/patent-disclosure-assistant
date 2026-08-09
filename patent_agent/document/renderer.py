@@ -35,6 +35,17 @@ class DocumentRenderer:
     def render(self, ast: PatentDocumentAST, output_path: Path, template_path: Path | None = None) -> Path:
         template = template_path or self.templates.ensure_default()
         document = configure_styles(Document(template))
+        equation_sources = [
+            str(node.latex) for node in ast.nodes
+            if node.type == "display_equation" and node.latex
+        ]
+        if equation_sources:
+            from .math_detector import MathSpanDetector
+            from .math_registry import symbols_from_equations
+            self._math_detector = MathSpanDetector(symbols_from_equations(equation_sources))
+        elif self._math_detector is None:
+            from .math_detector import MathSpanDetector
+            self._math_detector = MathSpanDetector([])
         document.core_properties.title = ast.title
         document.core_properties.subject = f"Patent Agent {ast.kind}"
         for node in ast.nodes:
@@ -157,4 +168,3 @@ class DocumentRenderer:
             h_cm = MAX_H_CM
             w_cm = h_cm / aspect
         return Cm(max(4.0, w_cm)), Cm(max(3.0, h_cm))
-

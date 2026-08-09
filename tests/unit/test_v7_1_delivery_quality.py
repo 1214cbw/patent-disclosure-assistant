@@ -97,6 +97,17 @@ def test_figure_graph_rejects_renderer_plan_parity_loss():
     assert {"RENDERED_NODE_MISSING", "RENDERED_EDGE_MISSING"} <= codes(result)
 
 
+def test_figure_graph_rejects_reported_render_collisions():
+    figure = make_figure()
+    rendered = {"FIG-001": {
+        "node_ids": ["N1", "N2"],
+        "edge_ids": ["N1->N2"],
+        "collisions": [{"type": "arrow-node"}],
+    }}
+    result = FigureGraphValidator().validate([figure], rendered)
+    assert "RENDERED_GRAPH_COLLISION" in codes(result)
+
+
 def test_bilingual_term_validator_rejects_duplicate_expansion():
     result = BilingualTermValidator().validate(["流匹配（流匹配）训练流程"])
     assert "DUPLICATE_TERM_EXPANSION" in codes(result)
@@ -243,6 +254,53 @@ def test_cross_case_gate_detects_wrong_fact_inside_broad_concept_family():
     assert "cryogenic" in result.foreign_concepts
 
 
+def test_case_fingerprint_covers_all_source_derived_fields_and_hyphen_variants():
+    from patent_agent.v7.cross_case import build_case_evidence_fingerprint
+
+    understanding = type("Understanding", (), {
+        "model_dump": lambda self: {
+            "facts": [{"fact_id": "F1", "statement": "finite-element analysis"}],
+            "parameters": [{"name": "I-max current limitation"}],
+            "experiments": [{"text": "multilayer perceptron implementation"}],
+        },
+        "facts": [type("Fact", (), {"fact_id": "F1", "evidence_ids": ["E1"]})()],
+    })()
+    fingerprint = build_case_evidence_fingerprint(understanding)
+    assert {"finiteelement", "imax", "multilayer", "perceptron"} <= set(
+        fingerprint.technical_tokens
+    )
+
+
+def test_inline_math_registry_is_derived_from_current_equations():
+    from patent_agent.document.math_detector import MathSpanDetector
+    from patent_agent.document.math_registry import normalize_symbol_aliases, symbols_from_equations
+
+    detector = MathSpanDetector(symbols_from_equations(["i_d^2 + i_q^2 <= I_max^2"]))
+    spans = detector.convert_paragraph("运行条件(id, iq)满足Imax约束。")
+    latex = [item["latex"] for item in spans if item["type"] == "inline_math"]
+    assert "i_{d}" in latex
+    assert "i_{q}" in latex
+    assert "I_{max}" in latex
+    assert normalize_symbol_aliases(
+        "输入(id, iq)，满足Imax。", ["i_d^2 + i_q^2 <= I_max^2"]
+    ) == "输入(i_d, i_q)，满足I_max。"
+
+
+def test_language_gate_rejects_untranslated_category_key_in_heading():
+    from patent_agent.v7.language_gate import ChinesePatentLanguageValidator
+
+    disclosure = type("Disclosure", (), {
+        "title": "一种中文方法",
+        "sections": [type("Section", (), {
+            "title": "7. 实施例一：machine_specification详细说明",
+            "paragraphs": [type("Paragraph", (), {"text": "本实施例具有完整中文正文。"})()],
+        })()],
+    })()
+    result = ChinesePatentLanguageValidator().validate_disclosure(disclosure)
+    assert not result.passed
+    assert any("章节标题含未中文化类别词" in issue for issue in result.issues)
+
+
 def test_docx_equation_audit_compares_canonical_omml_signature(tmp_path: Path):
     import zipfile
     from lxml import etree
@@ -286,3 +344,10 @@ def test_production_hardcode_audit_has_no_forbidden_branching():
     report = audit(Path(__file__).resolve().parents[2])
     assert report["summary"]["forbidden"] == 0
     assert report["summary"]["pass"] is True
+
+
+def test_language_gate_does_not_count_latex_commands_as_english_prose():
+    from patent_agent.v7.language_gate import ChinesePatentLanguageValidator
+
+    text = r"非线性方程写为 \(\mathbf{K}(\mathbf{A})\mathbf{A}=\mathbf{J}\)，并进行求解。"
+    assert ChinesePatentLanguageValidator().validate_paragraph(text)[0] is True

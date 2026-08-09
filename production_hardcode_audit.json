@@ -11,14 +11,25 @@
       "line/module": "patent_agent/document/chinese_validator.py:19",
       "category": "auxiliary_vocabulary_data",
       "status": "allowed",
+      "allowed / forbidden": "allowed",
       "resolution": "Auxiliary signal only; evidence-derived fingerprint is the primary gate."
     },
     {
       "term": "LDM",
       "file": "patent_agent/document/math_registry.py",
-      "line/module": "patent_agent/document/math_registry.py:152",
+      "line/module": "patent_agent/document/math_registry.py:199",
       "category": "auxiliary_vocabulary_data",
       "status": "allowed",
+      "allowed / forbidden": "allowed",
+      "resolution": "Auxiliary signal only; evidence-derived fingerprint is the primary gate."
+    },
+    {
+      "term": "PMa-SynRM",
+      "file": "patent_agent/document/math_registry.py",
+      "line/module": "patent_agent/document/math_registry.py:200",
+      "category": "auxiliary_vocabulary_data",
+      "status": "allowed",
+      "allowed / forbidden": "allowed",
       "resolution": "Auxiliary signal only; evidence-derived fingerprint is the primary gate."
     },
     {
@@ -27,6 +38,7 @@
       "line/module": "patent_agent/llm/demo_mock.py:113",
       "category": "test_fixture",
       "status": "allowed",
+      "allowed / forbidden": "allowed",
       "resolution": "Deterministic demo fixture only; not used by the real-case production provider."
     },
     {
@@ -35,6 +47,7 @@
       "line/module": "patent_agent/llm/demo_mock.py:85",
       "category": "test_fixture",
       "status": "allowed",
+      "allowed / forbidden": "allowed",
       "resolution": "Deterministic demo fixture only; not used by the real-case production provider."
     },
     {
@@ -43,6 +56,7 @@
       "line/module": "patent_agent/llm/demo_mock.py:89",
       "category": "test_fixture",
       "status": "allowed",
+      "allowed / forbidden": "allowed",
       "resolution": "Deterministic demo fixture only; not used by the real-case production provider."
     },
     {
@@ -51,6 +65,7 @@
       "line/module": "patent_agent/llm/demo_mock.py:95",
       "category": "test_fixture",
       "status": "allowed",
+      "allowed / forbidden": "allowed",
       "resolution": "Deterministic demo fixture only; not used by the real-case production provider."
     },
     {
@@ -59,6 +74,7 @@
       "line/module": "patent_agent/llm/demo_mock.py:164",
       "category": "test_fixture",
       "status": "allowed",
+      "allowed / forbidden": "allowed",
       "resolution": "Deterministic demo fixture only; not used by the real-case production provider."
     },
     {
@@ -67,6 +83,7 @@
       "line/module": "patent_agent/llm/demo_mock.py:166",
       "category": "test_fixture",
       "status": "allowed",
+      "allowed / forbidden": "allowed",
       "resolution": "Deterministic demo fixture only; not used by the real-case production provider."
     },
     {
@@ -75,6 +92,7 @@
       "line/module": "patent_agent/llm/demo_mock.py:118",
       "category": "test_fixture",
       "status": "allowed",
+      "allowed / forbidden": "allowed",
       "resolution": "Deterministic demo fixture only; not used by the real-case production provider."
     },
     {
@@ -83,6 +101,7 @@
       "line/module": "patent_agent/llm/demo_mock.py:147",
       "category": "test_fixture",
       "status": "allowed",
+      "allowed / forbidden": "allowed",
       "resolution": "Deterministic demo fixture only; not used by the real-case production provider."
     },
     {
@@ -91,6 +110,7 @@
       "line/module": "patent_agent/v7/concepts.py:152",
       "category": "auxiliary_vocabulary_data",
       "status": "allowed",
+      "allowed / forbidden": "allowed",
       "resolution": "Auxiliary signal only; evidence-derived fingerprint is the primary gate."
     },
     {
@@ -99,6 +119,7 @@
       "line/module": "patent_agent/v7/concepts.py:23",
       "category": "auxiliary_vocabulary_data",
       "status": "allowed",
+      "allowed / forbidden": "allowed",
       "resolution": "Auxiliary signal only; evidence-derived fingerprint is the primary gate."
     },
     {
@@ -107,6 +128,7 @@
       "line/module": "patent_agent/v7/concepts.py:24",
       "category": "auxiliary_vocabulary_data",
       "status": "allowed",
+      "allowed / forbidden": "allowed",
       "resolution": "Auxiliary signal only; evidence-derived fingerprint is the primary gate."
     },
     {
@@ -115,6 +137,7 @@
       "line/module": "patent_agent/v7/concepts.py:28",
       "category": "auxiliary_vocabulary_data",
       "status": "allowed",
+      "allowed / forbidden": "allowed",
       "resolution": "Auxiliary signal only; evidence-derived fingerprint is the primary gate."
     },
     {
@@ -123,6 +146,7 @@
       "line/module": "patent_agent/v7/concepts.py:69",
       "category": "auxiliary_vocabulary_data",
       "status": "allowed",
+      "allowed / forbidden": "allowed",
       "resolution": "Auxiliary signal only; evidence-derived fingerprint is the primary gate."
     },
     {
@@ -131,6 +155,7 @@
       "line/module": "patent_agent/v7/concepts.py:69",
       "category": "auxiliary_vocabulary_data",
       "status": "allowed",
+      "allowed / forbidden": "allowed",
       "resolution": "Auxiliary signal only; evidence-derived fingerprint is the primary gate."
     },
     {
@@ -139,6 +164,7 @@
       "line/module": "patent_agent/v7/concepts.py:70",
       "category": "auxiliary_vocabulary_data",
       "status": "allowed",
+      "allowed / forbidden": "allowed",
       "resolution": "Auxiliary signal only; evidence-derived fingerprint is the primary gate."
     },
     {
@@ -147,6 +173,7 @@
       "line/module": "patent_agent/v7/concepts.py:71",
       "category": "auxiliary_vocabulary_data",
       "status": "allowed",
+      "allowed / forbidden": "allowed",
       "resolution": "Auxiliary signal only; evidence-derived fingerprint is the primary gate."
     },
     {
@@ -155,6 +182,7 @@
       "line/module": "patent_agent/v7/concepts.py:71",
       "category": "auxiliary_vocabulary_data",
       "status": "allowed",
+      "allowed / forbidden": "allowed",
       "resolution": "Auxiliary signal only; evidence-derived fingerprint is the primary gate."
     },
     {
@@ -163,44 +191,58 @@
       "line/module": "patent_agent/v7/concepts.py:72",
       "category": "auxiliary_vocabulary_data",
       "status": "allowed",
+      "allowed / forbidden": "allowed",
       "resolution": "Auxiliary signal only; evidence-derived fingerprint is the primary gate."
     },
     {
       "term": "LDM",
       "file": "patent_agent/v7/cross_case.py",
-      "line/module": "patent_agent/v7/cross_case.py:164",
+      "line/module": "patent_agent/v7/cross_case.py:186",
       "category": "documentation",
       "status": "allowed",
+      "allowed / forbidden": "allowed",
       "resolution": "Non-executable documentation; does not control planning or validation."
     },
     {
       "term": "FlowVAE",
       "file": "patent_agent/v7/language_gate.py",
-      "line/module": "patent_agent/v7/language_gate.py:49",
+      "line/module": "patent_agent/v7/language_gate.py:50",
       "category": "documentation",
       "status": "allowed",
+      "allowed / forbidden": "allowed",
       "resolution": "Non-executable documentation; does not control planning or validation."
     },
     {
       "term": "FiLM",
       "file": "patent_agent/v7/language_gate.py",
-      "line/module": "patent_agent/v7/language_gate.py:49",
+      "line/module": "patent_agent/v7/language_gate.py:50",
       "category": "documentation",
       "status": "allowed",
+      "allowed / forbidden": "allowed",
+      "resolution": "Non-executable documentation; does not control planning or validation."
+    },
+    {
+      "term": "PMa-SynRM",
+      "file": "patent_agent/v7/language_gate.py",
+      "line/module": "patent_agent/v7/language_gate.py:50",
+      "category": "documentation",
+      "status": "allowed",
+      "allowed / forbidden": "allowed",
       "resolution": "Non-executable documentation; does not control planning or validation."
     },
     {
       "term": "rotor",
       "file": "patent_agent/v7/language_gate.py",
-      "line/module": "patent_agent/v7/language_gate.py:61",
+      "line/module": "patent_agent/v7/language_gate.py:62",
       "category": "documentation",
       "status": "allowed",
+      "allowed / forbidden": "allowed",
       "resolution": "Non-executable documentation; does not control planning or validation."
     }
   ],
   "summary": {
-    "occurrences": 24,
-    "allowed": 24,
+    "occurrences": 26,
+    "allowed": 26,
     "forbidden": 0,
     "pass": true
   }

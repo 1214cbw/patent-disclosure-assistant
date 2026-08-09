@@ -34,6 +34,7 @@ def main(argv=None):
     p = sub.add_parser("confirm-inventor"); p.add_argument("case_id"); p.add_argument("question_id"); p.add_argument("statement")
     p = sub.add_parser("real-case-create"); p.add_argument("case_id"); p.add_argument("--title", default="[待发明人确认]"); p.add_argument("--authorized", action="store_true"); p.add_argument("--llm-mode", choices=["disabled", "local", "external-approved"], default="disabled"); p.add_argument("--external-llm-approved", action="store_true")
     p = sub.add_parser("real-case-ingest"); p.add_argument("case_id"); p.add_argument("path")
+    p = sub.add_parser("real-case-publication"); p.add_argument("case_id"); p.add_argument("--paper-title", required=True); p.add_argument("--publication-status", choices=["UNKNOWN", "UNPUBLISHED", "PREPRINT", "PUBLISHED", "ACCEPTED"], required=True); p.add_argument("--first-public-date", default="UNKNOWN"); p.add_argument("--doi", default="UNKNOWN"); p.add_argument("--preprint-status", choices=["UNKNOWN", "YES", "NO"], default="UNKNOWN"); p.add_argument("--patent-filed-before-publication", choices=["UNKNOWN", "YES", "NO", "NOT_APPLICABLE"], default="UNKNOWN"); p.add_argument("--confirm", action="store_true")
     p = sub.add_parser("real-case-a1"); p.add_argument("case_id"); p.add_argument("--llm", action="store_true"); p.add_argument("--auto-approve", action="store_true")
     p = sub.add_parser("checkpoint"); p.add_argument("case_id")
     p = sub.add_parser("checkpoint-review"); p.add_argument("case_id"); p.add_argument("checkpoint", choices=["A1", "A2", "B", "C"])
@@ -41,6 +42,7 @@ def main(argv=None):
     p = sub.add_parser("checkpoint-import"); p.add_argument("case_id"); p.add_argument("json_file")
     p = sub.add_parser("checkpoint-approve"); p.add_argument("case_id"); p.add_argument("checkpoint", choices=["A1", "A2", "B", "C"]); p.add_argument("--ack-risk", action="store_true")
     p = sub.add_parser("checkpoint-continue"); p.add_argument("case_id"); p.add_argument("--prior-art")
+    p = sub.add_parser("checkpoint-regenerate-c"); p.add_argument("case_id")
     p = sub.add_parser("claim-scope"); p.add_argument("case_id")
     p = sub.add_parser("evaluation-report"); p.add_argument("case_id"); p.add_argument("--run-id")
     p = sub.add_parser("real-case-answer"); p.add_argument("case_id"); p.add_argument("question_id"); p.add_argument("statement")
@@ -108,6 +110,20 @@ def main(argv=None):
     elif args.command == "real-case-ingest":
         from patent_agent.real_case import RealCaseManager
         print(RealCaseManager(settings.project_root).ingest(args.case_id, Path(args.path)))
+    elif args.command == "real-case-publication":
+        from patent_agent.real_case import RealCaseManager
+        if not args.confirm:
+            raise ValueError("PUBLICATION_METADATA_CONFIRMATION_REQUIRED")
+        manager = RealCaseManager(settings.project_root)
+        manifest = manager.update_publication_metadata(
+            args.case_id, paper_title=args.paper_title,
+            publication_status=args.publication_status,
+            first_public_date=args.first_public_date, doi=args.doi,
+            preprint_status=args.preprint_status,
+            patent_filed_before_publication=args.patent_filed_before_publication,
+            publication_review_status="CONFIRMED",
+        )
+        print(manifest.model_dump_json(indent=2))
     elif args.command == "real-case-a1":
         from patent_agent.workflow import RealCaseWorkflow
         provider = None
@@ -133,6 +149,9 @@ def main(argv=None):
         from patent_agent.workflow import build_real_case_workflow
         print(build_real_case_workflow(settings, args.case_id).continue_case(
             args.case_id, Path(args.prior_art) if args.prior_art else None))
+    elif args.command == "checkpoint-regenerate-c":
+        from patent_agent.workflow import build_real_case_workflow
+        print(build_real_case_workflow(settings, args.case_id).regenerate_c(args.case_id))
     elif args.command == "claim-scope":
         from patent_agent.real_case import RealCaseManager
         manager = RealCaseManager(settings.project_root); print(manager.case_store.latest_stage_path(args.case_id, "p1_claim_scope").read_text(encoding="utf-8"))

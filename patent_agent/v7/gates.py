@@ -91,7 +91,8 @@ def run_disclosure_gates(
         detail = "；".join(contamination.details[:6])
         report.fail("cross_case_contamination", detail)
         raise V7GateError("CROSS_CASE_CONTAMINATION",
-                          "检测到与当前材料不一致的技术内容，已阻止生成。")
+                          "检测到与当前材料不一致的技术内容，已阻止生成。"
+                          f" foreign={contamination.foreign_concepts[:100]}; {detail}")
     report.pass_gate("cross_case_contamination")
 
     placeholders = placeholder_validator.validate(

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import zipfile
 from pathlib import Path
 from typing import Any
@@ -104,6 +105,7 @@ def audit_pdf_render(pdf_path: Path, equation_count: int, figure_count: int) -> 
     errors: list[dict[str, Any]] = []
     pages = []
     equation_locations: dict[str, dict[str, Any]] = {}
+    image_locations: list[dict[str, Any]] = []
     image_count = 0
     document = fitz.open(pdf_path)
     for page_index, page in enumerate(document, 1):
@@ -117,6 +119,7 @@ def audit_pdf_render(pdf_path: Path, equation_count: int, figure_count: int) -> 
                 errors.append({"code": "PDF_BLOCK_CLIPPED", "page": page_index, "bbox": bbox})
             if block.get("type") == 1:
                 page_images += 1
+                image_locations.append({"page": page_index, "bbox": bbox})
             for line in block.get("lines", []):
                 line_text = "".join(span.get("text", "") for span in line.get("spans", []))
                 text_chars += len(line_text.strip())
@@ -146,6 +149,7 @@ def audit_pdf_render(pdf_path: Path, equation_count: int, figure_count: int) -> 
         "page_count": len(pages),
         "pages": pages,
         "equation_locations": equation_locations,
+        "image_locations": image_locations,
         "image_blocks": image_count,
         "errors": errors,
     }
@@ -187,13 +191,108 @@ def run_delivery_audit(output: Path, docx_path: Path, pdf_path: Path,
     equation_audit = audit_docx_equations(docx_path, equations)
     render_audit = audit_pdf_render(pdf_path, len(equations), len(figures))
 
+    heading_items = []
+    for section in disclosure.sections:
+        section_id = str(getattr(section, "section_id", ""))
+        if not section_id.startswith("05-"):
+            continue
+        title = str(section.title)
+        paragraphs = list(getattr(section, "paragraphs", []) or [])
+        body_first = str(getattr(paragraphs[0], "text", "")) if paragraphs else ""
+        semantic_title = re.sub(r"^\s*5\.\d+\s*", "", title).strip()
+        single = HeadingCompletenessValidator().validate([title])
+        terminology = TokenIntegrityValidator(normalizer.registry).validate([title])
+        balanced = all(title.count(left) == title.count(right) for left, right in (
+            ("（", "）"), ("(", ")"), ("[", "]"), ("“", "”"), ('"', '"'),
+        ))
+        # Straight quote pairs are balanced when their count is even.
+        balanced = balanced and title.count('"') % 2 == 0
+        heading_items.append({
+            "section_id": section_id,
+            "title": title,
+            "length": len(title),
+            "complete": single.status == "PASS",
+            "prefix_of_body": bool(semantic_title and body_first.startswith(semantic_title)),
+            "terminology_valid": terminology.status == "PASS",
+            "parentheses_balanced": balanced,
+            "validator_result": single.status,
+        })
+
+    section_items = []
+    for section in disclosure.sections:
+        paragraphs = list(getattr(section, "paragraphs", []) or [])
+        texts = [str(getattr(paragraph, "text", "")) for paragraph in paragraphs]
+        fact_ids = sorted({
+            str(fact_id) for paragraph in paragraphs
+            for fact_id in (getattr(paragraph, "fact_ids", []) or []) if fact_id
+        })
+        single = SectionCompletenessValidator().validate([section])
+        section_id = str(getattr(section, "section_id", ""))
+        section_items.append({
+            "section_id": section_id,
+            "heading": str(getattr(section, "title", "")),
+            "body_paragraph_count": len([text for text in texts if text.strip()]),
+            "body_char_count": len("".join(texts)),
+            "fact_ids": fact_ids,
+            "figures": [str(figure.id) for figure in figures] if section_id == "06" else [],
+            "equations": [str(getattr(equation, "id", "")) for equation in equations]
+            if section_id == "05" else [],
+            "status": single.status,
+        })
+
+    figure_items = []
+    image_locations = render_audit.get("image_locations", [])
+    for index, figure in enumerate(figures):
+        graph = graphs.get(str(figure.id), {})
+        planned_nodes = [str(node.id) for node in figure.nodes]
+        planned_edges = [f"{edge.source}->{edge.target}" for edge in figure.edges]
+        node_set = set(planned_nodes)
+        dangling = [edge for edge in planned_edges
+                    if any(endpoint not in node_set for endpoint in edge.split("->", 1))]
+        location = image_locations[index] if index < len(image_locations) else None
+        figure_items.append({
+            "figure_id": str(figure.id),
+            "caption": str(getattr(figure, "caption", "") or figure.title),
+            "source_type": str(getattr(figure, "source_type", "")),
+            "planned_nodes": planned_nodes,
+            "rendered_nodes": graph.get("node_ids", []),
+            "planned_edges": planned_edges,
+            "rendered_edges": graph.get("edge_ids", []),
+            "dangling_edges": dangling,
+            "source_fact_ids": list(getattr(figure, "source_fact_ids", []) or []),
+            "render_page": location.get("page") if location else None,
+            "bbox_valid": bool(location),
+            "consistency_result": narrative_result.status,
+            "collisions": graph.get("collisions", []),
+        })
+
+    for index, equation in enumerate(equation_audit.get("equations", []), 1):
+        location = render_audit.get("equation_locations", {}).get(str(index))
+        equation.update({
+            "equation_id": equation["id"],
+            "registry_signature": equation["expected_signature"],
+            "document_signature": equation["actual_signature"],
+            "match": equation["expected_signature"] == equation["actual_signature"],
+            "render_page": location.get("page") if location else None,
+            "bbox_valid": bool(location),
+            "validator_result": "PASS" if location and equation["expected_signature"] == equation["actual_signature"] else "FAIL",
+        })
+
     audits = {
-        "heading_audit.json": _json_result(heading_result),
-        "section_audit.json": _json_result(section_result),
+        "heading_audit.json": {
+            **_json_result(heading_result),
+            "total_technical_headings": len(heading_items),
+            "headings": heading_items,
+        },
+        "section_audit.json": {
+            **_json_result(section_result),
+            "sections": section_items,
+        },
         "figure_audit.json": {
             "status": "PASS" if graph_result.status == "PASS" and narrative_result.status == "PASS" else "FAIL",
             "graph": _json_result(graph_result), "narrative": _json_result(narrative_result),
             "rendered_graphs": graphs,
+            "figures": figure_items,
         },
         "equation_audit.json": equation_audit,
         "render_audit.json": render_audit,

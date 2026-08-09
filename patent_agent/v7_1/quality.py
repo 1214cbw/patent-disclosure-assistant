@@ -118,6 +118,14 @@ class FigureGraphValidator:
                     result.add("RENDERED_NODE_MISSING", f"Rendered graph lost node {node_id}.", figure_id)
                 for edge_id in edge_ids - rendered_edges:
                     result.add("RENDERED_EDGE_MISSING", f"Rendered graph lost edge {edge_id}.", figure_id)
+                collisions = rendered_graph.get("collisions", []) or []
+                if collisions:
+                    kinds = ", ".join(str(item.get("type", "overlap")) for item in collisions[:5])
+                    result.add(
+                        "RENDERED_GRAPH_COLLISION",
+                        f"Rendered graph contains {len(collisions)} collision(s): {kinds}.",
+                        figure_id,
+                    )
         return result
 
 
@@ -271,4 +279,3 @@ class DeliveryQualityGate:
         elif str(_value(render_audit, "status", "FAIL")) != "PASS":
             result.add("RENDER_AUDIT_FAILED", "PDF render audit did not pass.")
         return result
-

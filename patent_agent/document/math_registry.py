@@ -1,7 +1,8 @@
-"""Math Symbol Registry for REAL-PAPER-001 disclosure.
+"""Math-symbol registry helpers.
 
-Maps plain-text math tokens to proper OMML LaTeX notation.
-Based on original paper evidence and visual formula verification.
+Production rendering derives its registry from the current document's own
+equations.  The historical registry below remains compatibility vocabulary
+only and is not used as a production default.
 """
 from __future__ import annotations
 
@@ -17,6 +18,52 @@ class MathSymbol:
     kind: str = "variable"  # variable | greek | expression | subscript
     context_words: list[str] = field(default_factory=list)  # Words that indicate math context
     exclude_words: list[str] = field(default_factory=list)  # Words that indicate NOT math
+
+
+def symbols_from_equations(equations: list[str]) -> list[MathSymbol]:
+    """Build a case-local inline-math registry from canonical equations."""
+    by_plain: dict[str, MathSymbol] = {}
+    identifier = re.compile(
+        r"[A-Za-zΑ-ωα-ω]+(?:_\{?[A-Za-z0-9Α-ωα-ω*+\-]+\}?)?"
+    )
+    for equation in equations:
+        expression = str(equation or "").strip()
+        if not expression:
+            continue
+        by_plain.setdefault(expression, MathSymbol(
+            plain_form=expression, latex=expression, kind="expression"
+        ))
+        for token in identifier.findall(expression):
+            if token in {"sqrt", "max", "min"}:
+                continue
+            latex = re.sub(r"_([A-Za-z0-9Α-ωα-ω*+\-]+)$", r"_{\1}", token)
+            kind = "subscript" if "_" in token else (
+                "greek" if re.fullmatch(r"[Α-ωα-ω]+", token) else "variable"
+            )
+            by_plain.setdefault(token, MathSymbol(token, latex, kind=kind))
+            if "_" in token:
+                collapsed = token.replace("_{", "").replace("}", "").replace("_", "")
+                if len(collapsed) >= 2:
+                    by_plain.setdefault(collapsed, MathSymbol(collapsed, latex, kind="subscript"))
+    return list(by_plain.values())
+
+
+def normalize_symbol_aliases(text: str, equations: list[str]) -> str:
+    """Restore explicit subscript notation using only current-case equations."""
+    value = str(text)
+    replacements = []
+    for symbol in symbols_from_equations(equations):
+        if symbol.kind != "subscript" or "_" in symbol.plain_form:
+            continue
+        canonical = re.sub(r"_\{([^{}]+)\}", r"_\1", symbol.latex)
+        replacements.append((symbol.plain_form, canonical))
+    for alias, canonical in sorted(replacements, key=lambda item: len(item[0]), reverse=True):
+        value = re.sub(
+            rf"(?<![A-Za-z0-9]){re.escape(alias)}(?![A-Za-z0-9])",
+            canonical,
+            value,
+        )
+    return value
 
 
 # REAL-PAPER-001 Math Symbol Registry

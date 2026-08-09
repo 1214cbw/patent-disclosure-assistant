@@ -44,6 +44,29 @@ def _render(figure: FigureSpec, tmp_path: Path) -> dict:
     return json.loads(_layout_report_path(tmp_path, figure.number).read_text(encoding="utf-8"))
 
 
+def test_vertical_feedback_edge_routes_outside_intermediate_nodes(tmp_path: Path):
+    from patent_agent.core.models import FigureEdge, FigureNode
+
+    figure = FigureSpec(
+        id="FIG-FEEDBACK", number=9, type="flowchart", title="反馈流程",
+        nodes=[FigureNode(id=f"N{i}", label=f"节点{i}") for i in range(1, 5)],
+        edges=[
+            FigureEdge(source="N1", target="N2"),
+            FigureEdge(source="N2", target="N3"),
+            FigureEdge(source="N3", target="N4"),
+            FigureEdge(source="N4", target="N1"),
+        ],
+        source_ids=["F1"], layout="vertical",
+    )
+    report = _render(figure, tmp_path)
+    assert report["collisions"] == []
+    feedback_segments = [
+        item for item in report["elements"]
+        if item["kind"] == "arrow" and item["node_id"] == "N4->N1"
+    ]
+    assert len(feedback_segments) == 4
+
+
 # ── 1. source_figure_crop_integrity_test ─────────────────────────
 
 def test_source_figure_crop_integrity_test():

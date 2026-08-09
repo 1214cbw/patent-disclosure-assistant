@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from patent_agent.core.models import FigureEdge, FigureNode, FigureSpec
+from patent_agent.document.math_registry import normalize_symbol_aliases
 from patent_agent.v7_1.quality import TechnicalTerminologyNormalizer
 
 MAX_FIGURES = 8
@@ -39,6 +40,16 @@ class FigurePlannerV7:
             sources.extend(str(chunk.raw_text or chunk.normalized_text)
                            for chunk in evidence_store.all())
         self.normalizer = TechnicalTerminologyNormalizer.from_source_texts(sources)
+        self.equation_sources = [
+            str(getattr(equation, "normalized_latex", "")
+                or getattr(equation, "original_expression", ""))
+            for equation in (getattr(understanding, "equations", []) or [])
+        ]
+
+    def _normalize_label(self, value: str) -> str:
+        return normalize_symbol_aliases(
+            self.normalizer.normalize(str(value)), self.equation_sources
+        )
 
     def _facts_for_evidence(self, evidence_ids: list[str]) -> list[str]:
         evidence = set(evidence_ids)
@@ -71,7 +82,7 @@ class FigurePlannerV7:
             statement = getattr(step, "text", step)
             evidence_ids = list(getattr(statement, "evidence_ids", []) or [])
             nodes.append(FigureNode(
-                id=f"S{index}", label=self.normalizer.normalize(_text(statement)),
+                id=f"S{index}", label=self._normalize_label(_text(statement)),
                 claim_step=f"S{index}", evidence_ids=evidence_ids,
                 fact_ids=self._facts_for_evidence(evidence_ids),
             ))
@@ -98,7 +109,7 @@ class FigurePlannerV7:
             evidence_ids = list(getattr(statement, "evidence_ids", []) or [])
             label = str(getattr(item, "name", "") or _text(statement))
             nodes.append(FigureNode(
-                id=f"N{index}", label=self.normalizer.normalize(label),
+                id=f"N{index}", label=self._normalize_label(label),
                 evidence_ids=evidence_ids, fact_ids=self._facts_for_evidence(evidence_ids),
             ))
         return self._contract(FigureSpec(
@@ -118,7 +129,7 @@ class FigurePlannerV7:
             data = getattr(relation, "relation", relation)
             evidence_ids = list(getattr(data, "evidence_ids", []) or [])
             fact_ids = self._facts_for_evidence(evidence_ids)
-            labels = [self.normalizer.normalize(str(getattr(relation, key, "")).strip())
+            labels = [self._normalize_label(str(getattr(relation, key, "")).strip())
                       for key in ("source", "target")]
             node_ids = []
             for label in labels:
@@ -217,7 +228,7 @@ class FigurePlannerV7:
                 continue
             labels = {node.get("id"): str(node.get("label", "")) for node in item.get("nodes", [])}
             nodes = [node.model_copy(update={
-                "label": self.normalizer.normalize(labels.get(node.id, node.label))
+                "label": self._normalize_label(labels.get(node.id, node.label))
             }) for node in figure.nodes]
             title = str(item.get("title") or figure.title)
             output.append(figure.model_copy(update={"title": title, "caption": title, "nodes": nodes}))

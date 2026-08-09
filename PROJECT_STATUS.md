@@ -2,93 +2,104 @@
 
 ## Current Version
 
-V2-P1 → **V2-P2 Disclosure-Only Mode**。产品方向从"完整专利申请系统"收缩为"专利技术交底书智能生成器"。起始基线为 `852151c`。默认模式：`APP_MODE=disclosure_only`。
+**V7.1 FINAL DELIVERY QUALITY HARDENING**
 
-## Completed Capabilities
+- Starting baseline: `7fd04f9`
+- Product scope: evidence-grounded paper/report → Chinese patent technical disclosure
+- Delivery state model: `CONTENT_VALIDATED → DOCX_VALIDATED → RENDER_VALIDATED → DELIVERY_READY → DONE`
+- Standard production entry: CLI/Web share `build_real_case_workflow(...)` provider construction
 
-### 新增（本轮）
-- `APP_MODE=disclosure_only` 默认运行模式
-- 全中文 3 步 UI（上传 → AI生成 → 下载Word）
-- 中文技术交底书一键生成 pipeline
-- Batch Approval（一键审核通过）及审计记录
-- ChineseDisclosureValidator（中文化检查）
-- 中文 disclosure prompts（4 个文件）
-- 简化导航：首页 / 新建交底书 / 我的项目 / 设置
-- 简化 README 和中文用户手册
+## V7.1 Completed Capabilities
 
-### 保留（已有能力）
-- DeepSeek OpenAI-compatible Provider
-- Evidence Store（细粒度、References 隔离、Evidence ID、supersession）
-- Structured LLM（StructuredLLMService、Schema 解析、缓存）
-- Technical Understanding（GroundedTechnicalUnderstandingAgent）
-- Human Review（HumanCorrection、HumanReviewManager、Checkpoint 状态机）
-- Patent AST → DOCX Renderer
-- Word 原生可编辑 OMML 公式
-- Figure Renderer（专利风格附图）
-- Traceability（可追溯性）
-- Resume / Progress（断点恢复）
-- 一键启动 / 停止脚本
-- Word COM Validation
-- 完整测试体系（Unit、Integration、Contract、Regression）
-- A1/A2/B/C Pipeline（APP_MODE=full_patent 时可启用）
-- Claims Support Matrix、Claim Scope、Novelty Matrix（后台保留）
+- Independent semantic 5.x headings and Chinese embodiment headings; no body slicing
+- Section body/figure-description completeness and exact section routing gates
+- Evidence-driven, case-local figure planning with required node/edge contracts
+- Rendered graph parity, collision, dangling-edge, and narrative-consistency gates
+- Evidence-derived technical-token registry and split-token validation
+- Case-local inline-math registry derived from the current document equations
+- Canonical OMML structural signature comparison for every display equation
+- Microsoft Word compatible PDF export plus PyMuPDF geometry/render audit
+- Explicit delivery states; `VALIDATED` is not treated as `DELIVERY_READY`
+- Production hardcode AST audit with forbidden production branching = 0
+- Open-vocabulary cross-case detection based on current evidence fingerprint; fixed concept families are auxiliary only
+- Source-language detection separated from `patent_output_language=zh-CN`
 
-## 默认用户流程
+## REAL-PAPER-002 V7.1 Clean Rebuild
 
-```text
-上传论文/报告
-→ 开始生成技术交底书
-→ 一键审核通过
-→ 下载技术交底书.docx
-```
+- Case: `REAL-PAPER-002-V7-1-REBUILD`
+- Standard production CLI used for A1 → A2 → B → C → FINAL
+- Final acceptance used no temporary `python -c` workflow construction
+- Source language: `en` (detected from ingested evidence)
+- Patent/disclosure language: `zh-CN`
+- `translation_postprocess_used=false`
+- Technical headings: 20/20 PASS
+- Sections: 44/44 PASS
+- Figures: 5/5 PASS; 0 dangling edges; 0 collisions; rendered graph parity PASS
+- Equations: 10/10 canonical OMML signatures PASS; PDF locations PASS
+- Final rendered disclosure: 37 pages
+- Delivery Quality Gate: PASS
+- Case state: `DONE`
 
-关键改动：
-- 用户不再看到 A1/A2/B/C 工程术语
-- 不逐条审核 TechnicalFact（默认整体确认，审计记录为 BATCH_APPROVED）
-- 不要求 Publication Metadata（选填，不阻断）
-- Prior Art 不进入默认流程
-- Claims 不进入默认流程
-- 只生成一个用户文件：技术交底书.docx
-- UI 全中文
+Canonical runtime manifest:
 
-## Real Case Status
+`workspace/private_cases/REAL-PAPER-002-V7-1-REBUILD/real_case_manifest.json`
 
-`REAL-PAPER-001`：
-- Paper: `A Motor Topology Image Generation Method Based on Latent Diffusion Model`
-- A1 v2: 57 Evidence chunks（47 INVENTION_SOURCE / 10 REFERENCE）
-- TechnicalFact: 22 SOURCE_FACT；0 INFERRED；0 UNVERIFIED
-- Equation: 1
-- 旧状态 `CHECKPOINT_A1_UNDER_REVIEW` 保留不删除
-- 新 UI 显示为"AI技术分析已完成"，可一键确认生成交底书
+The output package contains `real_case_manifest.json` only as a read-only delivery snapshot; it is not a second source of truth.
 
-## LLM Status
+## REAL-PAPER-001 Regression
 
-- Provider: `openai-compatible`
-- Model: `deepseek-v4-pro`
-- Privacy Mode: `external-approved`
-- API configured: true；密钥不输出、不记录、不提交
+- Case-scope regression test: 1 passed
+- Figure/layout/source regression suites: 20 passed
+- No case-specific exemption or production branch was added
+- Historical case-specific crop coordinates were removed from production code; reviewed coordinates must be supplied as case-local registry data
 
 ## Tests
 
-- Unit: 50 passed（含 10 个新 Chinese/Disclosure-only 测试）
-- Integration: 8 passed
-- Contract: 7 passed
-- Regression: 1 passed
-- Total automated tests: 65 passed（1 skipped：test_web.py pre-existing FastAPI dep issue）
-- 新测试覆盖：Chinese Validator、Disclosure-Only Config、Chinese Ratio、English Block Detection、Academic Tone Detection
+Counts below are from actual pytest collection/execution on 2026-08-09:
 
-## Known Limitations
+- Full suite: **151 passed, 1 skipped, 0 failed**
+- V7 generalization suite: **31 collected**
+- V7.1 delivery-quality suite: **29 collected**
+- Combined V7/V7.1 suites: **60 passed**
+- CASE-001 explicit regression: **1 passed**
+- Figure/layout regression suites: **20 passed**
 
-- Prior Art 当前为人工导入，不是穷尽检索（disclosure_only 模式默认不进入此流程）
-- 真实案件的技术事实由用户整体确认（BATCH_APPROVED），非逐条审核
-- Equation Engine 支持专利常用 LaTeX 子集
-- 本地 UI 不提供多人实时协作
-- Word COM 验收需要 Windows 安装 Microsoft Word
-- 中文交底书质量依赖 AI 输出，建议人工浏览后交给代理机构
-- `APP_MODE=full_patent` 仅开发者通过修改 .env 启用
+The skipped test is retained; no test was deleted or weakened to obtain PASS.
 
-## Next Actions
+## Production Hardcode Audit
 
-1. `REAL-PAPER-001`：在新 UI 中一键确认并生成中文技术交底书
-2. 验证最终 Word 文件（OMML、中文、格式）
-3. 后续：可选启用 `full_patent` 模式进行完整专利申请流程
+- Scope: `patent_agent/**/*.py`, `app/**/*.py`
+- Occurrences reviewed: 26
+- Allowed evidence/vocabulary/documentation occurrences: 26
+- Forbidden production case/domain hardcodes: **0**
+- Canonical report: `production_hardcode_audit.json`
+
+## Delivery Artifacts
+
+Output directory:
+
+`output/real_case/REAL-PAPER-002-V7-1-REBUILD/`
+
+Primary files:
+
+- `技术交底书_v7_1.docx`
+- `技术交底书.docx`
+- `技术交底书_v7_1.pdf`
+- `权利要求草案.docx`
+- `权利要求草案.pdf`
+- `delivery_quality_report.md`
+- `generalization_v7_1_report.md`
+- `heading_audit.json`
+- `section_audit.json`
+- `figure_audit.json`
+- `equation_audit.json`
+- `render_audit.json`
+- `traceability.json`
+- `real_case_manifest.json` (read-only delivery snapshot)
+
+## Known Boundaries
+
+- Prior-art coverage remains limited to explicitly supplied/imported material and is not an exhaustive legal search.
+- Inventor/agent confirmation remains required for source omissions identified in `inventor_questions.md`.
+- The current equation renderer supports the documented patent-oriented math subset and fails closed on unsupported canonical expressions.
+- Word-compatible render acceptance on Windows requires Microsoft Word; this V7.1 rebuild used Word COM successfully.

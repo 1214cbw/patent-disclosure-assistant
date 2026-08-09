@@ -114,6 +114,7 @@ class PatentFigureRenderer:
     MARGIN = 50
     FONT_SIZE = 22
     MATH_FONT_SIZE = 20
+    MAX_TEXT_WIDTH = 600
     MAX_REFLOW_ATTEMPTS = 10
 
     def render(self, figure, output_dir: Path):
@@ -163,12 +164,13 @@ class PatentFigureRenderer:
                         items.append(('gap', '', 0, 8))
                         total_h += 8
                         continue
-                    bbox = draw.textbbox((0, 0), line, font=font)
-                    w = bbox[2] - bbox[0]
-                    h = bbox[3] - bbox[1]
-                    items.append(('text', line, w, h))
-                    max_w = max(max_w, w + 10)
-                    total_h += h + 8
+                    for wrapped in self._wrap_text(line, font, draw, self.MAX_TEXT_WIDTH):
+                        bbox = draw.textbbox((0, 0), wrapped, font=font)
+                        w = bbox[2] - bbox[0]
+                        h = bbox[3] - bbox[1]
+                        items.append(('text', wrapped, w, h))
+                        max_w = max(max_w, w + 10)
+                        total_h += h + 8
             else:
                 img = _render_math_expr(content)
                 if img:
@@ -179,6 +181,35 @@ class PatentFigureRenderer:
         box_h = max(self.MIN_BOX_HEIGHT, total_h + self.V_PADDING * 2)
         return {'id': getattr(node, 'id', ''), 'segs': segs, 'items': items,
                 'box_w': box_w, 'box_h': box_h, 'label': label}
+
+    @staticmethod
+    def _wrap_text(text: str, font, draw, max_width: int) -> list[str]:
+        """Pixel-aware wrapping for mixed Chinese and technical tokens."""
+        units = re.findall(r"[A-Za-z0-9_./=()*+\-]+|\s+|.", text)
+        lines: list[str] = []
+        current = ""
+        for unit in units:
+            candidate = current + unit
+            width = draw.textbbox((0, 0), candidate, font=font)[2]
+            if current and width > max_width:
+                lines.append(current.strip())
+                current = unit.lstrip()
+            else:
+                current = candidate
+            # A single unusually long token still must not expand the canvas.
+            if current and draw.textbbox((0, 0), current, font=font)[2] > max_width:
+                chunk = ""
+                for char in current:
+                    next_chunk = chunk + char
+                    if chunk and draw.textbbox((0, 0), next_chunk, font=font)[2] > max_width:
+                        lines.append(chunk)
+                        chunk = char
+                    else:
+                        chunk = next_chunk
+                current = chunk
+        if current.strip():
+            lines.append(current.strip())
+        return lines or [text]
 
     def _draw_node_content(self, img, draw, pn, x, y, font, elements: list[LayoutElement], node_id: str, column: str = "") -> None:
         """Draw node box + centered content; record text/math element bboxes."""
@@ -342,7 +373,7 @@ class PatentFigureRenderer:
         report = LayoutReport(figure_id=figure.id, number=figure.number, layout='vertical')
 
         while attempts < self.MAX_REFLOW_ATTEMPTS:
-            canvas_w = max(800, max(n['box_w'] for n in processed) + self.MARGIN * 3)
+            canvas_w = max(420, max(n['box_w'] for n in processed) + self.MARGIN * 4 + 40)
             total_h = sum(n['box_h'] for n in processed) + max(0, len(processed) - 1) * gap
             # V6.7: no internal title - canvas top padding tightened
             canvas_h = self.MARGIN * 2 + total_h + 20
@@ -361,7 +392,12 @@ class PatentFigureRenderer:
             for edge in edges:
                 src, tgt = getattr(edge, 'source', ''), getattr(edge, 'target', '')
                 if src in boxes and tgt in boxes:
-                    self._draw_straight_arrow(draw, boxes[src], boxes[tgt], elements, src, tgt)
+                    if boxes[tgt][1] <= boxes[src][1]:
+                        route_x = max(box[2] for box in boxes.values()) + 50
+                        self._draw_back_edge(draw, boxes[src], boxes[tgt], route_x,
+                                             elements, src, tgt)
+                    else:
+                        self._draw_straight_arrow(draw, boxes[src], boxes[tgt], elements, src, tgt)
             report.canvas = {'w': canvas_w, 'h': canvas_h}
             report.elements = elements
             report.collisions = detector.detect(elements)
@@ -578,6 +614,31 @@ class PatentFigureRenderer:
         arr = 8
         draw.polygon([(tx, ty), (tx - arr, ty - arr * 2), (tx + arr, ty - arr * 2)], fill='black')
         self._record_arrow(elements, [(sx, sy, sx, mid_y), (sx, mid_y, tx, mid_y), (tx, mid_y, tx, ty)], src, tgt)
+
+    def _draw_back_edge(self, draw, s, t, route_x, elements, src, tgt):
+        """Route a feedback edge around the right side of a vertical graph.
+
+        Drawing a reverse edge on the centre line cuts through every
+        intermediate node.  The outside orthogonal route preserves the
+        feedback semantics while keeping node interiors and labels clear.
+        """
+        sx = s[2]
+        sy = (s[1] + s[3]) // 2
+        tx = (t[0] + t[2]) // 2
+        ty = t[1]
+        approach_y = max(8, ty - 24)
+        points = [(sx, sy), (route_x, sy), (route_x, approach_y),
+                  (tx, approach_y), (tx, ty - 8)]
+        draw.line(points, fill='black', width=2)
+        arr = 8
+        draw.polygon([(tx, ty), (tx - arr, ty - arr * 2),
+                      (tx + arr, ty - arr * 2)], fill='black')
+        self._record_arrow(elements, [
+            (sx, sy, route_x, sy),
+            (route_x, sy, route_x, approach_y),
+            (route_x, approach_y, tx, approach_y),
+            (tx, approach_y, tx, ty),
+        ], src, tgt)
 
     def _draw_bridge_arrow(self, draw, s, t, gap_mid_x, elements, src, tgt, label, small_font):
         """Cross-column edge routed through the inter-column gap.
