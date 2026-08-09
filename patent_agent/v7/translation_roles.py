@@ -30,6 +30,17 @@ TRANSLATION_ROLE_RULES = (
     {
         "source_role_patterns": (r"\bsurrogate\b",),
         "contrary_role_patterns": (),
-        "replacements": (("替代模型", "代理模型"),),
+        "replacements": (
+            ("替代模型", "代理模型"),
+            ("替代辅助", "代理辅助"),
+        ),
+    },
+    {
+        "source_role_patterns": (
+            r"\d+(?:\.\d+)?\s*(?:r/min|rpm).{0,40}"
+            r"\d+(?:\.\d+)?\s*(?:r/min|rpm)",
+        ),
+        "contrary_role_patterns": (),
+        "replacements": (("多转速区域内", "上述两种转速条件下"),),
     },
 )

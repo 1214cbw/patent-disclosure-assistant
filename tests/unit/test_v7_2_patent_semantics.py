@@ -674,6 +674,13 @@ def test_evidence_local_named_model_translation_is_normalized():
     ) == "比较拼接卷积神经网络与代理模型。"
 
 
+def test_two_discrete_points_are_not_rendered_as_continuous_region():
+    assert _align_polysemous_roles(
+        "验证其在多转速区域内的表现。",
+        "Results are evaluated at 3000 r/min and at 8000 r/min.",
+    ) == "验证其在上述两种转速条件下的表现。"
+
+
 def test_online_control_prose_is_rejected_for_offline_case():
     report = _validate([_plan()], generated_texts=[{
         "text": "[SECTION:05-08] 当前控制周期获取转速反馈并动态切换限制模式。",
