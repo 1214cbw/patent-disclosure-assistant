@@ -89,3 +89,18 @@ def test_incremental_review_import_accumulates_reviewed_ids(tmp_path: Path):
         )
         manager.import_review(path)
     assert manager.machine.records["A1"].reviewed_object_ids == ["F1", "F2"]
+
+
+def test_regenerated_review_resets_prior_approval(tmp_path: Path):
+    manager = HumanReviewManager(tmp_path / "REAL-REGEN")
+    manager.export_review("A1", [{"fact_id": "F1"}])
+    manager.machine.transition("A1", CheckpointStatus.UNDER_REVIEW)
+    manager.machine.transition("A1", CheckpointStatus.APPROVED, reviewed_ids=["F1"])
+    manager.machine.save(manager.state_path)
+
+    manager.export_review("A1", [{"fact_id": "F2"}])
+
+    record = manager.machine.records["A1"]
+    assert record.status == CheckpointStatus.GENERATED
+    assert record.required_object_ids == ["F2"]
+    assert record.reviewed_object_ids == []

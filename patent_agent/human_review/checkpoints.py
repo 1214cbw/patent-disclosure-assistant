@@ -68,9 +68,18 @@ class HumanReviewManager:
 
     def export_review(self, checkpoint: str, objects: list[dict]) -> Path:
         ids = [_object_id(item) for item in objects]
+        record = self.machine.records[checkpoint]
+        if record.status != CheckpointStatus.NOT_STARTED:
+            self.machine.records[checkpoint] = record.model_copy(update={
+                "status": CheckpointStatus.NOT_STARTED,
+                "required_object_ids": [],
+                "reviewed_object_ids": [],
+                "blocking_question_ids": [],
+                "risk_acknowledged": False,
+                "updated_at": utc_now(),
+            })
         self.machine.configure(checkpoint, ids)
-        if self.machine.records[checkpoint].status == CheckpointStatus.NOT_STARTED:
-            self.machine.transition(checkpoint, CheckpointStatus.GENERATED)
+        self.machine.transition(checkpoint, CheckpointStatus.GENERATED)
         path = self.review_dir / f"checkpoint_{checkpoint}" / "review_input.json"
         path.parent.mkdir(parents=True, exist_ok=True)
         payload = {"schema_version": "2.0", "case_id": self.case_dir.name, "checkpoint": checkpoint, "corrections": [], "risk_acknowledged": False}
