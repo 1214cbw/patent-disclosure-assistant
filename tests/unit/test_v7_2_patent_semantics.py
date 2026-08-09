@@ -404,6 +404,13 @@ def test_pending_substantive_primary_step_fails_generated_text_gate():
     assert "PRIMARY_EMBODIMENT_INCOMPLETE" in _codes(report)
 
 
+def test_pending_nonprimary_section_detail_does_not_make_primary_incomplete():
+    report = _validate([_plan()], generated_texts=[
+        "[SECTION:05-04] 本环节的后续网络输出细节待发明人补充。"
+    ])
+    assert "PRIMARY_EMBODIMENT_INCOMPLETE" not in _codes(report)
+
+
 def test_generated_multiphysics_prediction_requires_source_support():
     report = _validate([_plan()], generated_texts=[
         "该代理模型用于电磁、热等多物理场性能预测。"

@@ -241,7 +241,7 @@ class RealCaseWorkflow:
         from patent_agent.v7_2.semantics import validate_bundle
         semantic_bundle = planner.semantic_bundle
         generated_embodiment_texts = [
-            paragraph.text for section in disclosure.sections
+            f"[SECTION:{section.section_id}] {paragraph.text}" for section in disclosure.sections
             if section.section_id.startswith(("05-", "07-"))
             for paragraph in section.paragraphs
         ]

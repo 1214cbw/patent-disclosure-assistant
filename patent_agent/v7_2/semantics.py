@@ -626,6 +626,7 @@ class PatentSemanticsValidator:
         expansion_patterns = [
             re.compile(r"图像[、,，]文本|文本[、,，]音频|其它类型的数据|其他类型的数据|任意(?:类型的)?数据"),
             re.compile(r"(?:电磁|力学|热)[、,，](?:电磁|力学|热).{0,8}多物理场|多物理场(?:性能)?预测"),
+            re.compile(r"(?:电磁|热|机械|力学)(?:或|、|，)(?:电磁|热|机械|力学)性能(?:预测|推断|评估)"),
             re.compile(r"(?:二值|连续)[、,，或/]*(?:梯度|连续|二值).{0,8}(?:图|输出|结构)"),
             re.compile(r"以.{0,30}(?:目标|需求).{0,15}为条件.{0,20}(?:生成|解码)"),
         ]
@@ -713,27 +714,31 @@ class PatentSemanticsValidator:
                 ))
 
         for text in generated_texts or []:
-            is_validation_text = bool(re.match(r"\s*(?:验证步骤|validation\s+step)", text, re.I))
-            if not is_validation_text and re.search(r"(?:具体事实|输入|处理|输出).{0,12}待.{0,8}(?:补充|确认)", text):
+            section_match = re.match(r"\[SECTION:([^]]+)]\s*", text)
+            section_id = section_match.group(1) if section_match else "07-UNSCOPED"
+            scoped_text = text[section_match.end():] if section_match else text
+            is_validation_text = bool(re.match(r"\s*(?:验证步骤|validation\s+step)", scoped_text, re.I))
+            if (section_id.startswith("07-") and not is_validation_text
+                    and re.search(r"(?:具体事实|输入|处理|输出).{0,12}待.{0,8}(?:补充|确认)", scoped_text)):
                 findings.append(SemanticFinding(
                     code="PRIMARY_EMBODIMENT_INCOMPLETE",
                     message="Generated primary step leaves its substantive implementation pending."
                 ))
-            if unsupported_expansion(text):
+            if unsupported_expansion(scoped_text):
                 findings.append(SemanticFinding(
                     code="UNSUPPORTED_GENERALIZATION", message="Generated prose expands the source domain."
                 ))
-            if online_pattern.search(text) and ScenarioRole.ONLINE_CONTROL not in supported_scenarios:
+            if online_pattern.search(scoped_text) and ScenarioRole.ONLINE_CONTROL not in supported_scenarios:
                 findings.append(SemanticFinding(
                     code="SCENARIO_DRIFT", message="Generated prose introduces an unsupported online scenario."
                 ))
-            if alternative_pattern.search(text) and not registry.supported_alternatives:
+            if alternative_pattern.search(scoped_text) and not registry.supported_alternatives:
                 findings.append(SemanticFinding(
                     code="UNSUPPORTED_ALTERNATIVE", message="Generated prose introduces an unapproved alternative."
                 ))
             for term, role in role_map.items():
                 if (not is_validation_text and role == TechnicalRole.COMPARISON_BASELINE
-                        and term and term in _norm(text)):
+                        and term and term in _norm(scoped_text)):
                     findings.append(SemanticFinding(
                         code="BASELINE_PROMOTED_TO_INVENTION",
                         message="Generated embodiment prose promotes a comparison baseline."
