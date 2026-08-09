@@ -569,7 +569,7 @@ def test_validation_evidence_excerpt_excludes_sibling_role_chunk():
     ]
     excerpt = PatentDisclosurePlanner()._evidence_excerpts(
         SimpleNamespace(all=lambda: chunks), ["own", "mixed"],
-        exclude_terms={"othernet"},
+        exclude_terms={"othernet", "unrelated"},
     )
     assert "CoreNet" in excerpt
     assert "OtherNet" not in excerpt
