@@ -34,6 +34,10 @@ def _semantic_paragraph_inputs(disclosure, understanding, evidence) -> list[dict
     fact_text_by_id.update({
         step.step_id: str(step.text.text) for step in understanding.steps
     })
+    fact_text_by_id.update({
+        f"VALIDATION-{index:03d}": str(getattr(item, "text", item))
+        for index, item in enumerate(getattr(understanding, "experiments", []) or [], 1)
+    })
     items: list[dict[str, str]] = []
     for section in disclosure.sections:
         if section.section_id == "01":
