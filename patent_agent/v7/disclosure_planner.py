@@ -677,7 +677,9 @@ class PatentDisclosurePlanner:
                 texts = self._llm_paragraphs(
                     "V7.2完整实施例中的单一技术步骤。仅重述给定事实，不得添加可选模型、"
                     "典型参数、传感器、在线控制场景、数据类型或求解器。明确本步骤输入、处理、"
-                    "输出及输出如何进入下一步骤。不要自行写步骤编号。", context, 1)
+                    "输出及输出如何进入下一步骤。若当前步骤包含模型训练，必须区分训练数据与"
+                    "后续推理输入，不得把上游生成候选自动写成训练样本。最后一步严禁出现"
+                    "‘后续步骤’或‘下游’。不要自行写步骤编号。", context, 1)
                 if not texts:
                     raise RuntimeError("V7_2_EMBODIMENT_STEP_EMPTY")
                 body = re.sub(r"^\s*(?:步骤)?S\d+\s*[：:、.．]?\s*", "", "".join(texts))

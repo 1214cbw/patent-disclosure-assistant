@@ -212,6 +212,22 @@ def _parameters(text: str) -> set[str]:
     }
 
 
+def _semantic_strings(value) -> list[str]:
+    if value is None:
+        return []
+    if isinstance(value, str):
+        return [value]
+    if hasattr(value, "model_dump"):
+        value = value.model_dump()
+    elif hasattr(value, "__dict__"):
+        value = vars(value)
+    if isinstance(value, dict):
+        return [text for item in value.values() for text in _semantic_strings(item)]
+    if isinstance(value, (list, tuple, set)):
+        return [text for item in value for text in _semantic_strings(item)]
+    return []
+
+
 def _role_for_category(category: str) -> SemanticRole:
     key = _norm(category)
     patterns: list[tuple[tuple[str, ...], SemanticRole]] = [
@@ -526,6 +542,15 @@ class EvidenceBoundEmbodimentPlanner:
             input_objects=inputs or None, output_objects=outputs or None,
         )
         bundle.section5_fact_clusters = [{fact.fact_id} for fact in understanding_facts]
+        full_source_texts = _semantic_strings(understanding)
+        bundle.registry.source_texts = list(dict.fromkeys(
+            bundle.registry.source_texts + full_source_texts))
+        bundle.registry.supported_parameters = sorted(set(bundle.registry.supported_parameters) | set().union(*(
+            _parameters(text) for text in full_source_texts
+        )))
+        bundle.registry.source_terms = sorted(set(bundle.registry.source_terms) | set().union(*(
+            _latin_terms(text) for text in full_source_texts
+        )))
         return bundle
 
 
@@ -625,12 +650,16 @@ class PatentSemanticsValidator:
         supported_parameters = {_norm(item) for item in registry.supported_parameters}
         expansion_patterns = [
             re.compile(r"图像[、,，]文本|文本[、,，]音频|其它类型的数据|其他类型的数据|任意(?:类型的)?数据"),
-            re.compile(r"(?:电磁|力学|热)[、,，](?:电磁|力学|热).{0,8}多物理场|多物理场(?:性能)?预测"),
+            re.compile(r"(?:电磁|力学|热)[、,，](?:电磁|力学|热).{0,8}多物理场|多物理场(?:性能)?(?:预测|约束|推断|评估)"),
             re.compile(r"(?:电磁|热|机械|力学)(?:或|、|，)(?:电磁|热|机械|力学)性能(?:预测|推断|评估)"),
             re.compile(r"(?:二值|连续)[、,，或/]*(?:梯度|连续|二值).{0,8}(?:图|输出|结构)"),
             re.compile(r"以.{0,30}(?:目标|需求).{0,15}为条件.{0,20}(?:生成|解码)"),
         ]
         source_joined = "\n".join(registry.source_texts)
+        dimension_aliases = {
+            "二维": ("二维", "2d", "2-d", "two-dimensional"),
+            "三维": ("三维", "3d", "3-d", "three-dimensional"),
+        }
 
         def unsupported_expansion(text: str) -> bool:
             return any(pattern.search(text) and not pattern.search(source_joined)
@@ -724,20 +753,45 @@ class PatentSemanticsValidator:
                     code="PRIMARY_EMBODIMENT_INCOMPLETE",
                     message="Generated primary step leaves its substantive implementation pending."
                 ))
-            if unsupported_expansion(scoped_text):
+            if section_id.startswith("07-") and target:
+                step_match = re.match(r"\s*S(\d+)[：:]", scoped_text)
+                if (step_match and int(step_match.group(1)) == len(target.ordered_steps)
+                        and re.search(r"后续步骤|传递至下游|作为下游", scoped_text)):
+                    findings.append(SemanticFinding(
+                        code="PRIMARY_EMBODIMENT_INCOMPLETE",
+                        message="Generated final step falsely declares a downstream implementation step."
+                    ))
+            if section_id.startswith(("05-", "07-")):
+                for parameter in _parameters(scoped_text):
+                    if _norm(parameter) not in supported_parameters:
+                        findings.append(SemanticFinding(
+                            code="UNSUPPORTED_PARAMETER",
+                            message=f"Generated exact parameter lacks source support: {parameter}"
+                        ))
+                source_lower = source_joined.lower()
+                for generated_term, aliases in dimension_aliases.items():
+                    if generated_term in scoped_text and not any(alias in source_lower for alias in aliases):
+                        findings.append(SemanticFinding(
+                            code="UNSUPPORTED_PARAMETER",
+                            message=f"Generated dimensionality lacks source support: {generated_term}"
+                        ))
+            if not section_id.startswith("09") and unsupported_expansion(scoped_text):
                 findings.append(SemanticFinding(
                     code="UNSUPPORTED_GENERALIZATION", message="Generated prose expands the source domain."
                 ))
-            if online_pattern.search(scoped_text) and ScenarioRole.ONLINE_CONTROL not in supported_scenarios:
+            if (section_id.startswith(("05-", "07-")) and online_pattern.search(scoped_text)
+                    and ScenarioRole.ONLINE_CONTROL not in supported_scenarios):
                 findings.append(SemanticFinding(
                     code="SCENARIO_DRIFT", message="Generated prose introduces an unsupported online scenario."
                 ))
-            if alternative_pattern.search(scoped_text) and not registry.supported_alternatives:
+            if (section_id.startswith(("05-", "07-")) and alternative_pattern.search(scoped_text)
+                    and not registry.supported_alternatives):
                 findings.append(SemanticFinding(
                     code="UNSUPPORTED_ALTERNATIVE", message="Generated prose introduces an unapproved alternative."
                 ))
             for term, role in role_map.items():
-                if (not is_validation_text and role == TechnicalRole.COMPARISON_BASELINE
+                if (section_id.startswith(("05-", "07-")) and not is_validation_text
+                        and role == TechnicalRole.COMPARISON_BASELINE
                         and term and term in _norm(scoped_text)):
                     findings.append(SemanticFinding(
                         code="BASELINE_PROMOTED_TO_INVENTION",

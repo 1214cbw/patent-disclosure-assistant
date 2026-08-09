@@ -424,3 +424,17 @@ def test_source_supported_multiphysics_prediction_is_not_fixed_lexicon_blocked()
         "该方法执行电磁、热等多物理场性能预测。"
     ])
     assert "UNSUPPORTED_GENERALIZATION" not in _codes(report)
+
+
+def test_generated_unsupported_dimensionality_fails():
+    report = _validate([_plan()], generated_texts=[
+        "[SECTION:07-01] S1：采用三维参数化模板处理输入。"
+    ])
+    assert "UNSUPPORTED_PARAMETER" in _codes(report)
+
+
+def test_final_step_cannot_claim_a_nonexistent_downstream_step():
+    report = _validate([_plan()], generated_texts=[
+        "[SECTION:07-01] S3：获得最终输出，并将其作为后续步骤的输入。"
+    ])
+    assert "PRIMARY_EMBODIMENT_INCOMPLETE" in _codes(report)

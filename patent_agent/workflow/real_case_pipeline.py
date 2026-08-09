@@ -242,7 +242,7 @@ class RealCaseWorkflow:
         semantic_bundle = planner.semantic_bundle
         generated_embodiment_texts = [
             f"[SECTION:{section.section_id}] {paragraph.text}" for section in disclosure.sections
-            if section.section_id.startswith(("05-", "07-"))
+            if section.section_id != "01"
             for paragraph in section.paragraphs
         ]
         semantic_report = validate_bundle(
