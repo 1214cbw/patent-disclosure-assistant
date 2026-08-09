@@ -538,7 +538,7 @@ class PatentDisclosurePlanner:
             text = str(getattr(chunk, "raw_text", "") or getattr(chunk, "normalized_text", ""))
             if not text:
                 continue
-            if distinctive_technical_terms(text) & set(exclude_terms or set()):
+            if len(distinctive_technical_terms(text) & set(exclude_terms or set())) >= 2:
                 continue
             text = re.sub(r"Fig\.\s*\d+[\.\s]*", "", text)[:600]
             if len(text) < 30:
@@ -569,7 +569,7 @@ class PatentDisclosurePlanner:
             "### 输出\n输出纯中文正文段落，每段之间用空行分隔。不要输出章节标题。"
         )
         feedback = ""
-        for attempt in range(3):
+        for attempt in range(4):
             active_prompt = prompt + feedback
             text = _text_retry(self.provider, system_prompt=CHINESE_STYLE_RULES,
                                user_prompt=active_prompt, cache_dir=self.cache_dir)
@@ -666,6 +666,8 @@ class PatentDisclosurePlanner:
             "技术关系、比较任务或效果结论，supported必须为false。不要依据常识补足。"
             "候选用‘仅限于’‘不涉及’明确缩小结论边界时属于保守限定，不视为新增技术事实；"
             "但不得因该限定而掩盖同句中的新增内容。"
+            "仅在存在实质性新增技术内容时判false；‘分别评价’‘进行对比’等组织性动词"
+            "若未改变对象、指标或结论，不构成不支持。"
             "只输出JSON：{\"supported\":true或false,\"unsupported_phrases\":[\"短语\"]}。\n\n"
             f"### 当前事实与局部证据\n{source}\n\n### 候选中文\n{generated}"
         )
