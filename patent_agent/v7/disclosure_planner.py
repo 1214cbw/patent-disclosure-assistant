@@ -526,7 +526,7 @@ class PatentDisclosurePlanner:
                            max_chars: int = 2500,
                            exclude_terms: set[str] | None = None) -> str:
         """Raw evidence excerpts (source language preserved) for LLM context."""
-        from patent_agent.v7_2.semantics import _latin_terms
+        from patent_agent.v7_2.semantics import distinctive_technical_terms
         chunks = evidence_store.all() if evidence_store is not None else []
         by_id = {getattr(c, "evidence_id", ""): c for c in chunks}
         out: list[str] = []
@@ -538,7 +538,7 @@ class PatentDisclosurePlanner:
             text = str(getattr(chunk, "raw_text", "") or getattr(chunk, "normalized_text", ""))
             if not text:
                 continue
-            if _latin_terms(text) & set(exclude_terms or set()):
+            if distinctive_technical_terms(text) & set(exclude_terms or set()):
                 continue
             text = re.sub(r"Fig\.\s*\d+[\.\s]*", "", text)[:600]
             if len(text) < 30:
@@ -580,7 +580,8 @@ class PatentDisclosurePlanner:
                 _contains_generated_formula(p) for p in paragraphs
             )
             from patent_agent.v7_2.semantics import (
-                _latin_terms, local_generation_drift, unsupported_local_parameters,
+                distinctive_technical_terms, local_generation_drift,
+                unsupported_local_parameters,
             )
             unsupported_parameters = sorted(set().union(*(
                 set(unsupported_local_parameters(p, context)) for p in paragraphs
@@ -589,7 +590,7 @@ class PatentDisclosurePlanner:
                 set(local_generation_drift(p, context)) for p in paragraphs
             ))) if paragraphs else []
             role_contamination = sorted(
-                set().union(*(_latin_terms(p) for p in paragraphs))
+                set().union(*(distinctive_technical_terms(p) for p in paragraphs))
                 & set(forbidden_terms or set())
             ) if paragraphs else []
             unsupported: list[str] = []
@@ -829,11 +830,12 @@ class PatentDisclosurePlanner:
                 ))
             for index, step in enumerate(embodiment.validation_steps, 1):
                 step_facts = [fact_by_id[fid] for fid in step.fact_ids if fid in fact_by_id]
+                from patent_agent.v7_2.semantics import distinctive_technical_terms
                 sibling_terms = set().union(*(
-                    set(other.technical_terms)
+                    distinctive_technical_terms(other.processing)
                     for other in embodiment.validation_steps if other.step_id != step.step_id
                 )) if len(embodiment.validation_steps) > 1 else set()
-                own_terms = set(step.technical_terms)
+                own_terms = distinctive_technical_terms(step.processing)
                 generic_validation_terms = {
                     "average", "compare", "compared", "comparing", "comparison",
                     "design", "designs", "generated", "method", "model", "models",
@@ -841,7 +843,7 @@ class PatentDisclosurePlanner:
                     "validate", "validation",
                 }
                 forbidden_terms = sibling_terms - own_terms - generic_validation_terms
-                context = self._facts_text(step_facts, 10) + "\n" + self._evidence_excerpts(
+                context = "- " + step.processing + "\n" + self._facts_text(step_facts, 10) + "\n" + self._evidence_excerpts(
                     evidence_store, step.evidence_ids, limit=5,
                     exclude_terms=forbidden_terms,
                 )

@@ -201,6 +201,15 @@ def _latin_terms(text: str) -> set[str]:
     }
 
 
+def distinctive_technical_terms(text: str) -> set[str]:
+    """Return evidence-fingerprint tokens plus explicit technical acronyms."""
+    from patent_agent.v7.cross_case import _latin_tokens
+    acronyms = {
+        token.lower() for token in re.findall(r"\b[A-Z][A-Z0-9]{2,}\b", text)
+    }
+    return _latin_tokens(text) | acronyms
+
+
 def _parameters(text: str) -> set[str]:
     return {
         re.sub(r"\s+", "", item.lower())
@@ -943,13 +952,13 @@ class PatentSemanticsValidator:
             is_validation_text = bool(re.match(r"\s*(?:验证步骤|validation\s+step)", scoped_text, re.I))
             if is_validation_text and isinstance(item, dict):
                 current_fact_ids = {str(value) for value in item.get("fact_ids", [])}
-                own_terms = _latin_terms(str(item.get("fact_text", "")))
+                own_terms = distinctive_technical_terms(str(item.get("fact_text", "")))
                 sibling_terms = set().union(*(
-                    set(step.technical_terms) for step in validation_steps
+                    distinctive_technical_terms(step.processing) for step in validation_steps
                     if not current_fact_ids.intersection(step.fact_ids)
                 )) if validation_steps else set()
                 foreign_terms = (
-                    _latin_terms(scoped_text) & sibling_terms
+                    distinctive_technical_terms(scoped_text) & sibling_terms
                     - own_terms - generic_validation_terms
                 )
                 if foreign_terms:
@@ -974,7 +983,7 @@ class PatentSemanticsValidator:
                     ))
             if section_id.startswith(("05-", "07-")):
                 parameter_scope = re.sub(
-                    r"^\s*(?:步骤)?S\d+\s*[：:、.．]?\s*", "", scoped_text)
+                    r"^\s*(?:(?:步骤)?S|验证步骤V)\d+\s*[：:、.．]?\s*", "", scoped_text)
                 parameter_scope = re.sub(
                     r"^\s*\d+(?:\.\d+)+\s+", "", parameter_scope)
                 for parameter in unsupported_local_parameters(parameter_scope, supporting_source):

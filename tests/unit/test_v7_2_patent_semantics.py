@@ -546,10 +546,12 @@ def test_validation_paragraph_cannot_import_sibling_validation_identifier():
     validation_one = _step(1, role=SemanticRole.VALIDATION, scenario=ScenarioRole.VALIDATION)
     validation_one.step_id = "V1"
     validation_one.fact_ids = ["VAL-1"]
+    validation_one.processing = "Validate CoreNet by independent analysis."
     validation_one.technical_terms = ["corenet"]
     validation_two = _step(1, role=SemanticRole.VALIDATION, scenario=ScenarioRole.VALIDATION)
     validation_two.step_id = "V2"
     validation_two.fact_ids = ["VAL-2"]
+    validation_two.processing = "Compare OtherNet on a separate benchmark."
     validation_two.technical_terms = ["othernet"]
     report = _validate([_plan(validation_steps=[validation_one, validation_two])], generated_texts=[{
         "text": "[SECTION:07-01] 验证步骤V1：采用OtherNet完成比较。",
