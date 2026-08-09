@@ -319,6 +319,20 @@ def local_generation_drift(text: str, source: str) -> list[str]:
         if declared != enumerated:
             reasons.append("internally inconsistent count and label range")
             break
+    declared_match = re.search(
+        r"([一二三四五六七八九十]|\d+)(?:个|种)[^。]{0,24}(?:代表性)?设计",
+        text,
+    )
+    generated_design_labels = set(re.findall(r"设计\s*([A-Z])", text))
+    if declared_match and len(generated_design_labels) >= 2:
+        declared = chinese_counts.get(
+            declared_match.group(1),
+            int(declared_match.group(1)) if declared_match.group(1).isdigit() else 0,
+        )
+        if len(generated_design_labels) != declared:
+            reasons.append("declared item count does not match enumerated design labels")
+    if re.search(r"为及其|为\s*(?:，|。|；)|等(?:数据|结果)亦已获取", text):
+        reasons.append("incomplete or malformed evidence enumeration")
     return reasons
 
 

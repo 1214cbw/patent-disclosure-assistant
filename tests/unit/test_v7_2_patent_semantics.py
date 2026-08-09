@@ -755,6 +755,22 @@ def test_declared_count_must_match_alphabetic_label_range():
     assert "UNSUPPORTED_GENERALIZATION" in _codes(report)
 
 
+def test_declared_count_must_match_individually_enumerated_labels():
+    report = _validate([_plan()], generated_texts=[{
+        "text": "[SECTION:07-01] 验证步骤V1：八种代表性设计包括设计A、设计B、设计C、设计D、设计E、设计F和设计G。",
+        "source_text": "Eight representative designs are evaluated.",
+    }])
+    assert "UNSUPPORTED_GENERALIZATION" in _codes(report)
+
+
+def test_malformed_evidence_enumeration_is_rejected():
+    report = _validate([_plan()], generated_texts=[{
+        "text": "[SECTION:07-01] 验证步骤V1：设计G的预测值为及其误差等数据亦已获取。",
+        "source_text": "Design G has complete numeric results.",
+    }])
+    assert "UNSUPPORTED_GENERALIZATION" in _codes(report)
+
+
 def test_binary_or_segmented_image_expansion_requires_local_evidence():
     report = _validate([_plan()], generated_texts=[{
         "text": "[SECTION:05-09] 输入可以是二值或分割图像。",
