@@ -15,6 +15,7 @@ from patent_agent.v7_2.semantics import (
     SemanticRole,
     TechnicalRole,
     TechnicalRoleEntry,
+    infer_invention_type,
 )
 
 
@@ -332,3 +333,12 @@ def test_cross_domain_material_process_planning():
     ]
     bundle = EvidenceBoundEmbodimentPlanner().plan_from_facts(facts, invention_type="process-material")
     assert bundle.embodiments[0].output_objects
+
+
+def test_invention_type_is_inferred_from_current_case_fact_categories():
+    facts = [
+        _semantic_fact(1, "component", "Provide first and second structural members"),
+        _semantic_fact(2, "connection", "Connect the members through a movable joint"),
+        _semantic_fact(3, "operation", "Operate the joined members to process a workpiece"),
+    ]
+    assert infer_invention_type(facts) == "apparatus-system"

@@ -232,6 +232,38 @@ def _role_for_category(category: str) -> SemanticRole:
     return SemanticRole.TECHNICAL_STEP
 
 
+def infer_invention_type(facts: Iterable[SemanticFact]) -> str:
+    """Infer a broad implementation architecture from source-declared fact roles.
+
+    The decision is intentionally category/evidence driven.  It contains no
+    case names, named model families, or application-domain vocabulary.
+    """
+    scores = {
+        "algorithm-software": 0,
+        "apparatus-system": 0,
+        "process-material": 0,
+    }
+    for fact in facts:
+        key = _norm(fact.category)
+        if any(token in key for token in (
+            "algorithm", "software", "model", "network", "architecture",
+            "dataset", "datarepresentation", "encoding", "inference",
+        )):
+            scores["algorithm-software"] += 2
+        if any(token in key for token in (
+            "apparatus", "device", "component", "connection", "assembly",
+            "hardware", "structure", "operation",
+        )):
+            scores["apparatus-system"] += 2
+        if any(token in key for token in (
+            "material", "rawmaterial", "precursor", "composition", "product",
+            "processcondition", "manufacturing", "fabrication", "preparation",
+        )):
+            scores["process-material"] += 2
+    best = max(scores, key=scores.get)
+    return best if scores[best] else "method"
+
+
 def _scenario_for(category: str, statement: str, invention_type: str) -> ScenarioRole:
     text = f"{category} {statement}".lower()
     category_key = _norm(category)
@@ -437,7 +469,7 @@ class EvidenceBoundEmbodimentPlanner:
             invention_type=invention_type,
         )
 
-    def plan(self, understanding, strategy, invention_type: str = "algorithm-software") -> SemanticPlanningBundle:
+    def plan(self, understanding, strategy, invention_type: str | None = None) -> SemanticPlanningBundle:
         facts = [
             SemanticFact(
                 fact_id=str(fact.fact_id), category=str(fact.category),
@@ -461,7 +493,8 @@ class EvidenceBoundEmbodimentPlanner:
             str(getattr(item, "text", "")) for item in getattr(understanding, "alternatives", []) or []
             if getattr(item, "evidence_ids", None)
         ]
-        return self.plan_from_facts(facts, required or None, invention_type, alternatives)
+        resolved_type = invention_type or infer_invention_type(facts)
+        return self.plan_from_facts(facts, required or None, resolved_type, alternatives)
 
 
 class PatentSemanticsValidator:
@@ -640,6 +673,7 @@ class PatentSemanticsValidator:
                 ))
 
         for text in generated_texts or []:
+            is_validation_text = bool(re.match(r"\s*(?:验证步骤|validation\s+step)", text, re.I))
             if expansion_pattern.search(text):
                 findings.append(SemanticFinding(
                     code="UNSUPPORTED_GENERALIZATION", message="Generated prose expands the source domain."
@@ -653,7 +687,8 @@ class PatentSemanticsValidator:
                     code="UNSUPPORTED_ALTERNATIVE", message="Generated prose introduces an unapproved alternative."
                 ))
             for term, role in role_map.items():
-                if role == TechnicalRole.COMPARISON_BASELINE and term and term in _norm(text):
+                if (not is_validation_text and role == TechnicalRole.COMPARISON_BASELINE
+                        and term and term in _norm(text)):
                     findings.append(SemanticFinding(
                         code="BASELINE_PROMOTED_TO_INVENTION",
                         message="Generated embodiment prose promotes a comparison baseline."

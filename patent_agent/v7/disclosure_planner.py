@@ -415,8 +415,7 @@ class PatentDisclosurePlanner:
         )
         section_titles = self.generate_section_titles(clusters)
         from patent_agent.v7_2.semantics import EvidenceBoundEmbodimentPlanner
-        self.semantic_bundle = EvidenceBoundEmbodimentPlanner().plan(
-            understanding, strategy, invention_type="algorithm-software")
+        self.semantic_bundle = EvidenceBoundEmbodimentPlanner().plan(understanding, strategy)
         plan = self.build_plan(
             understanding, strategy, figures, clusters, title=title,
             section_titles=section_titles,
