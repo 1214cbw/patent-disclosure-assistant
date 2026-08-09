@@ -55,6 +55,26 @@ def _cn_number(value: int) -> str:
     tens, ones = divmod(value, 10)
     return digits[tens] + "十" + (digits[ones] if ones else "")
 
+
+def _collect_evidence_ids(value) -> set[str]:
+    """Collect evidence anchors from every semantic layer of understanding."""
+    if value is None:
+        return set()
+    if hasattr(value, "model_dump"):
+        value = value.model_dump()
+    elif hasattr(value, "__dict__"):
+        value = vars(value)
+    if isinstance(value, dict):
+        direct = {
+            str(item) for item in value.get("evidence_ids", [])
+        } if isinstance(value.get("evidence_ids"), list) else set()
+        return direct | set().union(*(
+            _collect_evidence_ids(item) for item in value.values()
+        ))
+    if isinstance(value, (list, tuple, set)):
+        return set().union(*(_collect_evidence_ids(item) for item in value)) if value else set()
+    return set()
+
 CHINESE_STYLE_RULES = """
 ## 中文专利交底书撰写规则（严格遵守）
 
@@ -747,6 +767,7 @@ def generate_chinese_claims(title: str, strategy, understanding, provider,
         + [str(getattr(statement, "text", "")) for statement in statements]
     )
     features = []
+    understanding_evidence_ids = _collect_evidence_ids(understanding)
     for i, statement in enumerate(statements, 1):
         facts = [
             f for f in (getattr(understanding, "facts", []) or [])
@@ -756,11 +777,13 @@ def generate_chinese_claims(title: str, strategy, understanding, provider,
         zh_text = by_index.get(i) or str(getattr(statement, "text", ""))
         zh_text = _clean_html(zh_text)
         zh_text = normalizer.normalize(zh_text)
+        statement_evidence_ids = list(getattr(statement, "evidence_ids", []) or [])
+        evidence_supported = bool(statement_evidence_ids) and set(statement_evidence_ids) <= understanding_evidence_ids
         features.append(ClaimFeature(
             feature_id=f"CORE-F{i:03d}", text=zh_text,
             source_fact_ids=[getattr(f, "fact_id", "") for f in facts],
-            evidence_ids=getattr(statement, "evidence_ids", []) or [],
-            support_status="SUPPORTED" if facts and getattr(statement, "evidence_ids", []) else "UNSUPPORTED",
+            evidence_ids=statement_evidence_ids,
+            support_status="SUPPORTED" if evidence_supported else "UNSUPPORTED",
             mandatory=True,
         ))
     rendered = "一种经人工审查的技术方法，其特征在于，包括：" + \

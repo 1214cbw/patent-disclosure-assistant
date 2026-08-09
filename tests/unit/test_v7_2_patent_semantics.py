@@ -358,3 +358,12 @@ def test_reviewed_strategy_evidence_fills_a1_fact_summary_gap():
     bundle = EvidenceBoundEmbodimentPlanner().plan(understanding, strategy)
     assert "STRATEGY-FEATURE-002" in bundle.embodiments[0].fact_ids
     assert bundle.embodiments[0].evidence_ids == ["EV-1", "EV-2"]
+
+
+def test_claim_support_can_resolve_evidence_outside_compact_fact_list():
+    from patent_agent.v7.disclosure_planner import _collect_evidence_ids
+    understanding = SimpleNamespace(
+        facts=[SimpleNamespace(evidence_ids=["EV-FACT"])],
+        steps=[SimpleNamespace(text=SimpleNamespace(evidence_ids=["EV-STEP"]))],
+    )
+    assert _collect_evidence_ids(understanding) == {"EV-FACT", "EV-STEP"}
