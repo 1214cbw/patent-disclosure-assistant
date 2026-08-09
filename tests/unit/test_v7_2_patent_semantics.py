@@ -625,3 +625,26 @@ def test_case_supported_mechanical_period_does_not_allow_electrical_period():
         "source_text": "Compute metrics over the complete period from 0 to 60 degrees.",
     }])
     assert "UNSUPPORTED_PARAMETER" in _codes(report)
+
+
+def test_only_compared_alternative_terms_are_registered_as_baselines():
+    grounded = lambda text, evidence: SimpleNamespace(
+        text=text, evidence_ids=evidence, review_status="ACCEPTED")
+    understanding = SimpleNamespace(
+        facts=[],
+        steps=[SimpleNamespace(step_id="step-1", text=grounded(
+            "Train CoreNet and optimize candidates.", ["ev-core"]))],
+        experiments=[grounded(
+            "Comparison of CoreNet vs BaselineNet on a test set.", ["ev-val"])],
+        alternatives=[grounded("BaselineNet as a comparison baseline.", ["ev-val"])],
+        inputs=[], outputs=[], parameters=[], equations=[], technical_field=[],
+        technical_problems=[], system_overview=[], components=[], data_flows=[],
+        control_flows=[], technical_effects=[], uncertainties=[],
+    )
+    bundle = EvidenceBoundEmbodimentPlanner().plan(
+        understanding, SimpleNamespace(independent_claim_core=[]))
+    roles = {entry.term: entry.role for entry in bundle.registry.technical_roles}
+    assert roles["baselinenet"] == TechnicalRole.COMPARISON_BASELINE
+    assert roles["test"] == TechnicalRole.VALIDATION_ONLY
+    assert roles["corenet"] == TechnicalRole.INVENTION_CORE
+    assert bundle.registry.supported_alternatives == []

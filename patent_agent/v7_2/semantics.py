@@ -339,6 +339,7 @@ class EvidenceBoundEmbodimentPlanner:
         required_features: list[RequiredFeature] | None = None,
         invention_type: str = "method",
         supported_alternatives: list[str] | None = None,
+        comparison_baselines: list[str] | None = None,
         input_objects: list[str] | None = None,
         output_objects: list[str] | None = None,
     ) -> SemanticPlanningBundle:
@@ -495,6 +496,9 @@ class EvidenceBoundEmbodimentPlanner:
         )
         core_terms = sorted({term for node in nodes for term in node.technical_terms})
         validation_terms = sorted({term for step in validation_steps for term in step.technical_terms})
+        baseline_terms = sorted(set().union(*(
+            _latin_terms(text) for text in (comparison_baselines or [])
+        )))
         registry = SemanticRegistry(
             supported_scenarios=supported_scenarios,
             technical_roles=[
@@ -502,7 +506,11 @@ class EvidenceBoundEmbodimentPlanner:
                 for term in core_terms
             ] + [
                 TechnicalRoleEntry(term=term, role=TechnicalRole.COMPARISON_BASELINE)
-                for term in validation_terms if term not in core_terms
+                for term in baseline_terms if term not in core_terms
+            ] + [
+                TechnicalRoleEntry(term=term, role=TechnicalRole.VALIDATION_ONLY)
+                for term in validation_terms
+                if term not in core_terms and term not in baseline_terms
             ],
             supported_alternatives=supported_alternatives or [],
             supported_parameters=supported_parameters,
@@ -574,15 +582,26 @@ class EvidenceBoundEmbodimentPlanner:
                 feature_id=f"RF-{index:03d}", fact_ids=fact_ids,
                 evidence_ids=evidence_ids, text=str(getattr(statement, "text", "")),
             ))
-        alternatives = [
+        alternative_items = [
             str(getattr(item, "text", "")) for item in getattr(understanding, "alternatives", []) or []
             if getattr(item, "evidence_ids", None)
         ]
+        comparison_text = "\n".join(
+            str(getattr(item, "text", item))
+            for item in getattr(understanding, "experiments", []) or []
+            if re.search(r"comparison|compared|\bvs\.?\b|baseline", str(getattr(item, "text", item)), re.I)
+        )
+        comparison_terms = _latin_terms(comparison_text)
+        comparison_baselines = [
+            text for text in alternative_items if _latin_terms(text) & comparison_terms
+        ]
+        alternatives = [text for text in alternative_items if text not in comparison_baselines]
         resolved_type = invention_type or infer_invention_type(understanding_facts or facts)
         inputs = [str(getattr(item, "text", item)) for item in getattr(understanding, "inputs", []) or []]
         outputs = [str(getattr(item, "text", item)) for item in getattr(understanding, "outputs", []) or []]
         bundle = self.plan_from_facts(
             facts, required or None, resolved_type, alternatives,
+            comparison_baselines=comparison_baselines,
             input_objects=inputs or None, output_objects=outputs or None,
         )
         bundle.section5_fact_clusters = [{fact.fact_id} for fact in understanding_facts]
