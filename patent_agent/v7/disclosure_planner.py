@@ -523,8 +523,10 @@ class PatentDisclosurePlanner:
         return GroundedDisclosure(title=title, sections=sections)
 
     def _evidence_excerpts(self, evidence_store, evidence_ids, limit: int = 5,
-                           max_chars: int = 2500) -> str:
+                           max_chars: int = 2500,
+                           exclude_terms: set[str] | None = None) -> str:
         """Raw evidence excerpts (source language preserved) for LLM context."""
+        from patent_agent.v7_2.semantics import _latin_terms
         chunks = evidence_store.all() if evidence_store is not None else []
         by_id = {getattr(c, "evidence_id", ""): c for c in chunks}
         out: list[str] = []
@@ -535,6 +537,8 @@ class PatentDisclosurePlanner:
                 continue
             text = str(getattr(chunk, "raw_text", "") or getattr(chunk, "normalized_text", ""))
             if not text:
+                continue
+            if _latin_terms(text) & set(exclude_terms or set()):
                 continue
             text = re.sub(r"Fig\.\s*\d+[\.\s]*", "", text)[:600]
             if len(text) < 30:
@@ -825,8 +829,6 @@ class PatentDisclosurePlanner:
                 ))
             for index, step in enumerate(embodiment.validation_steps, 1):
                 step_facts = [fact_by_id[fid] for fid in step.fact_ids if fid in fact_by_id]
-                context = self._facts_text(step_facts, 10) + "\n" + self._evidence_excerpts(
-                    evidence_store, step.evidence_ids, limit=5)
                 sibling_terms = set().union(*(
                     set(other.technical_terms)
                     for other in embodiment.validation_steps if other.step_id != step.step_id
@@ -838,13 +840,18 @@ class PatentDisclosurePlanner:
                     "output", "results", "selected", "surrogate",
                     "validate", "validation",
                 }
+                forbidden_terms = sibling_terms - own_terms - generic_validation_terms
+                context = self._facts_text(step_facts, 10) + "\n" + self._evidence_excerpts(
+                    evidence_store, step.evidence_ids, limit=5,
+                    exclude_terms=forbidden_terms,
+                )
                 texts = self._llm_paragraphs(
                     "实验/效果验证子节。说明被验证对象、验证方法和证据边界；比较基线仅作为比较对象，"
                     "不得写成本发明组成模块，不得扩大论文结论。当前步骤事实是验证角色边界；"
                     "原始证据摘录仅用于补充该角色的参数和结果，不得据此合并事实未点名的另一项比较实验、"
                     "数据集、模型组合或评价任务。证据已经给出具体结果时，不得写成待发明人补充。",
                     context, 1,
-                    forbidden_terms=sibling_terms - own_terms - generic_validation_terms,
+                    forbidden_terms=forbidden_terms,
                 )
                 paragraphs.append(para(
                     f"验证步骤V{index}：" + "".join(texts),

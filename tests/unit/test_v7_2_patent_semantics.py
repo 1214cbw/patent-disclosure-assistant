@@ -560,6 +560,19 @@ def test_validation_paragraph_cannot_import_sibling_validation_identifier():
     assert "VALIDATION_ROLE_CONTAMINATION" in _codes(report)
 
 
+def test_validation_evidence_excerpt_excludes_sibling_role_chunk():
+    chunks = [
+        SimpleNamespace(evidence_id="own", raw_text="CoreNet complete-angle verification.", normalized_text=""),
+        SimpleNamespace(evidence_id="mixed", raw_text="OtherNet comparison and unrelated metric.", normalized_text=""),
+    ]
+    excerpt = PatentDisclosurePlanner()._evidence_excerpts(
+        SimpleNamespace(all=lambda: chunks), ["own", "mixed"],
+        exclude_terms={"othernet"},
+    )
+    assert "CoreNet" in excerpt
+    assert "OtherNet" not in excerpt
+
+
 def test_embodiment_step_number_is_not_treated_as_parameter():
     report = _validate([_plan()], generated_texts=[{
         "text": "[SECTION:07-01] S3：训练模型并输出潜在样本。",
