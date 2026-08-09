@@ -745,6 +745,22 @@ def test_traceability_uncited_questions_paragraph_is_linked():
     assert by_id["TR-DISC-09-P001"].status == "LINKED"
 
 
+def test_traceability_resolves_synthetic_validation_fact_ids():
+    u = _trace_understanding()
+    u.experiments = [_stmt("独立验证实验", ["EV-VALIDATION-001"])]
+    paragraph = GroundedParagraph(
+        paragraph_id="DISC-07-P001", section_id="07", text="验证步骤V1。",
+        evidence_ids=["EV-VALIDATION-001"], fact_ids=["VALIDATION-001"],
+        derived_from=["VALIDATION-001"], status=EvidenceStatus.SOURCE_FACT,
+        review_status=ReviewStatus.LOCKED,
+    )
+    disclosure = GroundedDisclosure(title="t", sections=[
+        GroundedSection(section_id="07", title="7. 具体实施方式", paragraphs=[paragraph])])
+    from patent_agent.core.models import GroundedClaimSet
+    report = build_traceability(disclosure, GroundedClaimSet(title="t", claims=[]), u)
+    assert report.broken_links == []
+
+
 def test_traceability_paragraph_with_unresolved_citation_is_broken():
     """A paragraph citing an evidence id outside the understanding's union
     stays BROKEN - the resolve-or-break rule is not weakened."""
