@@ -57,10 +57,10 @@ The output package contains `real_case_manifest.json` only as a read-only delive
 
 Counts below are from actual pytest collection/execution on 2026-08-09:
 
-- Full suite: **151 passed, 1 skipped, 0 failed**
+- Full suite: **152 passed, 1 skipped, 0 failed**
 - V7 generalization suite: **31 collected**
-- V7.1 delivery-quality suite: **29 collected**
-- Combined V7/V7.1 suites: **60 passed**
+- V7.1 delivery-quality suite: **30 collected**
+- Combined V7/V7.1 suites: **61 passed**
 - CASE-001 explicit regression: **1 passed**
 - Figure/layout regression suites: **20 passed**
 

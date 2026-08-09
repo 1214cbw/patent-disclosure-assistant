@@ -1,4 +1,5 @@
 from pathlib import Path
+import stat
 
 import pytest
 
@@ -351,3 +352,34 @@ def test_language_gate_does_not_count_latex_commands_as_english_prose():
 
     text = r"非线性方程写为 \(\mathbf{K}(\mathbf{A})\mathbf{A}=\mathbf{J}\)，并进行求解。"
     assert ChinesePatentLanguageValidator().validate_paragraph(text)[0] is True
+
+
+def test_delivery_manifest_snapshot_is_filesystem_read_only_and_rebuildable(tmp_path: Path):
+    from patent_agent.workflow.real_case_pipeline import RealCaseWorkflow
+
+    class Manifest:
+        def model_dump(self, mode: str):
+            assert mode == "json"
+            return {"case_id": "CASE-READONLY", "case_state": "DONE"}
+
+    class Manager:
+        def manifest_path(self, case_id: str):
+            assert case_id == "CASE-READONLY"
+            return tmp_path / "canonical" / "real_case_manifest.json"
+
+        def load(self, case_id: str):
+            assert case_id == "CASE-READONLY"
+            return Manifest()
+
+    workflow = RealCaseWorkflow.__new__(RealCaseWorkflow)
+    workflow.manager = Manager()
+    snapshot_path = tmp_path / "real_case_manifest.json"
+    try:
+        workflow._write_manifest_snapshot(tmp_path, "CASE-READONLY")
+        assert snapshot_path.stat().st_mode & stat.S_IWRITE == 0
+        # A second finalization must safely replace the prior locked snapshot.
+        workflow._write_manifest_snapshot(tmp_path, "CASE-READONLY")
+        assert snapshot_path.stat().st_mode & stat.S_IWRITE == 0
+    finally:
+        if snapshot_path.exists():
+            snapshot_path.chmod(stat.S_IWRITE)

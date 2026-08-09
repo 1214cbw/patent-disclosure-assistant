@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import re
 import shutil
+import stat
 from pathlib import Path
 
 from patent_agent.agents import DeterministicGroundedAnalyzer, DeterministicGroundedInventionMiner, grounded_claims_to_tree, grounded_disclosure_to_draft, understanding_to_patent_knowledge
@@ -472,8 +473,14 @@ class RealCaseWorkflow:
             "captured_at": utc_now(),
             "manifest": manifest.model_dump(mode="json"),
         }
-        (output / "real_case_manifest.json").write_text(
+        snapshot_path = output / "real_case_manifest.json"
+        # A prior delivery snapshot may already be read-only. Re-finalization is
+        # idempotent: unlock only this exact file, replace it, then lock it again.
+        if snapshot_path.exists():
+            snapshot_path.chmod(stat.S_IWRITE)
+        snapshot_path.write_text(
             json.dumps(snapshot, ensure_ascii=False, indent=2), encoding="utf-8")
+        snapshot_path.chmod(stat.S_IREAD)
 
     def _write_delivery_quality_markdown(self, output: Path, case_id: str,
                                          report: dict, validation: dict,
