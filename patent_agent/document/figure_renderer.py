@@ -295,7 +295,8 @@ class PatentFigureRenderer:
             figure_id=figure.id, number=figure.number, layout='source',
             canvas={'w': w, 'h': h},
             elements=[LayoutElement('source_image', BBox(0, 0, w, h),
-                                    node_id='R01', content=str(src_path.name))],
+                                    node_id=(figure.nodes[0].id if figure.nodes else 'R1'),
+                                    content=str(src_path.name))],
         )
         svg_path = output_dir / f"figure_{figure.number:02d}.svg"
         svg_path.write_text(

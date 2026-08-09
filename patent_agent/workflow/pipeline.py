@@ -44,7 +44,7 @@ class PatentPipeline:
         self.validator = PatentDocxValidator()
 
     def run(self, case_id: str, materials: list[Path], prior_art: Path, output_dir: Path, auto_approve_demo: bool = False, use_word_com: bool = True) -> dict:
-        if not (self.store.case_dir(case_id) / "case.json").exists(): self.store.create(case_id, "一种基于多源传感信息的电机状态监测与自适应控制方法")
+        if not (self.store.case_dir(case_id) / "case.json").exists(): self.store.create(case_id, "待规划技术方案")
         log = PipelineLog(self.store.case_dir(case_id) / "logs" / "pipeline.jsonl")
         output_dir.mkdir(parents=True, exist_ok=True)
         with log.stage("stage_0_initialization", {"case_id": case_id}) as event:
@@ -62,7 +62,9 @@ class PatentPipeline:
         with log.stage("checkpoint_A", {"candidates": len(candidates)}) as event:
             require_checkpoint(self.store, case_id, "A", auto_approve_demo); event["output"] = self.store.load(case_id).checkpoints["A"]
         with log.stage("stage_4_prior_art", {"provider": "manual_import"}) as event:
-            references = ManualImportProvider(prior_art).search("电机 多源 传感 状态 控制"); event["output"] = {"references": len(references)}
+            references = ManualImportProvider(prior_art).search(
+                f"{knowledge.technical_field} {knowledge.technical_problem}")
+            event["output"] = {"references": len(references)}
             self.store.save_stage(case_id, "stage_4_prior_art", [item.model_dump() for item in references])
             (self.store.case_dir(case_id) / "search" / "manual_import.json").write_text(json.dumps([item.model_dump() for item in references], ensure_ascii=False, indent=2), encoding="utf-8")
         with log.stage("stage_5_novelty", {"candidate": candidates[0].id}) as event:

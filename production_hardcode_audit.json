@@ -1,0 +1,207 @@
+{
+  "scope": [
+    "patent_agent/**/*.py",
+    "app/**/*.py"
+  ],
+  "policy": "Fixed vocabularies are auxiliary only; production branching must be fact/evidence driven.",
+  "records": [
+    {
+      "term": "LDM",
+      "file": "patent_agent/document/chinese_validator.py",
+      "line/module": "patent_agent/document/chinese_validator.py:19",
+      "category": "auxiliary_vocabulary_data",
+      "status": "allowed",
+      "resolution": "Auxiliary signal only; evidence-derived fingerprint is the primary gate."
+    },
+    {
+      "term": "LDM",
+      "file": "patent_agent/document/math_registry.py",
+      "line/module": "patent_agent/document/math_registry.py:152",
+      "category": "auxiliary_vocabulary_data",
+      "status": "allowed",
+      "resolution": "Auxiliary signal only; evidence-derived fingerprint is the primary gate."
+    },
+    {
+      "term": "motor",
+      "file": "patent_agent/llm/demo_mock.py",
+      "line/module": "patent_agent/llm/demo_mock.py:113",
+      "category": "test_fixture",
+      "status": "allowed",
+      "resolution": "Deterministic demo fixture only; not used by the real-case production provider."
+    },
+    {
+      "term": "motor",
+      "file": "patent_agent/llm/demo_mock.py",
+      "line/module": "patent_agent/llm/demo_mock.py:85",
+      "category": "test_fixture",
+      "status": "allowed",
+      "resolution": "Deterministic demo fixture only; not used by the real-case production provider."
+    },
+    {
+      "term": "motor",
+      "file": "patent_agent/llm/demo_mock.py",
+      "line/module": "patent_agent/llm/demo_mock.py:89",
+      "category": "test_fixture",
+      "status": "allowed",
+      "resolution": "Deterministic demo fixture only; not used by the real-case production provider."
+    },
+    {
+      "term": "motor",
+      "file": "patent_agent/llm/demo_mock.py",
+      "line/module": "patent_agent/llm/demo_mock.py:95",
+      "category": "test_fixture",
+      "status": "allowed",
+      "resolution": "Deterministic demo fixture only; not used by the real-case production provider."
+    },
+    {
+      "term": "motor",
+      "file": "patent_agent/llm/demo_mock.py",
+      "line/module": "patent_agent/llm/demo_mock.py:164",
+      "category": "test_fixture",
+      "status": "allowed",
+      "resolution": "Deterministic demo fixture only; not used by the real-case production provider."
+    },
+    {
+      "term": "motor",
+      "file": "patent_agent/llm/demo_mock.py",
+      "line/module": "patent_agent/llm/demo_mock.py:166",
+      "category": "test_fixture",
+      "status": "allowed",
+      "resolution": "Deterministic demo fixture only; not used by the real-case production provider."
+    },
+    {
+      "term": "motor",
+      "file": "patent_agent/llm/demo_mock.py",
+      "line/module": "patent_agent/llm/demo_mock.py:118",
+      "category": "test_fixture",
+      "status": "allowed",
+      "resolution": "Deterministic demo fixture only; not used by the real-case production provider."
+    },
+    {
+      "term": "motor",
+      "file": "patent_agent/llm/demo_mock.py",
+      "line/module": "patent_agent/llm/demo_mock.py:147",
+      "category": "test_fixture",
+      "status": "allowed",
+      "resolution": "Deterministic demo fixture only; not used by the real-case production provider."
+    },
+    {
+      "term": "torque",
+      "file": "patent_agent/v7/concepts.py",
+      "line/module": "patent_agent/v7/concepts.py:152",
+      "category": "auxiliary_vocabulary_data",
+      "status": "allowed",
+      "resolution": "Auxiliary signal only; evidence-derived fingerprint is the primary gate."
+    },
+    {
+      "term": "LDM",
+      "file": "patent_agent/v7/concepts.py",
+      "line/module": "patent_agent/v7/concepts.py:23",
+      "category": "auxiliary_vocabulary_data",
+      "status": "allowed",
+      "resolution": "Auxiliary signal only; evidence-derived fingerprint is the primary gate."
+    },
+    {
+      "term": "LDM",
+      "file": "patent_agent/v7/concepts.py",
+      "line/module": "patent_agent/v7/concepts.py:24",
+      "category": "auxiliary_vocabulary_data",
+      "status": "allowed",
+      "resolution": "Auxiliary signal only; evidence-derived fingerprint is the primary gate."
+    },
+    {
+      "term": "LDM",
+      "file": "patent_agent/v7/concepts.py",
+      "line/module": "patent_agent/v7/concepts.py:28",
+      "category": "auxiliary_vocabulary_data",
+      "status": "allowed",
+      "resolution": "Auxiliary signal only; evidence-derived fingerprint is the primary gate."
+    },
+    {
+      "term": "flux linkage",
+      "file": "patent_agent/v7/concepts.py",
+      "line/module": "patent_agent/v7/concepts.py:69",
+      "category": "auxiliary_vocabulary_data",
+      "status": "allowed",
+      "resolution": "Auxiliary signal only; evidence-derived fingerprint is the primary gate."
+    },
+    {
+      "term": "torque",
+      "file": "patent_agent/v7/concepts.py",
+      "line/module": "patent_agent/v7/concepts.py:69",
+      "category": "auxiliary_vocabulary_data",
+      "status": "allowed",
+      "resolution": "Auxiliary signal only; evidence-derived fingerprint is the primary gate."
+    },
+    {
+      "term": "rotor",
+      "file": "patent_agent/v7/concepts.py",
+      "line/module": "patent_agent/v7/concepts.py:70",
+      "category": "auxiliary_vocabulary_data",
+      "status": "allowed",
+      "resolution": "Auxiliary signal only; evidence-derived fingerprint is the primary gate."
+    },
+    {
+      "term": "flux linkage",
+      "file": "patent_agent/v7/concepts.py",
+      "line/module": "patent_agent/v7/concepts.py:71",
+      "category": "auxiliary_vocabulary_data",
+      "status": "allowed",
+      "resolution": "Auxiliary signal only; evidence-derived fingerprint is the primary gate."
+    },
+    {
+      "term": "torque",
+      "file": "patent_agent/v7/concepts.py",
+      "line/module": "patent_agent/v7/concepts.py:71",
+      "category": "auxiliary_vocabulary_data",
+      "status": "allowed",
+      "resolution": "Auxiliary signal only; evidence-derived fingerprint is the primary gate."
+    },
+    {
+      "term": "rotor",
+      "file": "patent_agent/v7/concepts.py",
+      "line/module": "patent_agent/v7/concepts.py:72",
+      "category": "auxiliary_vocabulary_data",
+      "status": "allowed",
+      "resolution": "Auxiliary signal only; evidence-derived fingerprint is the primary gate."
+    },
+    {
+      "term": "LDM",
+      "file": "patent_agent/v7/cross_case.py",
+      "line/module": "patent_agent/v7/cross_case.py:164",
+      "category": "documentation",
+      "status": "allowed",
+      "resolution": "Non-executable documentation; does not control planning or validation."
+    },
+    {
+      "term": "FlowVAE",
+      "file": "patent_agent/v7/language_gate.py",
+      "line/module": "patent_agent/v7/language_gate.py:49",
+      "category": "documentation",
+      "status": "allowed",
+      "resolution": "Non-executable documentation; does not control planning or validation."
+    },
+    {
+      "term": "FiLM",
+      "file": "patent_agent/v7/language_gate.py",
+      "line/module": "patent_agent/v7/language_gate.py:49",
+      "category": "documentation",
+      "status": "allowed",
+      "resolution": "Non-executable documentation; does not control planning or validation."
+    },
+    {
+      "term": "rotor",
+      "file": "patent_agent/v7/language_gate.py",
+      "line/module": "patent_agent/v7/language_gate.py:61",
+      "category": "documentation",
+      "status": "allowed",
+      "resolution": "Non-executable documentation; does not control planning or validation."
+    }
+  ],
+  "summary": {
+    "occurrences": 24,
+    "allowed": 24,
+    "forbidden": 0,
+    "pass": true
+  }
+}

@@ -43,20 +43,22 @@ class TechnicalUnderstandingAgent:
         components = _bullets(_find(chunks, "系统组成", "组件", default=""))
         effects = _bullets(_find(chunks, "技术效果", "有益效果", default=""))
         alternatives = _bullets(_find(chunks, "替代", default=""))
-        uncertainty = _bullets(_find(chunks, "待确认", "不确定", default="")) or ["真实样机参数、公开日期、发明人和权属信息均待确认。"]
+        uncertainty = _bullets(_find(chunks, "待确认", "不确定", default="")) or ["关键实施参数、公开日期、发明人和权属信息均待确认。"]
+        relationships = [f"{components[index]}→{components[index + 1]}"
+                         for index in range(max(0, len(components) - 1))]
         return PatentKnowledge(
-            technical_field=_find(chunks, "技术领域", default="电机状态监测与控制"),
+            technical_field=_find(chunks, "技术领域", default="[待发明人确认]"),
             technical_problem=problem,
             existing_technology=_bullets(_find(chunks, "技术背景", "现有技术", default="")),
             existing_limitations=_bullets(_find(chunks, "现有问题", "局限", default=problem)),
             core_idea=scheme,
             components=components,
             steps=steps,
-            relationships=["多源传感模块向状态估计模块提供同步信号", "状态估计模块向控制器提供状态量", "控制器向电机驱动单元输出控制指令"],
-            data_flow=["多源传感信号", "同步特征向量", "融合状态量", "自适应控制指令"],
+            relationships=relationships,
+            data_flow=steps,
             control_flow=steps,
-            inputs=["振动信号", "定子电流", "转速信号", "温度信号"],
-            outputs=["电机状态估计结果", "自适应控制指令"],
+            inputs=_bullets(_find(chunks, "输入", default="")),
+            outputs=_bullets(_find(chunks, "输出", default="")),
             technical_effects=effects,
             key_parameters=parameters,
             equations=equations,

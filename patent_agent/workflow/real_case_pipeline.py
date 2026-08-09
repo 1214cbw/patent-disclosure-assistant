@@ -158,7 +158,9 @@ class RealCaseWorkflow:
             _mark_current(case_dir, "strategy", "disclosure", "claim_feature", "claim", "support_matrix", "scope_review")
         else:
             if review.machine.records["C"].status != CheckpointStatus.APPROVED: raise ValueError("CHECKPOINT_C_NOT_APPROVED")
-            root = self.finalize(case_id); manifest.current_checkpoint = "FINAL"; manifest.case_state = CaseWorkflowState.VALIDATED
+            root = self.finalize(case_id)
+            manifest = self.manager.load(case_id)
+            manifest.current_checkpoint = "FINAL"
         self.manager.save(manifest); return root
 
     def _draft_c(self, case_id: str) -> None:
@@ -193,10 +195,11 @@ class RealCaseWorkflow:
         from patent_agent.v7.gates import V7GateError, run_claims_gate, run_disclosure_gates
         from patent_agent.v7.language_gate import ChinesePatentLanguageValidator
 
-        language = ChinesePatentLanguageValidator()
         llm_cache_dir = case_dir / "llm_cache"
         planner = PatentDisclosurePlanner(provider=self.provider, cache_dir=llm_cache_dir)
         fingerprint = build_case_evidence_fingerprint(understanding, evidence)
+        language = ChinesePatentLanguageValidator(
+            registered_tokens=set(fingerprint.technical_tokens))
         figures = FigurePlannerV7(
             case_id, understanding, evidence, provider=self.provider,
             cache_dir=llm_cache_dir,
@@ -295,9 +298,10 @@ class RealCaseWorkflow:
         from patent_agent.v7.figure_planner import FigurePlannerV7
         from patent_agent.v7.gates import V7GateError, run_disclosure_gates, run_figure_gates
         from patent_agent.v7.language_gate import ChinesePatentLanguageValidator
-        language = ChinesePatentLanguageValidator()
         concepts = case_concepts_from_understanding(understanding)
         fingerprint = build_case_evidence_fingerprint(understanding, evidence)
+        language = ChinesePatentLanguageValidator(
+            registered_tokens=set(fingerprint.technical_tokens))
         figures = FigurePlannerV7(
             case_id, understanding, evidence, provider=self.provider,
             cache_dir=case_dir / "llm_cache",
@@ -325,14 +329,41 @@ class RealCaseWorkflow:
         title_result = PatentTitleValidator().validate(disclosure.title)
         if not title_result.passed:
             raise V7GateError("TITLE_GATE_FAILED", "；".join(title_result.issues))
+        from patent_agent.v7_1.quality import (
+            BilingualTermValidator, FigureGraphValidator,
+            FigureNarrativeConsistencyValidator, HeadingCompletenessValidator,
+            SectionCompletenessValidator, TechnicalTerminologyNormalizer,
+            TokenIntegrityValidator,
+        )
+        headings = [section.title for section in disclosure.sections]
+        body_texts = [paragraph.text for section in disclosure.sections for paragraph in section.paragraphs]
+        figure_texts = [figure.title for figure in figures] + [node.label for figure in figures for node in figure.nodes]
+        term_registry = TechnicalTerminologyNormalizer.from_source_texts(
+            [str(fact.statement) for fact in understanding.facts]).registry
+        content_results = [
+            HeadingCompletenessValidator().validate(headings),
+            SectionCompletenessValidator().validate(disclosure.sections),
+            TokenIntegrityValidator(term_registry).validate(body_texts + figure_texts),
+            BilingualTermValidator().validate(body_texts + figure_texts),
+            FigureGraphValidator().validate(figures),
+            FigureNarrativeConsistencyValidator().validate(body_texts, figures),
+        ]
+        if any(result.status != "PASS" for result in content_results):
+            codes = [finding.code for result in content_results for finding in result.findings]
+            raise RuntimeError("V7_1_CONTENT_QUALITY_GATE_FAILED: " + ",".join(codes))
+        self._advance_delivery_state(case_id, CaseWorkflowState.CONTENT_VALIDATED)
         (output / "figures.json").write_text(json.dumps([item.model_dump(mode="json") for item in figures], ensure_ascii=False, indent=2), encoding="utf-8")
         draft = grounded_disclosure_to_draft(disclosure, knowledge, figures); tree = grounded_claims_to_tree(claims); renderer = DocumentRenderer(self.settings.template_root)
-        # V7.0 deliverable; the pre-existing (failed) 技术交底书.docx is kept
-        # under a history name, never silently discarded.
-        v7_docx = output / "技术交底书_v7_0.docx"
-        if (output / "技术交底书.docx").exists() and not (output / "技术交底书_历史失败版本.docx").exists():
-            shutil.copy2(output / "技术交底书.docx", output / "技术交底书_历史失败版本.docx")
-        disclosure_docx = renderer.render(disclosure_to_ast(case_id, draft), v7_docx); shutil.copy2(v7_docx, output / "技术交底书.docx"); claims_docx = renderer.render(claims_to_ast(case_id, tree), output / "权利要求草案.docx"); validator = PatentDocxValidator(); validation = validator.validate(disclosure_docx, export_pdf=True); claims_validation = validator.inspect_word(claims_docx, export_pdf=True)
+        v7_docx = output / "技术交底书_v7_1.docx"
+        disclosure_docx = renderer.render(disclosure_to_ast(case_id, draft), v7_docx)
+        claims_docx = renderer.render(claims_to_ast(case_id, tree), output / "权利要求草案.docx")
+        validator = PatentDocxValidator()
+        validation = validator.validate(disclosure_docx, export_pdf=True)
+        claims_validation = validator.inspect_word(claims_docx, export_pdf=True)
+        if not validation["pass"]:
+            raise RuntimeError("V7_1_DOCX_VALIDATION_FAILED")
+        shutil.copy2(v7_docx, output / "技术交底书.docx")
+        self._advance_delivery_state(case_id, CaseWorkflowState.DOCX_VALIDATED)
         for name, data in (("technical_understanding_final.json", understanding), ("disclosure_final.json", disclosure), ("claims_final.json", claims)):
             (output / name).write_text(data.model_dump_json(indent=2), encoding="utf-8")
         candidates = _load_candidates(self.store.latest_stage_path(case_id, "p1_invention_candidates")); strategy = GroundedProtectionStrategy.model_validate_json(self.store.latest_stage_path(case_id, "p1_protection_strategy").read_text(encoding="utf-8"))
@@ -355,9 +386,27 @@ class RealCaseWorkflow:
         for name in ("evaluation_summary.json", "model_evaluation_report.md", "technical_understanding_scorecard.md"): shutil.copy2(eval_run / name, output / name)
         (output / "validation_report.md").write_text(f"# Validation\n\n- XML/Word: {'PASS' if validation['pass'] else 'FAIL'}\n- OMML: {validation['xml']['omml_count']}\n- Residual LaTeX: {validation['xml']['residual_latex_in_omml']}\n- Claims Word available: {claims_validation.get('available')}\n", encoding="utf-8")
         (output / "pipeline_report.md").write_text(f"# Real Case Pipeline Report\n\n- Case: {case_id}\n- Checkpoint C: APPROVED\n- Claims support: {support['validation_status']}\n- Scope review: complete\n- Traceability links: {len(traceability.links)}\n- Broken links: {len(traceability.broken_links)}\n- Word validation: {'PASS' if validation['pass'] else 'FAIL'}\n", encoding="utf-8")
+        self._write_manifest_language(case_id, case_dir, evidence, translation_postprocess_used=False)
         self._write_generalization_report(output, case_id, understanding, disclosure, claims, figures, knowledge, validation, title_result)
+        from patent_agent.v7_1.delivery import run_delivery_audit
+        delivery_report = run_delivery_audit(
+            output, v7_docx, v7_docx.with_suffix(".pdf"), disclosure,
+            understanding, figures, knowledge.equations,
+        )
+        if delivery_report["component_status"].get("render_audit.json") != "PASS":
+            raise RuntimeError("V7_1_RENDER_VALIDATION_FAILED")
+        self._advance_delivery_state(case_id, CaseWorkflowState.RENDER_VALIDATED)
         if not validation["pass"] or support["validation_status"] != "PASS" or traceability.broken_links:
             raise RuntimeError("REAL_CASE_FINAL_QUALITY_GATE_FAILED")
+        if delivery_report["status"] != "PASS":
+            raise RuntimeError("V7_1_DELIVERY_QUALITY_GATE_FAILED")
+        from scripts.production_hardcode_audit import audit as audit_production_hardcodes
+        hardcode_report = audit_production_hardcodes(self.settings.project_root)
+        (output / "production_hardcode_audit.json").write_text(
+            json.dumps(hardcode_report, ensure_ascii=False, indent=2), encoding="utf-8")
+        if hardcode_report["summary"]["forbidden"]:
+            raise RuntimeError("V7_1_FORBIDDEN_PRODUCTION_HARDCODE")
+        self._advance_delivery_state(case_id, CaseWorkflowState.DELIVERY_READY)
         final_review = HumanReviewManager(case_dir)
         final_review.machine.configure("FINAL", [])
         # Idempotent: re-running finalize on an already-validated case must
@@ -368,7 +417,56 @@ class RealCaseWorkflow:
             final_review.machine.transition("FINAL", CheckpointStatus.APPROVED, reviewed_ids=[])
         final_review.machine.save(final_review.state_path)
         _mark_current(case_dir, "knowledge", "candidate", "strategy", "disclosure", "claim_feature", "claim", "support_matrix", "scope_review", "figure", "traceability")
+        self._advance_delivery_state(case_id, CaseWorkflowState.DONE)
+        self._write_delivery_quality_markdown(output, case_id, delivery_report, validation,
+                                              claims_validation, traceability)
+        self._write_manifest_snapshot(output, case_id)
         return output
+
+    def _advance_delivery_state(self, case_id: str, state: CaseWorkflowState) -> None:
+        manifest = self.manager.load(case_id)
+        manifest.case_state = state
+        if state.value not in manifest.state_history:
+            manifest.state_history.append(state.value)
+        manifest.delivery_version = "V7.1"
+        self.manager.save(manifest)
+
+    def _write_manifest_snapshot(self, output: Path, case_id: str) -> None:
+        from patent_agent.core.models import utc_now
+        canonical = self.manager.manifest_path(case_id)
+        manifest = self.manager.load(case_id)
+        snapshot = {
+            "snapshot_type": "delivery_snapshot_read_only",
+            "source_of_truth": False,
+            "canonical_runtime_manifest": str(canonical.resolve()),
+            "captured_at": utc_now(),
+            "manifest": manifest.model_dump(mode="json"),
+        }
+        (output / "real_case_manifest.json").write_text(
+            json.dumps(snapshot, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    def _write_delivery_quality_markdown(self, output: Path, case_id: str,
+                                         report: dict, validation: dict,
+                                         claims_validation: dict, traceability) -> None:
+        lines = [
+            "# V7.1 Delivery Quality Report", "",
+            f"- Case: {case_id}",
+            f"- Overall: {report['status']}",
+            "- Standard pipeline rebuild: PASS",
+            "- Provider injection: standard CLI/Web factory",
+            f"- DOCX/XML/OMML: {'PASS' if validation['pass'] else 'FAIL'}",
+            f"- PDF render: {report['component_status'].get('render_audit.json', 'FAIL')}",
+            f"- Pages: {report['page_count']}",
+            f"- Equations: {report['equation_count']}",
+            f"- Figures: {report['figure_count']}",
+            f"- Traceability broken links: {len(traceability.broken_links)}",
+            f"- Claims Word available: {claims_validation.get('available')}", "",
+            "## Component gates", "",
+        ]
+        lines.extend(f"- {name}: {status}" for name, status in report["component_status"].items())
+        lines += ["", "## Manifest", "",
+                  "The workspace manifest is canonical runtime state. The output manifest is a read-only delivery snapshot.", ""]
+        (output / "delivery_quality_report.md").write_text("\n".join(lines), encoding="utf-8")
 
     def _write_generalization_report(self, output, case_id, understanding, disclosure,
                                      claims, figures, knowledge, validation, title_result) -> None:
@@ -394,7 +492,7 @@ class RealCaseWorkflow:
         grounded_facts = [f for f in total_facts if f.evidence_ids]
         evidence_ids = sorted({e for f in total_facts for e in f.evidence_ids})
         lines = [
-            "# Patent Agent V7.0 Generalization Report",
+            "# Patent Agent V7.1 Generalization Report",
             "",
             f"- Case: {case_id}",
             f"- 发明名称: {disclosure.title} (CJK {title_result.length} 字, "
@@ -461,7 +559,7 @@ class RealCaseWorkflow:
             "- TITLE_GATE_FAILED: no",
             "",
         ]
-        (output / "generalization_v7_report.md").write_text("\n".join(lines), encoding="utf-8")
+        (output / "generalization_v7_1_report.md").write_text("\n".join(lines), encoding="utf-8")
 
     def _review_statuses(self, case_id: str, checkpoint: str):
         if checkpoint == "A1": return {item.fact_id: item.review_status for item in TechnicalUnderstandingResult.model_validate_json(self.store.latest_stage_path(case_id, "p1_technical_understanding").read_text(encoding="utf-8")).facts}

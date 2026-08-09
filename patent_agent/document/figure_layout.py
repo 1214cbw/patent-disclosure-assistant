@@ -311,9 +311,28 @@ class FigureSemanticValidator:
             source, separator, target = edge_id.partition("->")
             if not separator or (source, target) not in edges:
                 issues.append(ValidationIssue("REQUIRED_EDGE_MISSING", "ERROR", f"缺少必需连接 {edge_id}", fid))
+        layout = getattr(figure, "layout", "auto") or "auto"
+        if layout == "two_column":
+            left = set(getattr(figure, "left_node_ids", []) or [])
+            right = set(getattr(figure, "right_node_ids", []) or [])
+            if left and not left <= set(nodes):
+                issues.append(ValidationIssue("NO_TRAINING_PATH", "ERROR", "双栏图缺少左栏声明节点", fid))
+            if right and not right <= set(nodes):
+                issues.append(ValidationIssue("NO_GENERATION_PATH", "ERROR", "双栏图缺少右栏声明节点", fid))
+            if left and right and not any(source in left and target in right for source, target in edges):
+                issues.append(ValidationIssue("NO_PARAMETER_BRIDGE", "ERROR", "双栏图缺少跨栏连接", fid))
+        if layout == "branch_merge":
+            incoming = {node_id: sum(1 for _, target in edges if target == node_id) for node_id in nodes}
+            merge_nodes = {node_id for node_id, degree in incoming.items() if degree >= 2}
+            if not merge_nodes:
+                issues.append(ValidationIssue("NO_MERGE_NODE", "ERROR", "分支合流图缺少合流节点", fid))
+            elif not any(source in merge_nodes for source, _ in edges):
+                issues.append(ValidationIssue("NO_MERGE_OUTPUT", "ERROR", "合流节点缺少输出", fid))
         provenance = getattr(figure, "provenance", "") or "generated"
         if provenance == "extracted" and not getattr(figure, "source_figure_ref", ""):
             issues.append(ValidationIssue("SOURCE_FIGURE_REF_MISSING", "ERROR", "提取图缺少案例内来源引用", fid))
+        if getattr(figure, "source_figure_ref", "") and provenance not in {"extracted", "uploaded"}:
+            issues.append(ValidationIssue("FAKE_STRUCTURE_FIGURE", "ERROR", "带来源引用的结构图必须使用真实提取或上传图", fid))
         return issues
 
 

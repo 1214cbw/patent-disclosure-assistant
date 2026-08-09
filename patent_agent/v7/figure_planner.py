@@ -141,8 +141,25 @@ class FigurePlannerV7:
         ))
 
     def _registry_path(self) -> Path | None:
-        return (Path(self.evidence_store.root).parent / "figure_registry.json"
-                if self.evidence_store is not None else None)
+        if self.evidence_store is not None:
+            return Path(self.evidence_store.root).parent / "figure_registry.json"
+        candidate = Path("workspace") / "private_cases" / self.case_id / "figure_registry.json"
+        return candidate.resolve()
+
+    def _case_local_plan(self) -> list[FigureSpec]:
+        registry_path = self._registry_path()
+        if registry_path is None or not registry_path.is_file():
+            return []
+        payload = json.loads(registry_path.read_text(encoding="utf-8"))
+        planned = payload.get("figure_plan", []) if isinstance(payload, dict) else []
+        figures = []
+        for item in planned:
+            value = dict(item)
+            png_path = str(value.get("png_path", ""))
+            if png_path and not Path(png_path).is_absolute():
+                value["png_path"] = str((registry_path.parent / png_path).resolve())
+            figures.append(self._contract(FigureSpec.model_validate(value)))
+        return figures
 
     def _source_figure(self, number: int) -> FigureSpec | None:
         entries = list(self.source_figures)
@@ -207,6 +224,9 @@ class FigurePlannerV7:
         return output
 
     def plan(self) -> list[FigureSpec]:
+        case_local = self._case_local_plan()
+        if case_local:
+            return case_local[:MAX_FIGURES]
         figures = []
         step_figure = self._step_figure()
         if step_figure is not None:

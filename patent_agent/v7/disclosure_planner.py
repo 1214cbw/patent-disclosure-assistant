@@ -45,21 +45,6 @@ STOPWORDS = {
 
 CN_NUMERALS = ["一", "二", "三", "四", "五", "六", "七", "八", "九", "十"]
 
-# Phase lexicon for embodiment grouping (generic, not case-specific).
-PHASE_LEXICON: list[tuple[str, list[str]]] = [
-    ("数据构建", ["dataset", "data", "sample", "parameterised", "parameterized",
-                  "latin hypercube", "generated", "split", "数据集", "采样", "拉丁超立方"]),
-    ("生成模型训练", ["train", "training", "epoch", "loss", "optimizer", "latent",
-                    "encoder", "decoder", "posterior", "pretrain", "预训练", "训练",
-                    "损失", "编码器", "解码器", "潜在"]),
-    ("代理模型构建", ["surrogate", "predict", "regression", "modulation", "filim",
-                    "feature-wise", "代理", "预测", "回归", "调制"]),
-    ("优化设计", ["optimiz", "current vector", "nsga", "objective", "constraint",
-                 "pareto", "voltage", "转矩", "电流矢量", "多目标", "约束", "优化"]),
-    ("验证与筛选", ["fea", "verify", "screen", "validation", "test", "magnetostatic",
-                  "有限元", "验证", "筛选", "测试", "静磁场"]),
-]
-
 CHINESE_STYLE_RULES = """
 ## 中文专利交底书撰写规则（严格遵守）
 
@@ -119,14 +104,10 @@ def cluster_facts(facts, threshold: float = 0.30) -> list[list]:
 
 
 def _phase_of(facts: list) -> str:
-    """Assign an embodiment phase label to a fact cluster by lexicon hits."""
-    text = " ".join(str(getattr(f, "statement", "")) for f in facts).lower()
-    best_phase, best_hits = None, 0
-    for label, kws in PHASE_LEXICON:
-        hits = sum(1 for kw in kws if kw.lower() in text)
-        if hits > best_hits:
-            best_phase, best_hits = label, hits
-    return best_phase or "实施细节"
+    """Use source-declared fact categories for embodiment grouping."""
+    categories = [str(getattr(fact, "category", "")).strip() for fact in facts]
+    categories = [category for category in categories if category]
+    return categories[0] if categories else "实施细节"
 
 
 def _clean_statement(fact) -> str:

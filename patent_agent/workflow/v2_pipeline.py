@@ -49,7 +49,7 @@ class PatentPipelineV2:
         if self.provider is None:
             raise RuntimeError("LLM_DISABLED: V2 full pipeline requires an approved provider or MockLLMProvider")
         if not (self.store.case_dir(case_id) / "case.json").exists():
-            self.store.create(case_id, "一种基于多源传感信息的电机状态监测与自适应控制方法")
+            self.store.create(case_id, "待规划技术方案")
         output_dir.mkdir(parents=True, exist_ok=True)
         log = PipelineLog(self.store.case_dir(case_id) / "logs" / "pipeline_v2.jsonl")
         self.store.migrate_to_v2(case_id)
@@ -72,7 +72,7 @@ class PatentPipelineV2:
             require_checkpoint(self.store, case_id, "A", auto_approve_demo)
             event["output"] = self.store.load(case_id).checkpoints["A"]
         with log.stage("v2_stage_4_manual_prior_art", {"path": str(prior_art)}) as event:
-            references = ManualImportProvider(prior_art).search("电机 多源 传感 状态 控制")
+            references = ManualImportProvider(prior_art).search(candidates[0].title)
             prior_store = EvidenceStore(self.store.case_dir(case_id) / "search" / "evidence")
             prior_store.build_prior_art(references)
             novelty = GroundedNoveltyAnalysisAgent().run(candidates[0], prior_store)

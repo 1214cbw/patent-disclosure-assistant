@@ -96,7 +96,7 @@ class ClaimScopeEngine:
 
 
 def _render_variant(claim: PatentClaimV2, features: list) -> str:
-    subject = "一种电机状态监测与自适应控制系统" if claim.claim_type == "system" else "一种电机状态监测与自适应控制方法"
+    subject = "一种技术系统" if claim.claim_type == "system" else "一种技术方法"
     return subject + "，其特征在于，包括：" + "；".join(item.text.rstrip("。；") for item in features) + "。"
 
 

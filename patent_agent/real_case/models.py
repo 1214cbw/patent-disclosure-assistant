@@ -38,6 +38,10 @@ class RealCaseManifest(StrictSchema):
     patent_output_language: str = "zh-CN"
     disclosure_language: str = "zh-CN"
     translation_postprocess_used: bool = False
+    # Append-only delivery-state evidence. ``case_state`` is the current
+    # state; this list records the V7.1 validation sequence.
+    state_history: list[str] = Field(default_factory=list)
+    delivery_version: str = ""
 
     @model_validator(mode="after")
     def safe_policy(self):

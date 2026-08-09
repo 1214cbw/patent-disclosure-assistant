@@ -36,5 +36,5 @@ class ClaimFeatureEditor:
 def _render(claim: PatentClaimV2) -> str:
     if claim.parent_claims:
         subject = "系统" if claim.claim_type == "system" else "方法"; lead = f"根据权利要求{claim.parent_claims[0]}所述的{subject}"
-    else: lead = "一种电机状态监测与自适应控制系统" if claim.claim_type == "system" else "一种电机状态监测与自适应控制方法"
+    else: lead = "一种技术系统" if claim.claim_type == "system" else "一种技术方法"
     return lead + "，其特征在于，包括：" + "；".join(item.text.rstrip("。；") for item in claim.features) + "。"

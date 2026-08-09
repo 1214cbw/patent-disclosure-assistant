@@ -241,3 +241,48 @@ def test_cross_case_gate_detects_wrong_fact_inside_broad_concept_family():
     result = CrossCaseContaminationValidator(set(), {}, fingerprint).validate(disclosure=disclosure)
     assert not result.passed
     assert "cryogenic" in result.foreign_concepts
+
+
+def test_docx_equation_audit_compares_canonical_omml_signature(tmp_path: Path):
+    import zipfile
+    from lxml import etree
+    from patent_agent.document.equation_engine import latex_to_omml
+    from patent_agent.document.equation_engine.omml_renderer import NSMAP
+    from patent_agent.v7_1.delivery import audit_docx_equations
+
+    word_ns = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+    document = etree.Element(
+        "{%s}document" % word_ns, nsmap={"w": word_ns, "m": NSMAP["m"]}
+    )
+    body = etree.SubElement(document, "{%s}body" % word_ns)
+    body.append(latex_to_omml(r"L=(x+y)^2", display=True))
+    path = tmp_path / "equations.docx"
+    with zipfile.ZipFile(path, "w") as archive:
+        archive.writestr("word/document.xml", etree.tostring(document))
+    report = audit_docx_equations(path, [{"id": "eq1", "latex": r"L=(x+y)^2"}])
+    assert report["status"] == "PASS"
+    damaged = audit_docx_equations(path, [{"id": "eq1", "latex": r"L=(x+y)^3"}])
+    assert damaged["status"] == "FAIL"
+    assert damaged["signature_mismatches"] == ["eq1"]
+
+
+def test_pdf_render_audit_rejects_blank_page(tmp_path: Path):
+    import fitz
+    from patent_agent.v7_1.delivery import audit_pdf_render
+
+    path = tmp_path / "blank.pdf"
+    document = fitz.open()
+    document.new_page()
+    document.save(path)
+    document.close()
+    report = audit_pdf_render(path, equation_count=0, figure_count=0)
+    assert report["status"] == "FAIL"
+    assert report["errors"][0]["code"] == "PDF_BLANK_PAGE"
+
+
+def test_production_hardcode_audit_has_no_forbidden_branching():
+    from scripts.production_hardcode_audit import audit
+
+    report = audit(Path(__file__).resolve().parents[2])
+    assert report["summary"]["forbidden"] == 0
+    assert report["summary"]["pass"] is True
