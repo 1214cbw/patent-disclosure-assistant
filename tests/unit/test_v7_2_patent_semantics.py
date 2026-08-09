@@ -715,6 +715,30 @@ def test_available_numeric_validation_results_cannot_be_marked_pending():
     assert "UNSUPPORTED_GENERALIZATION" in _codes(report)
 
 
+def test_scattered_table_values_cannot_be_synthesized_into_range():
+    report = _validate([_plan()], generated_texts=[{
+        "text": "[SECTION:07-01] 验证步骤V1：误差在0.329至1.374之间。",
+        "source_text": "Errors: A 1.374, B 0.329, C 0.732, H 2.042.",
+    }])
+    assert "UNSUPPORTED_GENERALIZATION" in _codes(report)
+
+
+def test_explicit_source_range_can_be_preserved():
+    report = _validate([_plan()], generated_texts=[{
+        "text": "[SECTION:07-01] 验证步骤V1：误差在0.329至1.374之间。",
+        "source_text": "The error ranges from 0.329 to 1.374.",
+    }])
+    assert "UNSUPPORTED_GENERALIZATION" not in _codes(report)
+
+
+def test_abstract_response_category_requires_local_response_evidence():
+    report = _validate([_plan()], generated_texts=[{
+        "text": "[SECTION:07-01] 验证步骤V4：比较上位物理响应预测值。",
+        "source_text": "Compare predicted quantities q1 and q2 against reference values.",
+    }])
+    assert "UNSUPPORTED_GENERALIZATION" in _codes(report)
+
+
 def test_binary_or_segmented_image_expansion_requires_local_evidence():
     report = _validate([_plan()], generated_texts=[{
         "text": "[SECTION:05-09] 输入可以是二值或分割图像。",

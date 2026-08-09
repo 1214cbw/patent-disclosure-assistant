@@ -276,6 +276,12 @@ def local_generation_drift(text: str, source: str) -> list[str]:
         r"(?:具体)?(?:数值|数据|结果).{0,12}待(?:发明人)?补充|"
         r"待(?:发明人)?.{0,12}补充.{0,12}(?:数值|数据|结果)"
     )
+    abstract_response = re.compile(r"[一-鿿]{2,10}响应(?:的)?预测值")
+    source_response = re.compile(r"\bresponse\b|响应", re.I)
+    synthesized_range = re.compile(
+        r"(\d+(?:\.\d+)?)\s*[%％]?(?:至|到)\s*(\d+(?:\.\d+)?)\s*[%％]?"
+        r"(?:之间|范围(?:之内|内)?)"
+    )
     if online.search(text) and not source_online.search(source):
         reasons.append("unsupported online/control scenario")
     if target.search(text) and not source_target.search(source):
@@ -284,6 +290,21 @@ def local_generation_drift(text: str, source: str) -> list[str]:
         reasons.append("unsupported metric normalization")
     if pending_numeric.search(text) and len(re.findall(r"\d+(?:\.\d+)?", source)) >= 2:
         reasons.append("available numeric evidence marked pending")
+    if abstract_response.search(text) and not source_response.search(source):
+        reasons.append("unsupported abstract physical-response category")
+    source_lower = source.lower()
+    for match in synthesized_range.finditer(text):
+        left, right = map(re.escape, match.groups())
+        explicit_source_range = re.search(
+            rf"(?:from\s*{left}\s*to\s*{right}|between\s*{left}\s*and\s*{right}|"
+            rf"range[^\n]{{0,24}}{left}[^\n]{{0,12}}{right}|"
+            rf"[\[(]\s*{left}\s*[,，]\s*{right}\s*[\])])",
+            source_lower,
+            re.I,
+        )
+        if not explicit_source_range:
+            reasons.append("range synthesized from unstructured numeric evidence")
+            break
     return reasons
 
 
@@ -967,6 +988,12 @@ class PatentSemanticsValidator:
                         message=("Generated validation paragraph imports identifiers owned by a "
                                  f"different validation fact: {', '.join(sorted(foreign_terms))}")
                     ))
+            for reason in local_generation_drift(scoped_text, supporting_source):
+                findings.append(SemanticFinding(
+                    code="UNSUPPORTED_GENERALIZATION",
+                    message=(f"Paragraph-local evidence does not support {reason} in "
+                             f"{section_id}: {scoped_text[:120]}")
+                ))
             if (section_id.startswith("07-") and not is_validation_text
                     and re.search(r"(?:具体事实|输入|处理|输出).{0,12}待.{0,8}(?:补充|确认)", scoped_text)):
                 findings.append(SemanticFinding(
