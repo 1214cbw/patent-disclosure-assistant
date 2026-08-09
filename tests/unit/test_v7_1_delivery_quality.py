@@ -3,6 +3,8 @@ from pathlib import Path
 import pytest
 
 from patent_agent.core.models import FigureEdge, FigureNode, FigureSpec
+from patent_agent.core.config import Settings
+from patent_agent.real_case import RealCaseManager
 from patent_agent.v7_1.quality import (
     BilingualTermValidator,
     DeliveryQualityGate,
@@ -160,3 +162,82 @@ def test_delivery_gate_blocks_missing_render_audit(tmp_path: Path):
     )
     assert result.status == "FAIL"
     assert "RENDER_AUDIT_MISSING" in codes(result)
+
+
+def test_standard_workflow_factory_injects_provider_for_b_to_c(monkeypatch, tmp_path: Path):
+    from patent_agent import llm
+    from patent_agent.workflow import build_real_case_workflow
+
+    settings = Settings(
+        project_root=tmp_path,
+        workspace_root=tmp_path / "workspace",
+        template_root=Path(__file__).resolve().parents[2] / "templates",
+        output_root=tmp_path / "output",
+        patent_llm_mode="external-approved",
+        llm_base_url="https://provider.invalid/v1",
+        llm_api_key="test-only",
+        llm_model="test-model",
+    )
+    manager = RealCaseManager(tmp_path)
+    manifest = manager.create(
+        "REAL-PROVIDER-1", authorized=True, llm_mode="external-approved",
+        external_llm_approved=True,
+    )
+    manifest.current_checkpoint = "B"
+    manager.save(manifest)
+    sentinel = object()
+    monkeypatch.setattr(llm, "OpenAICompatibleProvider", lambda settings, model=None: sentinel)
+    workflow = build_real_case_workflow(settings, "REAL-PROVIDER-1")
+    assert workflow.provider is sentinel
+
+
+def test_standard_workflow_factory_fails_closed_without_required_provider(tmp_path: Path):
+    from patent_agent.workflow import build_real_case_workflow
+
+    settings = Settings(
+        project_root=tmp_path,
+        workspace_root=tmp_path / "workspace",
+        template_root=Path(__file__).resolve().parents[2] / "templates",
+        output_root=tmp_path / "output",
+        patent_llm_mode="disabled",
+    )
+    manager = RealCaseManager(tmp_path)
+    manifest = manager.create("REAL-PROVIDER-2", authorized=True)
+    manifest.current_checkpoint = "B"
+    manager.save(manifest)
+    with pytest.raises(RuntimeError, match="LLM_PROVIDER_REQUIRED_FOR_CHECKPOINT_B_TO_C"):
+        build_real_case_workflow(settings, "REAL-PROVIDER-2")
+
+
+def test_cross_case_gate_detects_out_of_vocabulary_contamination():
+    from patent_agent.v7.cross_case import CrossCaseContaminationValidator, EvidenceFingerprint
+
+    fingerprint = EvidenceFingerprint(
+        technical_tokens=frozenset({"thermal", "sensor", "calibration"}),
+        fact_ids=frozenset({"F1"}), evidence_ids=frozenset({"E1"}),
+    )
+    disclosure = type("Disclosure", (), {"sections": [
+        type("Section", (), {"title": "5.1", "paragraphs": [
+            type("Paragraph", (), {"text": "Quantum annealing selects the result."})()
+        ]})()
+    ]})()
+    result = CrossCaseContaminationValidator(set(), {}, fingerprint).validate(disclosure=disclosure)
+    assert not result.passed
+    assert "quantum" in result.foreign_concepts
+
+
+def test_cross_case_gate_detects_wrong_fact_inside_broad_concept_family():
+    from patent_agent.v7.cross_case import CrossCaseContaminationValidator, EvidenceFingerprint
+
+    fingerprint = EvidenceFingerprint(
+        technical_tokens=frozenset({"ambient", "sensor", "calibration"}),
+        fact_ids=frozenset({"F1"}), evidence_ids=frozenset({"E1"}),
+    )
+    disclosure = type("Disclosure", (), {"sections": [
+        type("Section", (), {"title": "5.1 Sensor calibration", "paragraphs": [
+            type("Paragraph", (), {"text": "Cryogenic sensor calibration is performed."})()
+        ]})()
+    ]})()
+    result = CrossCaseContaminationValidator(set(), {}, fingerprint).validate(disclosure=disclosure)
+    assert not result.passed
+    assert "cryogenic" in result.foreign_concepts

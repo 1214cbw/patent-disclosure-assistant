@@ -12,6 +12,7 @@ of single-call LLM generation.
 """
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any
 
@@ -392,53 +393,22 @@ class ChineseSectionWriter:
         )
 
     def _build_terminology(self, understanding) -> dict[str, str]:
-        """Build Chinese terminology mapping from understanding.
-
-        V7: terminology is derived from the case's OWN understanding content,
-        not a hardcoded LDM table. Generic method-level terms are kept;
-        domain terms (diffusion, rotor, magnetic barrier...) only enter the
-        mapping when the case's own evidence actually contains them.
-        """
-        terms = {
-            "Variational Autoencoder": "变分自编码器（Variational Autoencoder，VAE）",
-            "VAE": "VAE",
-            "Generative Adversarial Network": "生成对抗网络（Generative Adversarial Network，GAN）",
-            "GAN": "GAN",
-            "FID": "FID（Fréchet Inception Distance）",
-            "PCA": "PCA（主成分分析）",
-            "RGB": "RGB",
-            "encoder": "编码器",
-            "decoder": "解码器",
-        }
-        # Domain terms: only for terms present in this case's own facts.
-        domain = {
-            "Latent Diffusion Model": "潜在扩散模型（Latent Diffusion Model，LDM）",
-            "LDM": "LDM",
-            "U-Net": "U-Net",
-            "latent space": "潜在空间",
-            "diffusion": "扩散",
-            "denoising": "去噪",
-            "forward diffusion": "前向扩散",
-            "reverse denoising": "反向去噪",
-            "rotor": "转子",
-            "stator": "定子",
-            "topology": "拓扑",
-            "magnetic barrier": "磁障",
-            "permanent magnet": "永磁体",
-            "electrical steel": "电工钢",
-            "Flow Matching": "流匹配（Flow Matching，FM）",
-            "velocity field": "速度场",
-            "surrogate model": "代理模型",
-            "FiLM": "特征线性调制（FiLM）",
-            "current vector": "电流矢量",
-        }
+        """Build a terminology registry only from the current understanding."""
         case_text = " ".join(
             str(getattr(f, "statement", "")) for f in
             (getattr(understanding, "facts", []) or [])
-        ).lower()
-        for en_term, zh_term in domain.items():
-            if en_term.lower() in case_text:
-                terms[en_term] = zh_term
+        )
+        terms: dict[str, str] = {}
+        for full, abbreviation in re.findall(
+            r"([A-Za-z][A-Za-z -]{3,80})\s*\(([A-Za-z][A-Za-z0-9-]{1,24})\)",
+            case_text,
+        ):
+            terms[full.strip()] = f"{full.strip()}（{abbreviation}）"
+            terms[abbreviation] = abbreviation
+        from patent_agent.v7_1.quality import TechnicalTerminologyNormalizer
+        registry = TechnicalTerminologyNormalizer.from_source_texts([case_text]).registry
+        for token in registry.tokens:
+            terms.setdefault(token, token)
         return terms
 
     def _collect_section_evidence(

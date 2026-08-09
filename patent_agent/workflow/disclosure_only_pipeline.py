@@ -1015,17 +1015,17 @@ def _check_chinese_disclosure(
 
 def _derive_title_cn(understanding, manifest) -> str:
     """Derive a Chinese disclosure title from the understanding and manifest."""
-    paper_title = getattr(manifest, "paper_title", "") or ""
-    # Try to extract key tech domain from facts
-    facts_text = " ".join(
-        getattr(f, "statement", "") for f in (understanding.facts[:5])
-    ).lower()
-    if "潜在扩散" in facts_text or "latent diffusion" in facts_text:
-        return "一种基于潜在扩散模型的电机拓扑图像生成方法"
-    if "motor" in facts_text or "电机" in facts_text:
-        return "一种基于机器学习的电机拓扑图像生成方法"
-    # Fallback
-    return "一种基于深度学习的技术方案"
+    candidates = [
+        str(getattr(item, "text", ""))
+        for item in (getattr(understanding, "technical_field", []) or [])
+    ]
+    paper_title = str(getattr(manifest, "paper_title", "") or "")
+    candidates.append(paper_title)
+    for candidate in candidates:
+        if any("一" <= char <= "鿿" for char in candidate):
+            cleaned = re.sub(r"[。；;]+$", "", candidate.strip())
+            return f"一种{cleaned}技术方案"
+    return "一种技术信息处理方法"
 
 
 def _cleanup_disclosure_sections(disclosure):

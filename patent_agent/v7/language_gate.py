@@ -16,16 +16,10 @@ from dataclasses import dataclass, field
 
 from patent_agent.document.chinese_validator import ACCEPTABLE_ABBREVIATIONS
 
-# Extended abbreviation whitelist for V7 cases (math/model/benchmark tokens).
-ACCEPTABLE_ABBREVIATIONS_V7 = ACCEPTABLE_ABBREVIATIONS | {
-    "FiLM", "FILM", "LDM", "FlowVAE", "Flow", "VAE", "SynRM", "PMa", "NSGA",
-    "ODE", "FEA", "PCA", "RMSE", "SSIM", "CLIP", "GPU", "CPU", "RTX", "Core",
-    "NVIDIA", "PyTorch", "Python", "IEEE", "Adam", "SGD", "ReLU", "U-Net",
-    "XGBoost", "LHS", "MSE", "MAE", "R2", "MAD", "KL", "ELBO", "GMM", "KNN",
-    "SVM", "MLP", "DNN", "CNN", "LSTM", "GRU", "GAN", "DKL", "Bz", "Id", "Iq",
-    # proper nouns / model-number words / unit words the LLM legitimately
-    # emits inside Chinese prose (mandate allows model numbers and units)
-    "Pareto", "Intel", "Gen", "min",
+# General computing/unit vocabulary. Case technical tokens are injected from
+# the current evidence registry through ``registered_tokens``.
+GENERAL_ABBREVIATIONS = ACCEPTABLE_ABBREVIATIONS | {
+    "GPU", "CPU", "IEEE", "Python", "min", "max", "Hz", "kHz", "MHz",
 }
 
 ENGLISH_WORD = re.compile(r"[A-Za-z]{3,}")
@@ -121,8 +115,10 @@ class LanguageGateResult:
 class ChinesePatentLanguageValidator:
     """Native-Chinese language gate for patent content (V7)."""
 
-    def __init__(self, min_prose_ratio: float = MIN_PROSE_CJK_RATIO):
+    def __init__(self, min_prose_ratio: float = MIN_PROSE_CJK_RATIO,
+                 registered_tokens: set[str] | None = None):
         self.min_prose_ratio = min_prose_ratio
+        self.acceptable_abbreviations = GENERAL_ABBREVIATIONS | set(registered_tokens or set())
 
     def validate_paragraph(self, text: str) -> tuple[bool, str | None]:
         """Return (is_chinese_ok, english_block_text)."""
@@ -133,7 +129,7 @@ class ChinesePatentLanguageValidator:
         if len(words) < EN_BLOCK_MIN_WORDS:
             return True, None
         non_abbr = [w for w in words
-                    if w not in ACCEPTABLE_ABBREVIATIONS_V7 and not _is_symbol_tail(w)]
+                    if w not in self.acceptable_abbreviations and not _is_symbol_tail(w)]
         if len(non_abbr) < EN_BLOCK_MIN_NON_ABBR:
             return True, None
         return False, text.strip()[:160]

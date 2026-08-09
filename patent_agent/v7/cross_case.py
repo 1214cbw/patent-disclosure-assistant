@@ -33,6 +33,54 @@ class ContaminationResult:
                 "details": self.details[:20]}
 
 
+@dataclass(frozen=True)
+class EvidenceFingerprint:
+    """Current-case fingerprint derived from source/facts, not a fixed lexicon."""
+
+    technical_tokens: frozenset[str] = frozenset()
+    fact_ids: frozenset[str] = frozenset()
+    evidence_ids: frozenset[str] = frozenset()
+
+
+_COMMON_LATIN = {
+    "about", "after", "also", "and", "are", "based", "before", "between",
+    "case", "current", "data", "each", "figure", "from", "have", "into",
+    "method", "model", "output", "process", "system", "that", "the", "their",
+    "then", "this", "through", "using", "with", "without", "input", "step",
+    "training", "value", "values", "result", "results", "technical", "technology",
+}
+
+
+def _latin_tokens(text: str) -> set[str]:
+    return {
+        token.lower() for token in re.findall(r"[A-Za-z][A-Za-z0-9-]{3,}", text)
+        if token.lower() not in _COMMON_LATIN
+    }
+
+
+def build_case_evidence_fingerprint(understanding, evidence_store=None) -> EvidenceFingerprint:
+    blocks: list[str] = []
+    facts = list(getattr(understanding, "facts", []) or [])
+    for fact in facts:
+        blocks.append(str(getattr(fact, "statement", "")))
+    for name in ("steps", "components", "data_flows", "control_flows", "inputs", "outputs"):
+        for item in getattr(understanding, name, []) or []:
+            blocks.append(_obj_text(item))
+            relation = getattr(item, "relation", None)
+            if relation is not None:
+                blocks.append(_obj_text(relation))
+    if evidence_store is not None:
+        blocks.extend(str(chunk.raw_text or chunk.normalized_text) for chunk in evidence_store.all())
+    return EvidenceFingerprint(
+        technical_tokens=frozenset().union(*(_latin_tokens(block) for block in blocks)) if blocks else frozenset(),
+        fact_ids=frozenset(str(getattr(fact, "fact_id", "")) for fact in facts),
+        evidence_ids=frozenset(
+            str(evidence_id) for fact in facts
+            for evidence_id in (getattr(fact, "evidence_ids", []) or [])
+        ),
+    )
+
+
 def _texts_of(disclosure=None, claims=None, figures=None) -> list[str]:
     texts: list[str] = []
     if disclosure is not None:
@@ -56,9 +104,11 @@ def _texts_of(disclosure=None, claims=None, figures=None) -> list[str]:
 class CrossCaseContaminationValidator:
     """Detect another case's exclusive concepts in current-case output."""
 
-    def __init__(self, case_concepts: set[str], other_case_fingerprints: dict[str, set[str]]):
+    def __init__(self, case_concepts: set[str], other_case_fingerprints: dict[str, set[str]],
+                 evidence_fingerprint: EvidenceFingerprint | None = None):
         self.case_concepts = case_concepts
         self.forbidden = forbidden_concepts_for(case_concepts, other_case_fingerprints)
+        self.evidence_fingerprint = evidence_fingerprint
 
     def validate(self, disclosure=None, claims=None, figures=None) -> ContaminationResult:
         result = ContaminationResult()
@@ -72,6 +122,25 @@ class CrossCaseContaminationValidator:
                         f"当前案例证据不支持"
                     )
                     break
+        # Fixed concept families above are only an auxiliary signal.  The
+        # primary open-vocabulary signal checks distinctive Latin technical
+        # tokens against the current case's own evidence-derived fingerprint.
+        if self.evidence_fingerprint is not None:
+            output_tokens = set().union(*(_latin_tokens(text) for text in _texts_of(
+                disclosure, claims, figures)))
+            unsupported = sorted(output_tokens - set(self.evidence_fingerprint.technical_tokens))
+            for token in unsupported:
+                result.foreign_concepts.append(token)
+                result.details.append(
+                    f"检测到当前案例证据指纹未支持的开放词汇技术概念: {token}"
+                )
+            for figure in figures or []:
+                if str(getattr(figure, "provenance", "generated")) != "generated":
+                    continue
+                fact_ids = set(getattr(figure, "source_fact_ids", []) or [])
+                if not fact_ids or not fact_ids <= set(self.evidence_fingerprint.fact_ids):
+                    result.foreign_concepts.append(str(getattr(figure, "id", "figure")))
+                    result.details.append("生成图缺少有效的当前案例 source_fact_ids")
         result.passed = not result.foreign_concepts
         return result
 
@@ -98,8 +167,9 @@ class FigureSemanticValidator:
     concept is figure-semantic contamination.
     """
 
-    def __init__(self, case_concepts: set[str]):
+    def __init__(self, case_concepts: set[str], evidence_fingerprint: EvidenceFingerprint | None = None):
         self.case_concepts = case_concepts
+        self.evidence_fingerprint = evidence_fingerprint
 
     def validate(self, figures) -> ContaminationResult:
         result = ContaminationResult()
@@ -124,6 +194,14 @@ class FigureSemanticValidator:
                             f"当前案例证据不支持"
                         )
                         break
+            if self.evidence_fingerprint is not None:
+                unsupported = _latin_tokens(joined) - set(self.evidence_fingerprint.technical_tokens)
+                if unsupported:
+                    result.foreign_concepts.extend(sorted(unsupported))
+                    result.details.append(
+                        f"图 '{figure.id}' 含当前案例证据指纹未支持的技术词: "
+                        + ", ".join(sorted(unsupported))
+                    )
         result.passed = not result.foreign_concepts
         return result
 

@@ -1,6 +1,8 @@
 """AST factory: converts structured disclosure/claims models to PatentDocumentAST."""
 from __future__ import annotations
 
+import re
+
 from patent_agent.core.models import ClaimTree, DisclosureDraft
 from patent_agent.core.patent_ast import PatentDocumentAST, PatentNode
 
@@ -150,8 +152,10 @@ def claims_to_ast(case_id: str, tree: ClaimTree) -> PatentDocumentAST:
 
 def _is_figure_section(heading: str) -> bool:
     """Detect if a section heading is the figure description section."""
-    keywords = ["附图", "图", "附图说明", "figure", "图示"]
-    return any(kw in heading for kw in keywords)
+    normalized = re.sub(r"^\s*\d+(?:\.\d+)*[.、]?\s*", "", heading).strip().lower()
+    # A generic character such as ``图`` also occurs in technical headings
+    # (for example, image reconstruction) and must never control routing.
+    return bool(re.match(r"^(?:附图说明|附图简要说明|description of (?:the )?drawings?)\s*$", normalized))
 
 
 def _is_tech_section(heading: str) -> bool:

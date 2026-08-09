@@ -294,53 +294,26 @@ class FigureLayoutValidator:
 
 
 class FigureSemanticValidator:
-    """Checks figure-specific semantic requirements."""
+    """Check the declarative graph contract without domain-specific rules."""
 
     def validate(self, figure, report: LayoutReport | dict | Path | None = None) -> list[ValidationIssue]:
         issues: list[ValidationIssue] = []
         nodes = {n.id: (n.label or "") for n in figure.nodes}
-        edges = [(e.source, e.target) for e in figure.edges]
+        edges = {(e.source, e.target) for e in figure.edges}
         fid = f"图{figure.number}"
-        layout = getattr(figure, "layout", "auto") or "auto"
-
-        # ── Figure 3: LDM training/generation two paths ──
-        if "训练" in figure.title and "生成" in figure.title:
-            has_training = any("训练" in v or k.startswith("T") for k, v in nodes.items())
-            has_generation = any("生成" in v or k.startswith("G") for k, v in nodes.items())
-            if not has_training:
-                issues.append(ValidationIssue("NO_TRAINING_PATH", "ERROR", "缺少训练路径", fid))
-            if not has_generation:
-                issues.append(ValidationIssue("NO_GENERATION_PATH", "ERROR", "缺少生成路径", fid))
-            if layout not in ("two_column", "branch_merge"):
-                issues.append(ValidationIssue("WRONG_LAYOUT", "WARNING", f"图3应为双栏布局，当前: {layout}", fid))
-            # bridge edge between paths
-            bridge = [e for e in edges if e[0].startswith("T") and e[1].startswith("G")] or \
-                     [e for e in edges if e[0].startswith("G") and e[1].startswith("T")]
-            if not bridge:
-                issues.append(ValidationIssue("NO_PARAMETER_BRIDGE", "WARNING", "缺少训练→生成参数传递连接", fid))
-
-        # ── Figure 4: dual input Z1/Z2 merge ──
-        if "插值" in figure.title or "潜在空间" in figure.title:
-            ids = set(nodes)
-            has_z1 = any("Z_1" in v or "Z1" in v or "Z₁" in v for v in nodes.values())
-            has_z2 = any("Z_2" in v or "Z2" in v or "Z₂" in v for v in nodes.values())
-            if not (has_z1 and has_z2):
-                issues.append(ValidationIssue("NO_DUAL_INPUT", "ERROR", "缺少 Z₁/Z₂ 双输入", fid))
-            merge_targets = [t for _, t in edges if sum(1 for s, tt in edges if tt == t) >= 2]
-            if not merge_targets:
-                issues.append(ValidationIssue("NO_MERGE_NODE", "ERROR", "缺少双输入合流节点", fid))
-            out_edges = [s for s, t in edges if s in merge_targets]
-            if not out_edges:
-                issues.append(ValidationIssue("NO_MERGE_OUTPUT", "ERROR", "合流节点无输出", fid))
-
-        # ── Figure 2: real structure or explicit omission ──
-        if "转子设计变量" in figure.title or "设计变量标注" in figure.title:
-            prov = getattr(figure, "provenance", "") or "generated"
-            if prov == "omitted":
-                issues.append(ValidationIssue("FIGURE_OMITTED", "INFO", "图2已标记为待用户补充（未嵌入推荐版）", fid))
-            elif prov != "extracted" and prov != "uploaded":
-                issues.append(ValidationIssue("FAKE_STRUCTURE_FIGURE", "ERROR",
-                                              f"图2来源为 {prov}，结构示意图必须为真实图或明确标记待补充", fid))
+        for edge in edges:
+            if edge[0] not in nodes or edge[1] not in nodes:
+                issues.append(ValidationIssue("DANGLING_ARROW", "ERROR", "连接端点不是已声明节点", fid))
+        for node_id in getattr(figure, "required_node_ids", []) or []:
+            if node_id not in nodes:
+                issues.append(ValidationIssue("REQUIRED_NODE_MISSING", "ERROR", f"缺少必需节点 {node_id}", fid))
+        for edge_id in getattr(figure, "required_edge_ids", []) or []:
+            source, separator, target = edge_id.partition("->")
+            if not separator or (source, target) not in edges:
+                issues.append(ValidationIssue("REQUIRED_EDGE_MISSING", "ERROR", f"缺少必需连接 {edge_id}", fid))
+        provenance = getattr(figure, "provenance", "") or "generated"
+        if provenance == "extracted" and not getattr(figure, "source_figure_ref", ""):
+            issues.append(ValidationIssue("SOURCE_FIGURE_REF_MISSING", "ERROR", "提取图缺少案例内来源引用", fid))
         return issues
 
 

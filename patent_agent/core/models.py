@@ -571,6 +571,16 @@ class FigureSpec(BaseModel):
     case_id: str = ""
     semantic_keywords: list[str] = Field(default_factory=list)
     source_feature_ids: list[str] = Field(default_factory=list)
+    # V7.1 declarative graph contract.  These fields describe why the figure
+    # exists and what the renderer must preserve; they contain no domain data.
+    purpose: str = ""
+    source_type: str = "generated_from_facts"
+    source_fact_ids: list[str] = Field(default_factory=list)
+    required_node_ids: list[str] = Field(default_factory=list)
+    required_edge_ids: list[str] = Field(default_factory=list)
+    optional_node_ids: list[str] = Field(default_factory=list)
+    caption: str = ""
+    source_figure_ref: str = ""
 
 
 class DisclosureDraft(BaseModel):

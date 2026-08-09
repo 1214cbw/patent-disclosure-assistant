@@ -179,6 +179,7 @@ class PatentDisclosurePlanner:
         self.provider = provider
         self.max_title_cjk = max_title_cjk
         self.cache_dir = cache_dir
+        self.term_normalizer = None
 
     # ── title ────────────────────────────────────────────────────────────
     def generate_title(self, understanding, strategy) -> str:
@@ -213,9 +214,43 @@ class PatentDisclosurePlanner:
             f"TITLE_GATE_FAILED: 系统生成的发明名称非中文或超长: {title!r}"
         )
 
+    def generate_section_titles(self, clusters: list[list]) -> list[str]:
+        """Plan concise semantic titles independently from section prose."""
+        from patent_agent.v7_1.quality import HeadingCompletenessValidator
+
+        items = []
+        for index, cluster in enumerate(clusters, 1):
+            statements = [_clean_statement(f) for f in cluster[:8]]
+            items.append({"index": index, "facts": statements})
+        prompt = (
+            "V7.1_SECTION_TITLE_SCHEMA\n"
+            "请仅依据每组技术事实，为专利技术方案的各个环节规划一个独立、完整、简洁的中文名词性标题。\n"
+            "标题不是正文摘要，不得从正文截取，不得以‘本环节’‘本步骤’开头，不得以连词或助词结尾。\n"
+            "不得添加材料未支持的技术内容。不要包含5.x编号。\n"
+            f"事实组：{json.dumps(items, ensure_ascii=False)}\n"
+            "仅输出JSON对象：{\"titles\":[\"标题一\",\"标题二\"]}"
+        )
+        last_titles: list[str] = []
+        for _ in range(2):
+            text = _text_retry(self.provider, system_prompt=CHINESE_STYLE_RULES,
+                               user_prompt=prompt, cache_dir=self.cache_dir)
+            match = re.search(r"\{.*\}", text, re.S)
+            try:
+                data = json.loads(match.group(0) if match else text)
+                last_titles = [str(item).strip() for item in data.get("titles", [])]
+            except (json.JSONDecodeError, AttributeError, TypeError):
+                last_titles = []
+            if len(last_titles) != len(clusters):
+                continue
+            result = HeadingCompletenessValidator().validate(last_titles)
+            if result.status == "PASS" and all(2 <= len(title) <= 36 for title in last_titles):
+                return last_titles
+        raise ValueError(f"SECTION_TITLE_GATE_FAILED: {last_titles!r}")
+
     # ── content plan ─────────────────────────────────────────────────────
     def build_plan(
         self, understanding, strategy, figures, clusters, title: str = "",
+        section_titles: list[str] | None = None,
     ) -> list[dict]:
         """Build the full 9-section disclosure plan.
 
@@ -264,8 +299,15 @@ class PatentDisclosurePlanner:
             "evidence_ids": all_evidence,
         })
         for index, cluster in enumerate(clusters, 1):
+            semantic_title = (
+                section_titles[index - 1]
+                if section_titles is not None and index <= len(section_titles)
+                else f"技术环节{index}"
+            )
             plan.append({
-                "section_id": f"05-{index:02d}", "title": "", "kind": "solution",
+                "section_id": f"05-{index:02d}",
+                "title": f"5.{index} {semantic_title}",
+                "kind": "solution",
                 "facts": cluster,
                 "evidence_ids": ev_ids(cluster),
             })
@@ -314,7 +356,19 @@ class PatentDisclosurePlanner:
         facts_all = [f for f in (getattr(understanding, "facts", []) or [])
                      if getattr(f, "review_status", None) != ReviewStatus.REJECTED]
         clusters = cluster_facts(facts_all)
-        plan = self.build_plan(understanding, strategy, figures, clusters, title=title)
+        source_texts = [_clean_statement(f) for f in facts_all]
+        if evidence_store is not None:
+            source_texts.extend(
+                str(getattr(chunk, "raw_text", "") or getattr(chunk, "normalized_text", ""))
+                for chunk in evidence_store.all()
+            )
+        from patent_agent.v7_1.quality import TechnicalTerminologyNormalizer
+        self.term_normalizer = TechnicalTerminologyNormalizer.from_source_texts(source_texts)
+        section_titles = self.generate_section_titles(clusters)
+        plan = self.build_plan(
+            understanding, strategy, figures, clusters, title=title,
+            section_titles=section_titles,
+        )
 
         sections: list[GroundedSection] = []
         for sec in plan:
@@ -381,6 +435,8 @@ class PatentDisclosurePlanner:
             pid = f"DISC-{sec['section_id']}-P{para_idx:03d}"
             para_idx += 1
             text = _clean_html(text)  # never ship <sub>/<sup> markup to the docx
+            if self.term_normalizer is not None:
+                text = self.term_normalizer.normalize(text)
             return GroundedParagraph(
                 paragraph_id=pid, section_id=sec["section_id"], text=text,
                 evidence_ids=(evidence or sec["evidence_ids"])[:6],
@@ -525,16 +581,6 @@ class PatentDisclosurePlanner:
                 paragraphs.append(para(t))
 
         title = sec["title"] or self._default_title(sec)
-        if kind == "solution" and paragraphs:
-            # dynamic subsection title from the LLM's own opening sentence
-            first = paragraphs[0].text
-            for sep in ("。", "；", "；", "！", "？", "，"):
-                head = first.split(sep)[0]
-                if head.strip():
-                    first = head
-                    break
-            num = int(sec["section_id"].split("-")[1])
-            title = f"5.{num} " + first.strip()[:24]
         return GroundedSection(section_id=sec["section_id"], title=title, paragraphs=paragraphs)
 
     def _default_title(self, sec) -> str:
@@ -581,6 +627,11 @@ def generate_chinese_claims(title: str, strategy, understanding, provider,
         raise RuntimeError(f"V7_CLAIMS_LLM_FAILED: JSON 解析失败: {exc}") from exc
 
     by_index = {item["index"]: item["text"] for item in parsed}
+    from patent_agent.v7_1.quality import TechnicalTerminologyNormalizer
+    normalizer = TechnicalTerminologyNormalizer.from_source_texts(
+        [str(getattr(fact, "statement", "")) for fact in (getattr(understanding, "facts", []) or [])]
+        + [str(getattr(statement, "text", "")) for statement in statements]
+    )
     features = []
     for i, statement in enumerate(statements, 1):
         facts = [
@@ -590,6 +641,7 @@ def generate_chinese_claims(title: str, strategy, understanding, provider,
         ]
         zh_text = by_index.get(i) or str(getattr(statement, "text", ""))
         zh_text = _clean_html(zh_text)
+        zh_text = normalizer.normalize(zh_text)
         features.append(ClaimFeature(
             feature_id=f"CORE-F{i:03d}", text=zh_text,
             source_fact_ids=[getattr(f, "fact_id", "") for f in facts],

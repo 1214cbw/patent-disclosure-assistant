@@ -19,7 +19,7 @@ from patent_agent.evidence import EvidenceStore
 from patent_agent.human_review import HumanCorrection, HumanReviewManager, ReviewImport
 from patent_agent.progress import ProgressManager
 from patent_agent.real_case import RealCaseManager
-from patent_agent.workflow import RealCaseWorkflow
+from patent_agent.workflow import RealCaseWorkflow, build_real_case_workflow
 
 from .jobs import JobManager
 
@@ -669,7 +669,10 @@ def continue_case(case_id: str, payload: ContinueRequest):
         if not candidate.is_file():
             raise HTTPException(404, "先前技术文件不存在")
         prior_art = candidate
-    return jobs.submit("CONTINUE_CASE", case_id, lambda: RealCaseWorkflow(settings).continue_case(case_id, prior_art))
+    return jobs.submit(
+        "CONTINUE_CASE", case_id,
+        lambda: build_real_case_workflow(settings, case_id).continue_case(case_id, prior_art),
+    )
 
 
 @app.get("/api/real-cases/{case_id}/stage/{alias}")
@@ -844,21 +847,7 @@ def _auto_chinese_title(manifest) -> str:
     # If already has Chinese characters, return as-is
     if any("一" <= ch <= "鿿" for ch in title):
         return title
-    # Simple heuristics for common English tech terms
-    mappings = {
-        "Motor Topology": "电机拓扑",
-        "Image Generation": "图像生成",
-        "Latent Diffusion Model": "潜在扩散模型",
-        "Based on": "基于",
-        "Method": "方法",
-        "A": "一种",
-    }
-    cn = title
-    for eng, chi in mappings.items():
-        cn = cn.replace(eng, chi)
-    if not any("一" <= ch <= "鿿" for ch in cn):
-        cn = f"基于{title}的技术方案"
-    return cn
+    return "待生成中文发明名称"
 
 
 def _apply_review(case_id: str, checkpoint: str, corrections: list[HumanCorrection]):

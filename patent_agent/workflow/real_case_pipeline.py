@@ -149,6 +149,11 @@ class RealCaseWorkflow:
             _mark_current(case_dir, "candidate", "strategy")
         elif manifest.current_checkpoint == "B":
             if review.machine.records["B"].status != CheckpointStatus.APPROVED: raise ValueError("CHECKPOINT_B_NOT_APPROVED")
+            if not manifest.synthetic and self.provider is None:
+                raise RuntimeError(
+                    "LLM_PROVIDER_REQUIRED_FOR_CHECKPOINT_B_TO_C: "
+                    "use the standard checkpoint-continue entry point with an approved provider"
+                )
             self._draft_c(case_id); root = case_dir / "review" / "checkpoint_C"; manifest.current_checkpoint = "C"; manifest.case_state = CaseWorkflowState.C_REVIEW
             _mark_current(case_dir, "strategy", "disclosure", "claim_feature", "claim", "support_matrix", "scope_review")
         else:
@@ -180,6 +185,7 @@ class RealCaseWorkflow:
         from patent_agent.v7.cross_case import (CrossCaseContaminationValidator,
                                                 FigureSemanticValidator,
                                                 PlaceholderLeakValidator,
+                                                build_case_evidence_fingerprint,
                                                 case_concepts_from_understanding)
         from patent_agent.v7.disclosure_planner import (PatentDisclosurePlanner,
                                                         generate_chinese_claims)
@@ -190,7 +196,11 @@ class RealCaseWorkflow:
         language = ChinesePatentLanguageValidator()
         llm_cache_dir = case_dir / "llm_cache"
         planner = PatentDisclosurePlanner(provider=self.provider, cache_dir=llm_cache_dir)
-        figures = FigurePlannerV7(case_id, understanding, evidence).plan()
+        fingerprint = build_case_evidence_fingerprint(understanding, evidence)
+        figures = FigurePlannerV7(
+            case_id, understanding, evidence, provider=self.provider,
+            cache_dir=llm_cache_dir,
+        ).plan()
         disclosure = planner.plan(case_id, understanding, evidence, strategy, figures=figures)
         title_result = PatentTitleValidator().validate(disclosure.title)
         if not title_result.passed:
@@ -202,7 +212,7 @@ class RealCaseWorkflow:
         if not captions.passed:
             raise V7GateError("LANGUAGE_GATE_FAILED",
                               "图注非中文: " + "；".join(captions.issues[:4]))
-        semantic = FigureSemanticValidator(concepts).validate(figures)
+        semantic = FigureSemanticValidator(concepts, fingerprint).validate(figures)
         if not semantic.passed:
             raise V7GateError("FIGURE_SEMANTIC_FAIL",
                               "；".join(semantic.details[:4]))
@@ -212,7 +222,7 @@ class RealCaseWorkflow:
             completeness_validator=DisclosureCompletenessValidator(),
             unsupported_validator=UnsupportedParagraphValidator(),
             contamination_validator=CrossCaseContaminationValidator(
-                concepts, self._other_case_fingerprints(case_id)),
+                concepts, self._other_case_fingerprints(case_id), fingerprint),
             placeholder_validator=PlaceholderLeakValidator(),
         )
         self._write_gate_report(case_dir, report)
@@ -280,18 +290,23 @@ class RealCaseWorkflow:
                                                 FigureSemanticValidator,
                                                 FormulaScopeValidator,
                                                 PlaceholderLeakValidator,
+                                                build_case_evidence_fingerprint,
                                                 case_concepts_from_understanding)
         from patent_agent.v7.figure_planner import FigurePlannerV7
         from patent_agent.v7.gates import V7GateError, run_disclosure_gates, run_figure_gates
         from patent_agent.v7.language_gate import ChinesePatentLanguageValidator
         language = ChinesePatentLanguageValidator()
         concepts = case_concepts_from_understanding(understanding)
-        figures = FigurePlannerV7(case_id, understanding, evidence).plan()
+        fingerprint = build_case_evidence_fingerprint(understanding, evidence)
+        figures = FigurePlannerV7(
+            case_id, understanding, evidence, provider=self.provider,
+            cache_dir=case_dir / "llm_cache",
+        ).plan()
         figures = [_ground_figure(item, understanding) for item in figures]
         figures = [PatentFigureRenderer().render(item, output / "figures") for item in figures]
         figure_report = run_figure_gates(
             case_id=case_id, figures=figures, language_validator=language,
-            figure_semantic_validator=FigureSemanticValidator(concepts),
+            figure_semantic_validator=FigureSemanticValidator(concepts, fingerprint),
             formula_scope_validator=FormulaScopeValidator(
                 {item.equation_id for item in understanding.equations}),
             draft_equations=knowledge.equations,
@@ -303,7 +318,7 @@ class RealCaseWorkflow:
             completeness_validator=DisclosureCompletenessValidator(),
             unsupported_validator=UnsupportedParagraphValidator(),
             contamination_validator=CrossCaseContaminationValidator(
-                concepts, self._other_case_fingerprints(case_id)),
+                concepts, self._other_case_fingerprints(case_id), fingerprint),
             placeholder_validator=PlaceholderLeakValidator(),
         )
         self._write_gate_report(case_dir, disclosure_report)
@@ -363,13 +378,15 @@ class RealCaseWorkflow:
                                                   UnsupportedParagraphValidator)
         from patent_agent.v7.cross_case import (CrossCaseContaminationValidator,
                                                 PlaceholderLeakValidator,
+                                                build_case_evidence_fingerprint,
                                                 case_concepts_from_understanding)
         manifest = self.manager.load(case_id)
         complete = DisclosureCompletenessValidator().validate(disclosure)
         grounded = UnsupportedParagraphValidator().validate(disclosure)
         concepts = case_concepts_from_understanding(understanding)
         contamination = CrossCaseContaminationValidator(
-            concepts, self._other_case_fingerprints(case_id)).validate(
+            concepts, self._other_case_fingerprints(case_id),
+            build_case_evidence_fingerprint(understanding)).validate(
                 disclosure=disclosure, claims=claims, figures=figures)
         placeholders = PlaceholderLeakValidator().validate(
             disclosure=disclosure, claims=claims, figures=figures)

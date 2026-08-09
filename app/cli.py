@@ -130,8 +130,9 @@ def main(argv=None):
         from patent_agent.workflow import RealCaseWorkflow
         RealCaseWorkflow(settings).approve(args.case_id, args.checkpoint, risk_acknowledged=args.ack_risk); print("approved")
     elif args.command == "checkpoint-continue":
-        from patent_agent.workflow import RealCaseWorkflow
-        print(RealCaseWorkflow(settings).continue_case(args.case_id, Path(args.prior_art) if args.prior_art else None))
+        from patent_agent.workflow import build_real_case_workflow
+        print(build_real_case_workflow(settings, args.case_id).continue_case(
+            args.case_id, Path(args.prior_art) if args.prior_art else None))
     elif args.command == "claim-scope":
         from patent_agent.real_case import RealCaseManager
         manager = RealCaseManager(settings.project_root); print(manager.case_store.latest_stage_path(args.case_id, "p1_claim_scope").read_text(encoding="utf-8"))
