@@ -212,6 +212,28 @@ def _parameters(text: str) -> set[str]:
     }
 
 
+def unsupported_local_parameters(text: str, source: str) -> list[str]:
+    """Return exact generated parameters not supported by paragraph evidence."""
+    source_signature = re.sub(
+        r"[^a-z0-9.%]+", "", source.lower().replace("×", "x")
+    )
+    unsupported: list[str] = []
+    for parameter in _parameters(text):
+        signature = re.sub(
+            r"[^a-z0-9.%]+", "", parameter.lower().replace("×", "x")
+        )
+        numbers = re.findall(r"\d+(?:\.\d+)?", signature)
+        unit = "".join(re.findall(r"[a-z%]+", signature))
+        supported = signature in source_signature or (
+            bool(numbers)
+            and all(number in source_signature for number in numbers)
+            and (not unit or unit in source_signature)
+        )
+        if not supported:
+            unsupported.append(parameter)
+    return sorted(set(unsupported))
+
+
 def _semantic_strings(value) -> list[str]:
     if value is None:
         return []
@@ -866,24 +888,12 @@ class PatentSemanticsValidator:
                     r"^\s*(?:步骤)?S\d+\s*[：:、.．]?\s*", "", scoped_text)
                 parameter_scope = re.sub(
                     r"^\s*\d+(?:\.\d+)+\s+", "", parameter_scope)
-                local_parameter_text = re.sub(
-                    r"[^a-z0-9.%]+", "", supporting_source.lower().replace("×", "x"))
-                for parameter in _parameters(parameter_scope):
-                    signature = re.sub(
-                        r"[^a-z0-9.%]+", "", parameter.lower().replace("×", "x"))
-                    numbers = re.findall(r"\d+(?:\.\d+)?", signature)
-                    unit = "".join(re.findall(r"[a-z%]+", signature))
-                    supported = (signature in local_parameter_text or (
-                        bool(numbers)
-                        and all(number in local_parameter_text for number in numbers)
-                        and (not unit or unit in local_parameter_text)
+                for parameter in unsupported_local_parameters(parameter_scope, supporting_source):
+                    findings.append(SemanticFinding(
+                        code="UNSUPPORTED_PARAMETER",
+                        message=(f"Generated exact parameter lacks source support in {section_id}: "
+                                 f"{parameter} | {scoped_text[:100]}")
                     ))
-                    if not supported:
-                        findings.append(SemanticFinding(
-                            code="UNSUPPORTED_PARAMETER",
-                            message=(f"Generated exact parameter lacks source support in {section_id}: "
-                                     f"{parameter} | {scoped_text[:100]}")
-                        ))
                 source_lower = supporting_source.lower()
                 for generated_term, aliases in dimension_aliases.items():
                     image_matrix_inference = (

@@ -493,6 +493,22 @@ def test_generated_parameter_passes_when_local_evidence_supports_it():
     assert "UNSUPPORTED_PARAMETER" not in _codes(report)
 
 
+def test_paragraph_generation_retries_unsupported_exact_parameter():
+    responses = iter([
+        "在该处理过程中共评估3000个候选设计方案。",
+        "在该处理过程中共评估3200个候选设计方案。",
+    ])
+
+    class Provider:
+        def generate_text(self, *, system_prompt, user_prompt):
+            return SimpleNamespace(text=next(responses))
+
+    paragraphs = PatentDisclosurePlanner(provider=Provider())._llm_paragraphs(
+        "说明评估规模。", "The process evaluates 3200 candidate designs.", 1
+    )
+    assert paragraphs == ["在该处理过程中共评估3200个候选设计方案。"]
+
+
 def test_embodiment_step_number_is_not_treated_as_parameter():
     report = _validate([_plan()], generated_texts=[{
         "text": "[SECTION:07-01] S3：训练模型并输出潜在样本。",

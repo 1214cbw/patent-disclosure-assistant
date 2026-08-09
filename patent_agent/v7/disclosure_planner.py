@@ -572,6 +572,10 @@ class PatentDisclosurePlanner:
             has_inline_formula = any(
                 _contains_generated_formula(p) for p in paragraphs
             )
+            from patent_agent.v7_2.semantics import unsupported_local_parameters
+            unsupported_parameters = sorted(set().union(*(
+                set(unsupported_local_parameters(p, context)) for p in paragraphs
+            ))) if paragraphs else []
             unsupported: list[str] = []
             if paragraphs and self.evidence_fingerprint is not None:
                 from patent_agent.v7.cross_case import _latin_tokens
@@ -579,7 +583,8 @@ class PatentDisclosurePlanner:
                 unsupported = sorted(
                     output_tokens - set(self.evidence_fingerprint.technical_tokens)
                 )
-            if paragraphs and not has_inline_formula and not unsupported:
+            if (paragraphs and not has_inline_formula and not unsupported
+                    and not unsupported_parameters):
                 return paragraphs
             instructions: list[str] = []
             if has_inline_formula:
@@ -591,6 +596,11 @@ class PatentDisclosurePlanner:
                 instructions.append(
                     "删除参考材料未出现的英文技术词或英文展开（包括："
                     + "、".join(unsupported[:12]) + "）；不得用近义英文替换"
+                )
+            if unsupported_parameters:
+                instructions.append(
+                    "删除或纠正参考材料未出现的精确数值/单位（包括："
+                    + "、".join(unsupported_parameters[:12]) + "）；不得估算或取整"
                 )
             feedback = (
                 f"\n\n第{attempt + 1}次输出未通过证据边界检查。请重新撰写："
