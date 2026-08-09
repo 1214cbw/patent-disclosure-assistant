@@ -75,6 +75,14 @@ def _collect_evidence_ids(value) -> set[str]:
         return set().union(*(_collect_evidence_ids(item) for item in value)) if value else set()
     return set()
 
+
+def _remove_unsupported_domain_expansion(text: str, source: str) -> str:
+    """Conservatively delete a domain qualifier absent from supplied source."""
+    source_lower = source.lower()
+    if "多物理场" not in source and not re.search(r"multi[- ]?physic", source_lower):
+        return re.sub(r"多物理场(?=(?:性能)?(?:评估|约束|预测|推断))", "", text)
+    return text
+
 CHINESE_STYLE_RULES = """
 ## 中文专利交底书撰写规则（严格遵守）
 
@@ -580,7 +588,7 @@ class PatentDisclosurePlanner:
                 "自然过渡到本发明要解决的问题。不要复述论文引言。不得把多个优化目标"
                 "改写为多物理场约束，也不得引入来源未列出的物理场、约束或应用场景。", source, 6)
             for t in texts:
-                paragraphs.append(para(t))
+                paragraphs.append(para(_remove_unsupported_domain_expansion(t, source)))
 
         elif kind == "invention":
             problems = "；".join(

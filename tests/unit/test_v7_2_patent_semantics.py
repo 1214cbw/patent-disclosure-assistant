@@ -453,3 +453,10 @@ def test_reviewed_training_branch_is_ordered_before_candidate_generation():
     bundle = EvidenceBoundEmbodimentPlanner().plan(
         understanding, SimpleNamespace(independent_claim_core=[]))
     assert [step.fact_ids for step in bundle.embodiments[0].ordered_steps] == [["TRAIN"], ["GEN"]]
+
+
+def test_background_domain_qualifier_is_removed_only_when_source_absent():
+    from patent_agent.v7.disclosure_planner import _remove_unsupported_domain_expansion
+    text = "采用有限元进行多物理场性能评估。"
+    assert _remove_unsupported_domain_expansion(text, "finite-element evaluation") == "采用有限元进行性能评估。"
+    assert _remove_unsupported_domain_expansion(text, "multiphysics evaluation") == text
