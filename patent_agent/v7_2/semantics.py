@@ -696,6 +696,9 @@ class PatentSemanticsValidator:
         online_pattern = re.compile(r"实时(?:采集|控制|获取)|每(?:个|次)控制周期|位置传感器|观测器")
         control_promotion_pattern = re.compile(r"最优控制策略|在线控制策略|控制器")
         alternative_pattern = re.compile(r"可采用|可以采用|可选用|典型取值|例如")
+        speculative_pending_pattern = re.compile(
+            r"(?:可包含|可以包含|可选(?:为|用)?).{0,100}(?:待.{0,20}(?:补充|确认)|具体.{0,20}待)"
+        )
 
         for plan in embodiments:
             for step in plan.ordered_steps:
@@ -799,9 +802,10 @@ class PatentSemanticsValidator:
                 parameter_scope = re.sub(
                     r"^\s*(?:步骤)?S\d+\s*[：:、.．]?\s*", "", scoped_text)
                 local_parameter_text = re.sub(
-                    r"[\s,，]", "", supporting_source.lower()).replace("×", "x")
+                    r"[^a-z0-9.%]+", "", supporting_source.lower().replace("×", "x"))
                 for parameter in _parameters(parameter_scope):
-                    signature = re.sub(r"[\s,，]", "", parameter.lower()).replace("×", "x")
+                    signature = re.sub(
+                        r"[^a-z0-9.%]+", "", parameter.lower().replace("×", "x"))
                     numbers = re.findall(r"\d+(?:\.\d+)?", signature)
                     unit = "".join(re.findall(r"[a-z%]+", signature))
                     supported = (signature in local_parameter_text or (
@@ -850,6 +854,13 @@ class PatentSemanticsValidator:
                             message=(f"Generated downstream training relation lacks local evidence in "
                                      f"{section_id}: {relation.group(0)[:120]}")
                         ))
+                if (speculative_pending_pattern.search(scoped_text)
+                        and not speculative_pending_pattern.search(supporting_source)):
+                    findings.append(SemanticFinding(
+                        code="UNSUPPORTED_ALTERNATIVE",
+                        message=(f"Generated speculative option is not cured by marking details pending "
+                                 f"in {section_id}: {scoped_text[:120]}")
+                    ))
             if not section_id.startswith("09") and unsupported_expansion(scoped_text, supporting_source):
                 findings.append(SemanticFinding(
                     code="UNSUPPORTED_GENERALIZATION",

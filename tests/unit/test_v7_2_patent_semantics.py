@@ -500,3 +500,27 @@ def test_generated_downstream_training_relation_requires_local_evidence():
         "source_text": "Train flow matching to generate new latent samples.",
     }])
     assert "UNSUPPORTED_GENERALIZATION" in _codes(report)
+
+
+def test_parameter_punctuation_variation_does_not_create_false_failure():
+    report = _validate([_plan()], generated_texts=[{
+        "text": "[SECTION:05-08] 目标工况为8000 r/min。",
+        "source_text": "the 8000-r/min target condition",
+    }])
+    assert "UNSUPPORTED_PARAMETER" not in _codes(report)
+
+
+def test_ratio_cannot_be_silently_converted_to_derived_percentages():
+    report = _validate([_plan()], generated_texts=[{
+        "text": "[SECTION:05-09] 按7:2:1划分，即70%、20%和10%。",
+        "source_text": "The dataset is split at a ratio of 7:2:1.",
+    }])
+    assert "UNSUPPORTED_PARAMETER" in _codes(report)
+
+
+def test_speculative_option_remains_unsupported_when_marked_pending():
+    report = _validate([_plan()], generated_texts=[{
+        "text": "[SECTION:05-08] 设计向量可包含绕组配置等参数，具体组成待发明人补充。",
+        "source_text": "The outer-loop objective uses a design vector u.",
+    }])
+    assert "UNSUPPORTED_ALTERNATIVE" in _codes(report)
