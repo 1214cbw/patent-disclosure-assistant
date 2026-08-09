@@ -685,7 +685,11 @@ class PatentDisclosurePlanner:
         if payload.get("supported") is True:
             return []
         phrases = [str(item).strip() for item in payload.get("unsupported_phrases", []) if str(item).strip()]
-        return phrases or ["候选段落未通过证据蕴含审计"]
+        conservative_boundary = re.compile(r"仅限|不涉及|不构成|边界")
+        material = [phrase for phrase in phrases if not conservative_boundary.search(phrase)]
+        if phrases and not material:
+            return []
+        return material or ["候选段落未通过证据蕴含审计"]
 
     def _generate_section(self, case_id, sec, understanding, evidence_store, strategy):
         kind = sec["kind"]

@@ -589,6 +589,18 @@ def test_open_vocabulary_entailment_reports_unknown_domain_phrase():
     assert issues == ["未由证据支持的应用领域"]
 
 
+def test_entailment_allows_conservative_scope_boundary_phrase():
+    class Provider:
+        def generate_text(self, *, system_prompt, user_prompt):
+            return SimpleNamespace(text=(
+                '{"supported":false,"unsupported_phrases":["比较基线不构成本方案组成模块"]}'
+            ))
+
+    assert PatentDisclosurePlanner(provider=Provider())._evidence_entailment_issues(
+        "比较基线不构成本方案组成模块。", "Compare against a baseline."
+    ) == []
+
+
 def test_embodiment_step_number_is_not_treated_as_parameter():
     report = _validate([_plan()], generated_texts=[{
         "text": "[SECTION:07-01] S3：训练模型并输出潜在样本。",
