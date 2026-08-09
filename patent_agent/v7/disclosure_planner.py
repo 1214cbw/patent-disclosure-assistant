@@ -226,6 +226,7 @@ class PatentDisclosurePlanner:
         facts = " ".join(
             _clean_statement(f) for f in (getattr(understanding, "facts", []) or [])[:8]
         )[:800]
+        previous_title = ""
         for attempt in range(2):
             prompt = (
                 "请为以下技术方案生成一个简洁、技术准确的中文发明专利名称。\n"
@@ -237,6 +238,11 @@ class PatentDisclosurePlanner:
                 "2. 不含标点、不含英文缩写、不含'一种基于'以外的多余前缀；\n"
                 "3. 仅输出 JSON：{\"title\": \"...\"}"
             )
+            if previous_title:
+                prompt += (
+                    f"\n上一次名称为“{previous_title}”，超过长度或格式要求。"
+                    "本次必须删减非必要修饰词并输出更短名称。"
+                )
             text = _text_retry(self.provider, system_prompt=CHINESE_STYLE_RULES,
                                user_prompt=prompt, cache_dir=self.cache_dir)
             match = re.search(r'"title"\s*:\s*"([^"]+)"', text)
@@ -244,6 +250,7 @@ class PatentDisclosurePlanner:
             title = title.strip().strip('"').strip()
             if title and len(CJK.findall(title)) <= self.max_title_cjk:
                 return title
+            previous_title = title
         raise ValueError(
             f"TITLE_GATE_FAILED: 系统生成的发明名称非中文或超长: {title!r}"
         )

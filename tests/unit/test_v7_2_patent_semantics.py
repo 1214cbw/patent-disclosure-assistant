@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-from patent_agent.v7.disclosure_planner import _align_period_qualifier
+from patent_agent.v7.disclosure_planner import PatentDisclosurePlanner, _align_period_qualifier
 from patent_agent.agents.technical_understanding_v2 import _retrieve_task_context
 from patent_agent.v7_2.semantics import (
     EmbodimentPlan,
@@ -581,3 +581,21 @@ def test_whole_source_context_keeps_late_pages_and_excludes_references():
     context = _retrieve_task_context(store, max_chars=1000)
     ids = {item["evidence_id"] for item in context["evidence"]}
     assert ids == {"early", "late"}
+
+
+def test_title_retry_uses_overlength_feedback_instead_of_same_cached_prompt():
+    prompts = []
+
+    class Provider:
+        def generate_text(self, *, system_prompt, user_prompt):
+            prompts.append(user_prompt)
+            value = ("一种包含许多不必要修饰词且明显超过限定长度的复杂技术方案方法"
+                     if len(prompts) == 1 else "一种转子拓扑优化方法")
+            return SimpleNamespace(text=f'{{"title":"{value}"}}')
+
+    understanding = SimpleNamespace(technical_field=[], facts=[])
+    strategy = SimpleNamespace(inventive_concept="技术构思")
+    title = PatentDisclosurePlanner(provider=Provider(), max_title_cjk=25).generate_title(
+        understanding, strategy)
+    assert title == "一种转子拓扑优化方法"
+    assert "上一次名称" in prompts[1]
