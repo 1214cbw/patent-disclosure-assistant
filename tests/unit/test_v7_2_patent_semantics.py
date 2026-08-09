@@ -402,3 +402,18 @@ def test_pending_substantive_primary_step_fails_generated_text_gate():
         "S3：本步骤的输入、处理及输出待发明人补充。"
     ])
     assert "PRIMARY_EMBODIMENT_INCOMPLETE" in _codes(report)
+
+
+def test_generated_multiphysics_prediction_requires_source_support():
+    report = _validate([_plan()], generated_texts=[
+        "该代理模型用于电磁、热等多物理场性能预测。"
+    ])
+    assert "UNSUPPORTED_GENERALIZATION" in _codes(report)
+
+
+def test_source_supported_multiphysics_prediction_is_not_fixed_lexicon_blocked():
+    registry = _registry(source_texts=["该方法执行电磁、热等多物理场性能预测。"])
+    report = _validate([_plan()], registry=registry, generated_texts=[
+        "该方法执行电磁、热等多物理场性能预测。"
+    ])
+    assert "UNSUPPORTED_GENERALIZATION" not in _codes(report)

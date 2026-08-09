@@ -84,6 +84,7 @@ CHINESE_STYLE_RULES = """
    流匹配（Flow Matching，FM）；后续统一用中文或缩写。
 3. 数学符号、公式、拉丁缩写、型号、材料牌号、单位必须原样保留，一字不改。
    只翻译自然语言；方程内的文字（min、E、D_KL、N(0,I) 等）保持原样。
+   英文缩写不得按普通英文单词的词义直译；若无法从来源确认中文全称，仅保留缩写。
 
 ### 专利表达
 4. 使用"本技术方案""本发明""所述"等专利书面语。
@@ -612,6 +613,8 @@ class PatentDisclosurePlanner:
             texts = self._llm_paragraphs(
                 "技术方案详细说明的一个环节：把事实组织成连贯的技术逻辑"
                 "（输入→处理→输出），包含关键参数与公式（公式保留原文）。"
+                "不得把无条件生成改写为按目标条件生成，不得把单一物理量预测扩大为多物理场预测，"
+                "不得自行增加二值、梯度或其他输出形式；使用‘例如’时，该例子必须逐字存在于事实或证据。"
                 "第一段的第一句话用'本环节'开头描述该环节主题。", context, 4)
             for t in texts:
                 paragraphs.append(para(t))
@@ -658,12 +661,17 @@ class PatentDisclosurePlanner:
                 next_fact = (embodiment.ordered_steps[index].processing
                              if index < len(embodiment.ordered_steps)
                              else "；".join(embodiment.output_objects))
+                chain_requirement = (
+                    "必须仅依据上述事实写明当前步骤如何承接上游并向下游交付技术输出。"
+                    if index < len(embodiment.ordered_steps)
+                    else "必须仅依据上述事实形成最终技术结果，不得虚构后续步骤。"
+                )
                 context = (
                     f"### 当前步骤事实\n{facts_text}\n\n"
                     f"### 原始证据摘录\n{excerpts}\n\n"
                     f"### 技术链位置\n上游来源事实：{previous_fact}\n"
                     f"下游目标事实：{next_fact}\n"
-                    "必须仅依据上述事实写明当前步骤如何承接上游并向下游交付技术输出。"
+                    f"{chain_requirement}"
                 )
                 texts = self._llm_paragraphs(
                     "V7.2完整实施例中的单一技术步骤。仅重述给定事实，不得添加可选模型、"

@@ -623,9 +623,17 @@ class PatentSemanticsValidator:
         source_terms = {_norm(item) for item in registry.source_terms}
         supported_alternatives = {_norm(item) for item in registry.supported_alternatives}
         supported_parameters = {_norm(item) for item in registry.supported_parameters}
-        expansion_pattern = re.compile(
-            r"图像[、,，]文本|文本[、,，]音频|其它类型的数据|其他类型的数据|任意(?:类型的)?数据"
-        )
+        expansion_patterns = [
+            re.compile(r"图像[、,，]文本|文本[、,，]音频|其它类型的数据|其他类型的数据|任意(?:类型的)?数据"),
+            re.compile(r"(?:电磁|力学|热)[、,，](?:电磁|力学|热).{0,8}多物理场|多物理场(?:性能)?预测"),
+            re.compile(r"(?:二值|连续)[、,，或/]*(?:梯度|连续|二值).{0,8}(?:图|输出|结构)"),
+            re.compile(r"以.{0,30}(?:目标|需求).{0,15}为条件.{0,20}(?:生成|解码)"),
+        ]
+        source_joined = "\n".join(registry.source_texts)
+
+        def unsupported_expansion(text: str) -> bool:
+            return any(pattern.search(text) and not pattern.search(source_joined)
+                       for pattern in expansion_patterns)
         online_pattern = re.compile(r"实时(?:采集|控制|获取)|每(?:个|次)控制周期|位置传感器|观测器")
         alternative_pattern = re.compile(r"可采用|可以采用|可选用|典型取值|例如")
 
@@ -636,7 +644,7 @@ class PatentSemanticsValidator:
                         code="SCENARIO_DRIFT", message=f"Unsupported scenario: {step.scenario.value}",
                         embodiment_id=plan.embodiment_id, step_id=step.step_id,
                     ))
-                if expansion_pattern.search(step.processing):
+                if unsupported_expansion(step.processing):
                     findings.append(SemanticFinding(
                         code="UNSUPPORTED_GENERALIZATION", message="Cross-domain data expansion is unsupported.",
                         embodiment_id=plan.embodiment_id, step_id=step.step_id,
@@ -711,7 +719,7 @@ class PatentSemanticsValidator:
                     code="PRIMARY_EMBODIMENT_INCOMPLETE",
                     message="Generated primary step leaves its substantive implementation pending."
                 ))
-            if expansion_pattern.search(text):
+            if unsupported_expansion(text):
                 findings.append(SemanticFinding(
                     code="UNSUPPORTED_GENERALIZATION", message="Generated prose expands the source domain."
                 ))
