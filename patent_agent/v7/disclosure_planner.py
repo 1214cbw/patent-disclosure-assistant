@@ -600,7 +600,8 @@ class PatentDisclosurePlanner:
                 (getattr(understanding, "technical_field", []) or [])[:4]
             )
             texts = self._llm_paragraphs(
-                "说明本发明所属技术领域及具体应用场景。", source, 2)
+                "仅依据给定文字，用一段话说明本发明所属技术领域。不得补充来源未写明的制造环节、"
+                "应用行业、产品示例、性能目标或使用场景，不得使用‘例如’扩展。", source, 1)
             for t in texts:
                 paragraphs.append(para(t))
             # deterministic fallback paragraph if LLM produced nothing useful
