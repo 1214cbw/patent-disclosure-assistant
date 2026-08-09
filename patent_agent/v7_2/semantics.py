@@ -821,7 +821,14 @@ class PatentSemanticsValidator:
                         ))
                 source_lower = supporting_source.lower()
                 for generated_term, aliases in dimension_aliases.items():
-                    if generated_term in scoped_text and not any(alias in source_lower for alias in aliases):
+                    image_matrix_inference = (
+                        generated_term == "二维"
+                        and any(token in source_lower for token in ("image", "pixel", "图像", "像素"))
+                        and any(token in scoped_text for token in ("图像", "像素", "矩阵"))
+                    )
+                    if (generated_term in scoped_text
+                            and not any(alias in source_lower for alias in aliases)
+                            and not image_matrix_inference):
                         findings.append(SemanticFinding(
                             code="UNSUPPORTED_PARAMETER",
                             message=(f"Generated dimensionality lacks source support in {section_id}: "

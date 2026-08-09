@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+from patent_agent.v7.disclosure_planner import _align_period_qualifier
 from patent_agent.v7_2.semantics import (
     EmbodimentPlan,
     EmbodimentStep,
@@ -524,3 +525,17 @@ def test_speculative_option_remains_unsupported_when_marked_pending():
         "source_text": "The outer-loop objective uses a design vector u.",
     }])
     assert "UNSUPPORTED_ALTERNATIVE" in _codes(report)
+
+
+def test_two_dimensional_pixel_matrix_is_supported_by_image_evidence():
+    report = _validate([_plan()], generated_texts=[{
+        "text": "[SECTION:05-02] 采用512×512像素的二维图像矩阵。",
+        "source_text": "Topology images use a 512x512 pixel representation.",
+    }])
+    assert "UNSUPPORTED_PARAMETER" not in _codes(report)
+
+
+def test_period_qualifier_is_aligned_to_local_evidence():
+    assert _align_period_qualifier(
+        "在完整60°电周期内评估。", "complete 60 degree mechanical period"
+    ) == "在完整60°机械周期内评估。"

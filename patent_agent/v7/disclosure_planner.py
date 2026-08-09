@@ -56,6 +56,18 @@ def _cn_number(value: int) -> str:
     return digits[tens] + "十" + (digits[ones] if ones else "")
 
 
+def _align_period_qualifier(text: str, source: str) -> str:
+    """Conservatively align a generated period qualifier to local evidence."""
+    source_lower = source.lower()
+    mechanical = "机械周期" in source or "mechanical period" in source_lower
+    electrical = "电周期" in source or "electrical period" in source_lower
+    if mechanical and not electrical:
+        return text.replace("电周期", "机械周期")
+    if electrical and not mechanical:
+        return text.replace("机械周期", "电周期")
+    return text
+
+
 def _collect_evidence_ids(value) -> set[str]:
     """Collect evidence anchors from every semantic layer of understanding."""
     if value is None:
@@ -643,7 +655,7 @@ class PatentDisclosurePlanner:
                 "上述边界仅用于约束写作，正文不得复述‘不得’、‘未改写’、‘不涉及’等元说明。"
                 "第一段的第一句话用'本环节'开头描述该环节主题。", context, 4)
             for t in texts:
-                paragraphs.append(para(t))
+                paragraphs.append(para(_align_period_qualifier(t, context)))
 
         elif kind == "figures":
             fig_lines = []
@@ -682,23 +694,16 @@ class PatentDisclosurePlanner:
                 facts_text = "- " + step.processing
                 evidence_ids = list(step.evidence_ids)
                 excerpts = self._evidence_excerpts(evidence_store, evidence_ids, limit=6)
-                previous_facts = ([step.processing for step in embodiment.ordered_steps[:index - 1]]
-                                  if index > 1 else embodiment.input_objects)
-                next_fact = (embodiment.ordered_steps[index].processing
-                             if index < len(embodiment.ordered_steps)
-                             else "；".join(embodiment.output_objects))
                 chain_requirement = (
-                    "必须仅依据上述事实写明当前步骤如何承接上游并向下游交付技术输出。"
+                    "必须仅依据上述事实写明当前步骤的技术输出；可说明该输出进入下一步骤，"
+                    "但不得描述下一步骤的技术内容。"
                     if index < len(embodiment.ordered_steps)
                     else "必须仅依据上述事实形成最终技术结果，不得虚构后续步骤。"
                 )
                 context = (
                     f"### 当前步骤事实\n{facts_text}\n\n"
                     f"### 原始证据摘录\n{excerpts}\n\n"
-                    f"### 已完成的前序事实\n" + "\n".join(f"- {item}" for item in previous_facts) + "\n"
-                    f"下游目标事实：{next_fact}\n"
-                    "当前步骤只可选取证据实际支持的前序输入，不要求机械承接紧邻步骤；"
-                    "若存在并行训练分支，应回接相应的数据准备步骤。"
+                    "当前步骤不得借用其他步骤的事实、参数、处理来源或技术限定。"
                     f"{chain_requirement}"
                 )
                 texts = self._llm_paragraphs(
@@ -715,7 +720,10 @@ class PatentDisclosurePlanner:
                     "这些限制仅约束写作，正文不得复述限制或进行合规自证。不要自行写步骤编号。", context, 1)
                 if not texts:
                     raise RuntimeError("V7_2_EMBODIMENT_STEP_EMPTY")
-                body = re.sub(r"^\s*(?:步骤)?S\d+\s*[：:、.．]?\s*", "", "".join(texts))
+                body = re.sub(
+                    r"^\s*(?:步骤)?S\d+\s*[：:、.．]?\s*", "",
+                    _align_period_qualifier("".join(texts), context),
+                )
                 paragraphs.append(para(
                     f"S{index}：" + body,
                     facts=step.fact_ids, evidence=step.evidence_ids,
