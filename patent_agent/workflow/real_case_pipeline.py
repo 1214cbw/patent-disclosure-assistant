@@ -22,7 +22,7 @@ from patent_agent.search import ManualImportProvider
 from patent_agent.agents.novelty_analysis_v2 import GroundedNoveltyAnalysisAgent
 
 
-def _semantic_paragraph_inputs(disclosure, understanding, evidence) -> list[dict[str, str]]:
+def _semantic_paragraph_inputs(disclosure, understanding, evidence) -> list[dict[str, object]]:
     """Pair each generated paragraph with only its reviewed, case-local support."""
     evidence_by_id = {
         chunk.evidence_id: str(chunk.raw_text or chunk.normalized_text)
@@ -50,6 +50,11 @@ def _semantic_paragraph_inputs(disclosure, understanding, evidence) -> list[dict
             items.append({
                 "text": f"[SECTION:{section.section_id}] {paragraph.text}",
                 "source_text": local_source,
+                "fact_ids": list(paragraph.fact_ids),
+                "fact_text": "\n".join(
+                    fact_text_by_id[fact_id] for fact_id in paragraph.fact_ids
+                    if fact_id in fact_text_by_id
+                ),
             })
         items.append({
             "text": f"[SECTION:{section.section_id}] {section.title}",

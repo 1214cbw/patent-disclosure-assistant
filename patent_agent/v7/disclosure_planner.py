@@ -550,7 +550,10 @@ class PatentDisclosurePlanner:
             f"- {_clean_statement(f)}" for f in facts[:limit]
         )
 
-    def _llm_paragraphs(self, purpose: str, context: str, estimated: int) -> list[str]:
+    def _llm_paragraphs(
+        self, purpose: str, context: str, estimated: int,
+        forbidden_terms: set[str] | None = None,
+    ) -> list[str]:
         """One LLM call -> Chinese paragraphs (blank-line separated)."""
         prompt = (
             f"请撰写以下专利技术交底书章节的中文正文：\n\n"
@@ -572,13 +575,19 @@ class PatentDisclosurePlanner:
             has_inline_formula = any(
                 _contains_generated_formula(p) for p in paragraphs
             )
-            from patent_agent.v7_2.semantics import local_generation_drift, unsupported_local_parameters
+            from patent_agent.v7_2.semantics import (
+                _latin_terms, local_generation_drift, unsupported_local_parameters,
+            )
             unsupported_parameters = sorted(set().union(*(
                 set(unsupported_local_parameters(p, context)) for p in paragraphs
             ))) if paragraphs else []
             semantic_drift = sorted(set().union(*(
                 set(local_generation_drift(p, context)) for p in paragraphs
             ))) if paragraphs else []
+            role_contamination = sorted(
+                set().union(*(_latin_terms(p) for p in paragraphs))
+                & set(forbidden_terms or set())
+            ) if paragraphs else []
             unsupported: list[str] = []
             if paragraphs and self.evidence_fingerprint is not None:
                 from patent_agent.v7.cross_case import _latin_tokens
@@ -587,7 +596,8 @@ class PatentDisclosurePlanner:
                     output_tokens - set(self.evidence_fingerprint.technical_tokens)
                 )
             if (paragraphs and not has_inline_formula and not unsupported
-                    and not unsupported_parameters and not semantic_drift):
+                    and not unsupported_parameters and not semantic_drift
+                    and not role_contamination):
                 return paragraphs
             instructions: list[str] = []
             if has_inline_formula:
@@ -610,6 +620,11 @@ class PatentDisclosurePlanner:
                     "删除与当前证据角色或关系不一致的表述（包括："
                     + "、".join(semantic_drift) + "）"
                 )
+            if role_contamination:
+                instructions.append(
+                    "删除属于其他验证任务而非当前验证事实的技术标识（包括："
+                    + "、".join(role_contamination[:12]) + "）"
+                )
             feedback = (
                 f"\n\n第{attempt + 1}次输出未通过证据边界检查。请重新撰写："
                 + "；".join(instructions) + "。"
@@ -619,7 +634,8 @@ class PatentDisclosurePlanner:
             f"inline_formula={has_inline_formula}; "
             f"unsupported_terms={unsupported[:12]}; "
             f"unsupported_parameters={unsupported_parameters[:12]}; "
-            f"semantic_drift={semantic_drift[:12]}"
+            f"semantic_drift={semantic_drift[:12]}; "
+            f"role_contamination={role_contamination[:12]}"
         )
 
     def _generate_section(self, case_id, sec, understanding, evidence_store, strategy):
@@ -811,11 +827,25 @@ class PatentDisclosurePlanner:
                 step_facts = [fact_by_id[fid] for fid in step.fact_ids if fid in fact_by_id]
                 context = self._facts_text(step_facts, 10) + "\n" + self._evidence_excerpts(
                     evidence_store, step.evidence_ids, limit=5)
+                sibling_terms = set().union(*(
+                    set(other.technical_terms)
+                    for other in embodiment.validation_steps if other.step_id != step.step_id
+                )) if len(embodiment.validation_steps) > 1 else set()
+                own_terms = set(step.technical_terms)
+                generic_validation_terms = {
+                    "average", "compare", "compared", "comparing", "comparison",
+                    "design", "designs", "generated", "method", "model", "models",
+                    "output", "results", "selected", "surrogate", "torque",
+                    "validate", "validation",
+                }
                 texts = self._llm_paragraphs(
                     "实验/效果验证子节。说明被验证对象、验证方法和证据边界；比较基线仅作为比较对象，"
                     "不得写成本发明组成模块，不得扩大论文结论。当前步骤事实是验证角色边界；"
                     "原始证据摘录仅用于补充该角色的参数和结果，不得据此合并事实未点名的另一项比较实验、"
-                    "数据集、模型组合或评价任务。证据已经给出具体结果时，不得写成待发明人补充。", context, 1)
+                    "数据集、模型组合或评价任务。证据已经给出具体结果时，不得写成待发明人补充。",
+                    context, 1,
+                    forbidden_terms=sibling_terms - own_terms - generic_validation_terms,
+                )
                 paragraphs.append(para(
                     f"验证步骤V{index}：" + "".join(texts),
                     facts=step.fact_ids, evidence=step.evidence_ids,

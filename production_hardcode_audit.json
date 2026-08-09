@@ -294,6 +294,15 @@
       "resolution": "Non-executable documentation; does not control planning or validation."
     },
     {
+      "term": "torque",
+      "file": "patent_agent/v7/disclosure_planner.py",
+      "line/module": "patent_agent/v7/disclosure_planner.py:838",
+      "category": "production_domain_content",
+      "status": "forbidden",
+      "allowed / forbidden": "forbidden",
+      "resolution": "Move case content to evidence or a case-local registry."
+    },
+    {
       "term": "FlowVAE",
       "file": "patent_agent/v7/language_gate.py",
       "line/module": "patent_agent/v7/language_gate.py:50",
@@ -364,12 +373,21 @@
       "status": "allowed",
       "allowed / forbidden": "allowed",
       "resolution": "Auxiliary signal only; evidence-derived fingerprint is the primary gate."
+    },
+    {
+      "term": "torque",
+      "file": "patent_agent/v7_2/semantics.py",
+      "line/module": "patent_agent/v7_2/semantics.py:931",
+      "category": "production_domain_content",
+      "status": "forbidden",
+      "allowed / forbidden": "forbidden",
+      "resolution": "Move case content to evidence or a case-local registry."
     }
   ],
   "summary": {
-    "occurrences": 40,
+    "occurrences": 42,
     "allowed": 40,
-    "forbidden": 0,
-    "pass": true
+    "forbidden": 2,
+    "pass": false
   }
 }

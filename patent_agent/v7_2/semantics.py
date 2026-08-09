@@ -922,6 +922,16 @@ class PatentSemanticsValidator:
                     message="Section 7 maps Section 5 modules one-to-one into embodiments.",
                 ))
 
+        validation_steps = [
+            step for plan in embodiments for step in plan.validation_steps
+        ]
+        generic_validation_terms = {
+            "average", "compare", "compared", "comparing", "comparison",
+            "design", "designs", "generated", "method", "model", "models",
+            "output", "results", "selected", "surrogate", "torque",
+            "validate", "validation",
+        }
+
         for item in generated_texts or []:
             text = str(item.get("text", "")) if isinstance(item, dict) else str(item)
             local_source = (str(item.get("source_text", ""))
@@ -931,6 +941,23 @@ class PatentSemanticsValidator:
             section_id = section_match.group(1) if section_match else "07-UNSCOPED"
             scoped_text = text[section_match.end():] if section_match else text
             is_validation_text = bool(re.match(r"\s*(?:验证步骤|validation\s+step)", scoped_text, re.I))
+            if is_validation_text and isinstance(item, dict):
+                current_fact_ids = {str(value) for value in item.get("fact_ids", [])}
+                own_terms = _latin_terms(str(item.get("fact_text", "")))
+                sibling_terms = set().union(*(
+                    set(step.technical_terms) for step in validation_steps
+                    if not current_fact_ids.intersection(step.fact_ids)
+                )) if validation_steps else set()
+                foreign_terms = (
+                    _latin_terms(scoped_text) & sibling_terms
+                    - own_terms - generic_validation_terms
+                )
+                if foreign_terms:
+                    findings.append(SemanticFinding(
+                        code="VALIDATION_ROLE_CONTAMINATION",
+                        message=("Generated validation paragraph imports identifiers owned by a "
+                                 f"different validation fact: {', '.join(sorted(foreign_terms))}")
+                    ))
             if (section_id.startswith("07-") and not is_validation_text
                     and re.search(r"(?:具体事实|输入|处理|输出).{0,12}待.{0,8}(?:补充|确认)", scoped_text)):
                 findings.append(SemanticFinding(

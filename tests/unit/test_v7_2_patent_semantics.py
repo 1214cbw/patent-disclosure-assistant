@@ -525,6 +525,41 @@ def test_paragraph_generation_retries_local_scenario_drift():
     assert paragraphs == ["本环节分别在两个固定目标工况下评估相应约束。"]
 
 
+def test_paragraph_generation_retries_sibling_validation_terms():
+    responses = iter([
+        "本验证使用OtherNet完成当前输出的独立精度检查。",
+        "本验证通过独立分析完成当前输出的精度检查。",
+    ])
+
+    class Provider:
+        def generate_text(self, *, system_prompt, user_prompt):
+            return SimpleNamespace(text=next(responses))
+
+    paragraphs = PatentDisclosurePlanner(provider=Provider())._llm_paragraphs(
+        "说明验证。", "Validate output by independent analysis.", 1,
+        forbidden_terms={"othernet"},
+    )
+    assert paragraphs == ["本验证通过独立分析完成当前输出的精度检查。"]
+
+
+def test_validation_paragraph_cannot_import_sibling_validation_identifier():
+    validation_one = _step(1, role=SemanticRole.VALIDATION, scenario=ScenarioRole.VALIDATION)
+    validation_one.step_id = "V1"
+    validation_one.fact_ids = ["VAL-1"]
+    validation_one.technical_terms = ["corenet"]
+    validation_two = _step(1, role=SemanticRole.VALIDATION, scenario=ScenarioRole.VALIDATION)
+    validation_two.step_id = "V2"
+    validation_two.fact_ids = ["VAL-2"]
+    validation_two.technical_terms = ["othernet"]
+    report = _validate([_plan(validation_steps=[validation_one, validation_two])], generated_texts=[{
+        "text": "[SECTION:07-01] 验证步骤V1：采用OtherNet完成比较。",
+        "source_text": "Validate CoreNet by independent analysis.",
+        "fact_ids": ["VAL-1"],
+        "fact_text": "Validate CoreNet by independent analysis.",
+    }])
+    assert "VALIDATION_ROLE_CONTAMINATION" in _codes(report)
+
+
 def test_embodiment_step_number_is_not_treated_as_parameter():
     report = _validate([_plan()], generated_texts=[{
         "text": "[SECTION:07-01] S3：训练模型并输出潜在样本。",
