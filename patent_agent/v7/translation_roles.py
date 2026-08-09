@@ -28,7 +28,7 @@ TRANSLATION_ROLE_RULES = (
         "replacements": (("障碍细节", "隔磁桥细节"),),
     },
     {
-        "source_role_patterns": (r"\bsurrogate\s+model",),
+        "source_role_patterns": (r"\bsurrogate\b",),
         "contrary_role_patterns": (),
         "replacements": (("替代模型", "代理模型"),),
     },

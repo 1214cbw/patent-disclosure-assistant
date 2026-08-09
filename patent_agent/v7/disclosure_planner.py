@@ -912,7 +912,9 @@ class PatentDisclosurePlanner:
                     require_evidence_entailment=True,
                 )
                 paragraphs.append(para(
-                    f"验证步骤V{index}：" + _align_polysemous_roles("".join(texts), context),
+                    f"验证步骤V{index}：" + _align_polysemous_roles(
+                        "".join(texts), context + "\n" + self.case_source_text,
+                    ),
                     facts=step.fact_ids, evidence=step.evidence_ids,
                 ))
 
