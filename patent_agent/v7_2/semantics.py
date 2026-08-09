@@ -485,6 +485,19 @@ class EvidenceBoundEmbodimentPlanner:
             fact_ids = [
                 fact.fact_id for fact in facts if set(fact.evidence_ids) & set(evidence_ids)
             ]
+            # A reviewed strategy feature may be grounded directly in source
+            # evidence that the A1 summarizer did not promote into its compact
+            # fact list.  Preserve that supported feature as a graph fact
+            # instead of declaring it unsupported or inventing missing prose.
+            if not fact_ids and evidence_ids:
+                derived_id = f"STRATEGY-FEATURE-{index:03d}"
+                facts.append(SemanticFact(
+                    fact_id=derived_id,
+                    category="required_feature",
+                    statement=str(getattr(statement, "text", "")),
+                    evidence_ids=evidence_ids,
+                ))
+                fact_ids = [derived_id]
             required.append(RequiredFeature(
                 feature_id=f"RF-{index:03d}", fact_ids=fact_ids,
                 evidence_ids=evidence_ids, text=str(getattr(statement, "text", "")),

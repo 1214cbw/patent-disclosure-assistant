@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 from patent_agent.v7_2.semantics import (
     EmbodimentPlan,
     EmbodimentStep,
@@ -342,3 +344,17 @@ def test_invention_type_is_inferred_from_current_case_fact_categories():
         _semantic_fact(3, "operation", "Operate the joined members to process a workpiece"),
     ]
     assert infer_invention_type(facts) == "apparatus-system"
+
+
+def test_reviewed_strategy_evidence_fills_a1_fact_summary_gap():
+    understanding = SimpleNamespace(facts=[SimpleNamespace(
+        fact_id="F1", category="data", statement="Prepare supported input data",
+        evidence_ids=["EV-1"], review_status="LOCKED",
+    )], alternatives=[])
+    strategy = SimpleNamespace(independent_claim_core=[
+        SimpleNamespace(text="Prepare supported input data", evidence_ids=["EV-1"]),
+        SimpleNamespace(text="Produce the supported final result", evidence_ids=["EV-2"]),
+    ])
+    bundle = EvidenceBoundEmbodimentPlanner().plan(understanding, strategy)
+    assert "STRATEGY-FEATURE-002" in bundle.embodiments[0].fact_ids
+    assert bundle.embodiments[0].evidence_ids == ["EV-1", "EV-2"]

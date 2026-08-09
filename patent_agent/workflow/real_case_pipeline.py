@@ -247,11 +247,6 @@ class RealCaseWorkflow:
         ]
         semantic_report = validate_bundle(
             semantic_bundle, claims=claims, generated_texts=generated_embodiment_texts)
-        if semantic_report.status != "PASS":
-            raise V7GateError(
-                "PATENT_SEMANTICS_INVALID",
-                "；".join(finding.code for finding in semantic_report.findings[:12]),
-            )
         self.store.save_stage(case_id, "p1_invention_core_graph", semantic_bundle.graph)
         self.store.save_stage(case_id, "p1_embodiment_plan", [
             item.model_dump(mode="json") for item in semantic_bundle.embodiments
@@ -259,6 +254,11 @@ class RealCaseWorkflow:
         self.store.save_stage(case_id, "p1_semantic_registry", semantic_bundle.registry)
         self.store.save_stage(case_id, "p1_semantic_bundle", semantic_bundle)
         self.store.save_stage(case_id, "p1_patent_semantics_report", semantic_report)
+        if semantic_report.status != "PASS":
+            raise V7GateError(
+                "PATENT_SEMANTICS_INVALID",
+                "；".join(finding.code for finding in semantic_report.findings[:12]),
+            )
         concepts = case_concepts_from_understanding(understanding)
         captions = language.validate_figure_captions(figures)
         if not captions.passed:
@@ -574,7 +574,7 @@ class RealCaseWorkflow:
                     "required": True,
                     "embodiment_id": primary.embodiment_id,
                     "step_id": step.step_id if step else None,
-                    "fact_ids": feature.source_fact_ids,
+                    "fact_ids": step.fact_ids if step else feature.source_fact_ids,
                     "evidence_ids": feature.evidence_ids,
                     "support_status": "PASS" if step else "FAIL",
                 })
