@@ -835,7 +835,7 @@ class PatentDisclosurePlanner:
                 generic_validation_terms = {
                     "average", "compare", "compared", "comparing", "comparison",
                     "design", "designs", "generated", "method", "model", "models",
-                    "output", "results", "selected", "surrogate", "torque",
+                    "output", "results", "selected", "surrogate",
                     "validate", "validation",
                 }
                 texts = self._llm_paragraphs(
