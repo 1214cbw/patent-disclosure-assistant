@@ -496,9 +496,7 @@ class EvidenceBoundEmbodimentPlanner:
         )
         core_terms = sorted({term for node in nodes for term in node.technical_terms})
         validation_terms = sorted({term for step in validation_steps for term in step.technical_terms})
-        baseline_terms = sorted(set().union(*(
-            _latin_terms(text) for text in (comparison_baselines or [])
-        )))
+        baseline_terms = sorted(set(comparison_baselines or []))
         registry = SemanticRegistry(
             supported_scenarios=supported_scenarios,
             technical_roles=[
@@ -592,10 +590,22 @@ class EvidenceBoundEmbodimentPlanner:
             if re.search(r"comparison|compared|\bvs\.?\b|baseline", str(getattr(item, "text", item)), re.I)
         )
         comparison_terms = _latin_terms(comparison_text)
-        comparison_baselines = [
+        comparison_baseline_items = [
             text for text in alternative_items if _latin_terms(text) & comparison_terms
         ]
-        alternatives = [text for text in alternative_items if text not in comparison_baselines]
+        generic_role_terms = {
+            "architecture", "based", "baseline", "comparison", "conventional",
+            "generator", "method", "model", "network", "surrogate", "system",
+        }
+        comparison_baselines = sorted(set().union(*(
+            {
+                (term[:-6] if term.endswith("-based") else term)
+                for term in _latin_terms(text.split(":", 1)[0])
+                if term not in generic_role_terms
+            }
+            for text in comparison_baseline_items
+        )))
+        alternatives = [text for text in alternative_items if text not in comparison_baseline_items]
         resolved_type = invention_type or infer_invention_type(understanding_facts or facts)
         inputs = [str(getattr(item, "text", item)) for item in getattr(understanding, "inputs", []) or []]
         outputs = [str(getattr(item, "text", item)) for item in getattr(understanding, "outputs", []) or []]
@@ -728,7 +738,7 @@ class PatentSemanticsValidator:
         )
         online_pattern = re.compile(r"实时(?:采集|控制|获取)|每(?:个|次)控制周期|位置传感器|观测器")
         control_promotion_pattern = re.compile(r"最优控制策略|在线控制策略|控制器")
-        alternative_pattern = re.compile(r"可采用|可以采用|可选用|典型取值|例如")
+        alternative_pattern = re.compile(r"可采用|可以采用|可选用|典型取值")
         speculative_pending_pattern = re.compile(
             r"(?:可包含|可以包含|可选(?:为|用)?).{0,100}(?:待.{0,20}(?:补充|确认)|具体.{0,20}待)"
         )
@@ -941,7 +951,9 @@ class PatentSemanticsValidator:
             if (section_id.startswith(("05-", "07-")) and alternative_pattern.search(scoped_text)
                     and not registry.supported_alternatives):
                 findings.append(SemanticFinding(
-                    code="UNSUPPORTED_ALTERNATIVE", message="Generated prose introduces an unapproved alternative."
+                    code="UNSUPPORTED_ALTERNATIVE",
+                    message=(f"Generated prose introduces an unapproved alternative in "
+                             f"{section_id}: {scoped_text[:120]}")
                 ))
             for term, role in role_map.items():
                 if (section_id.startswith(("05-", "07-")) and not is_validation_text
@@ -949,7 +961,8 @@ class PatentSemanticsValidator:
                         and term and term in _norm(scoped_text)):
                     findings.append(SemanticFinding(
                         code="BASELINE_PROMOTED_TO_INVENTION",
-                        message="Generated embodiment prose promotes a comparison baseline."
+                        message=(f"Generated embodiment prose promotes comparison baseline "
+                                 f"{term} in {section_id}: {scoped_text[:120]}")
                     ))
 
         # Deduplicate deterministic findings to keep audits concise.

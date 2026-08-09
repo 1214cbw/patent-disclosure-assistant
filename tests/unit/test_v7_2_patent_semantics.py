@@ -648,3 +648,11 @@ def test_only_compared_alternative_terms_are_registered_as_baselines():
     assert roles["test"] == TechnicalRole.VALIDATION_ONLY
     assert roles["corenet"] == TechnicalRole.INVENTION_CORE
     assert bundle.registry.supported_alternatives == []
+
+
+def test_evidence_supported_example_marker_is_not_itself_an_alternative():
+    report = _validate([_plan()], generated_texts=[{
+        "text": "[SECTION:05-02] 例如，证据明确记载的输入尺寸为512×512像素。",
+        "source_text": "For example, the source input image is 512x512 pixels.",
+    }])
+    assert "UNSUPPORTED_ALTERNATIVE" not in _codes(report)
