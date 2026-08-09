@@ -172,6 +172,7 @@ class PatentDisclosurePlanner:
         self.cache_dir = cache_dir
         self.term_normalizer = None
         self.evidence_fingerprint = None
+        self.semantic_bundle = None
 
     # ── title ────────────────────────────────────────────────────────────
     def generate_title(self, understanding, strategy) -> str:
@@ -278,6 +279,7 @@ class PatentDisclosurePlanner:
         self, understanding, strategy, figures, clusters, title: str = "",
         section_titles: list[str] | None = None,
         phase_titles: dict[str, str] | None = None,
+        embodiments=None,
     ) -> list[dict]:
         """Build the full 9-section disclosure plan.
 
@@ -345,20 +347,32 @@ class PatentDisclosurePlanner:
             "figures": figures,
         })
 
-        # 具体实施方式: embodiments grouped by phase
-        phase_groups: dict[str, list] = {}
-        for cluster in clusters:
-            phase_groups.setdefault(_phase_of(cluster), []).append(cluster)
-        for index, (phase, groups) in enumerate(phase_groups.items(), 1):
-            group_facts = [f for g in groups for f in g]
+        # V7.2: Section 7 implements complete invention-graph paths. A fact
+        # cluster, module, formula, parameter set, experiment, or limitation
+        # never becomes an embodiment merely because its category exists.
+        if embodiments is None:
+            from patent_agent.v7_2.semantics import EvidenceBoundEmbodimentPlanner
+            embodiments = EvidenceBoundEmbodimentPlanner().plan(
+                understanding, strategy).embodiments
+        plan.append({
+            "section_id": "07", "title": "7. 具体实施方式",
+            "kind": "embodiments_parent", "facts": facts_all,
+            "evidence_ids": all_evidence,
+        })
+        fact_by_id = {getattr(fact, "fact_id", ""): fact for fact in facts_all}
+        for index, embodiment in enumerate(embodiments, 1):
+            group_facts = [fact_by_id[fact_id] for fact_id in embodiment.fact_ids
+                           if fact_id in fact_by_id]
             cn = _cn_number(index)
-            semantic_phase = (phase_titles or {}).get(phase, phase)
+            semantic_title = embodiment.title
+            if embodiment.is_primary and title:
+                semantic_title = f"{title}的完整实施过程"
             plan.append({
                 "section_id": f"07-{index:02d}",
-                "title": f"7. 实施例{cn}：{semantic_phase}",
+                "title": f"7.{index} 实施例{cn}：{semantic_title}",
                 "kind": "embodiment",
                 "facts": group_facts, "evidence_ids": ev_ids(group_facts),
-                "phase": phase,
+                "embodiment": embodiment,
             })
 
         plan.append({
@@ -400,12 +414,13 @@ class PatentDisclosurePlanner:
             understanding, evidence_store
         )
         section_titles = self.generate_section_titles(clusters)
-        phase_keys = list(dict.fromkeys(_phase_of(cluster) for cluster in clusters))
-        phase_titles = self.generate_phase_titles(phase_keys)
+        from patent_agent.v7_2.semantics import EvidenceBoundEmbodimentPlanner
+        self.semantic_bundle = EvidenceBoundEmbodimentPlanner().plan(
+            understanding, strategy, invention_type="algorithm-software")
         plan = self.build_plan(
             understanding, strategy, figures, clusters, title=title,
             section_titles=section_titles,
-            phase_titles=phase_titles,
+            embodiments=self.semantic_bundle.embodiments,
         )
 
         sections: list[GroundedSection] = []
@@ -600,17 +615,53 @@ class PatentDisclosurePlanner:
             else:
                 paragraphs.append(para("附图待用户补充。"))
 
+        elif kind == "embodiments_parent":
+            paragraphs.append(para(
+                "以下具体实施方式按照技术输入、处理步骤、中间数据传递及最终技术结果的顺序，"
+                "说明本技术方案的完整实施过程。各参数、公式和验证内容均作为相应步骤的支持细节。"
+            ))
+
         elif kind == "embodiment":
-            phase = sec.get("phase", "实施细节")
-            facts_text = self._facts_text(sec["facts"], 14)
-            excerpts = self._evidence_excerpts(evidence_store, sec["evidence_ids"], limit=7)
-            context = f"### 实施例相关技术事实\n{facts_text}\n\n### 原始证据摘录\n{excerpts}"
-            texts = self._llm_paragraphs(
-                f"具体实施方式-实施例（主题：{phase}）：给出可实施的具体步骤，"
-                "步骤化描述（S1/S2/S3 或第一/第二…），包含输入、处理、参数、输出、"
-                "条件及关键数值（数值必须来自材料）。", context, 6)
-            for t in texts:
-                paragraphs.append(para(t))
+            embodiment = sec["embodiment"]
+            paragraphs.append(para(
+                "本实施例沿发明核心技术链给出一项完整实施过程，各步骤的输出作为后续步骤的输入，"
+                "直至获得所述最终技术结果。",
+                facts=embodiment.fact_ids, evidence=embodiment.evidence_ids,
+            ))
+            fact_by_id = {getattr(fact, "fact_id", ""): fact for fact in sec["facts"]}
+            for index, step in enumerate(embodiment.ordered_steps, 1):
+                step_facts = [fact_by_id[fid] for fid in step.fact_ids if fid in fact_by_id]
+                facts_text = self._facts_text(step_facts, 12)
+                evidence_ids = sorted({ev for fact in step_facts for ev in fact.evidence_ids})
+                excerpts = self._evidence_excerpts(evidence_store, evidence_ids, limit=6)
+                context = (
+                    f"### 当前步骤事实\n{facts_text}\n\n"
+                    f"### 原始证据摘录\n{excerpts}\n\n"
+                    f"### 技术链位置\n步骤S{index}；"
+                    f"上游：{'起始输入' if index == 1 else f'S{index - 1}输出'}；"
+                    f"下游：{'最终技术结果' if index == len(embodiment.ordered_steps) else f'S{index + 1}输入'}"
+                )
+                texts = self._llm_paragraphs(
+                    "V7.2完整实施例中的单一技术步骤。仅重述给定事实，不得添加可选模型、"
+                    "典型参数、传感器、在线控制场景、数据类型或求解器。明确本步骤输入、处理、"
+                    "输出及输出如何进入下一步骤。以步骤编号开头。", context, 1)
+                if not texts:
+                    raise RuntimeError("V7_2_EMBODIMENT_STEP_EMPTY")
+                paragraphs.append(para(
+                    f"S{index}：" + "".join(texts),
+                    facts=step.fact_ids, evidence=step.evidence_ids,
+                ))
+            for index, step in enumerate(embodiment.validation_steps, 1):
+                step_facts = [fact_by_id[fid] for fid in step.fact_ids if fid in fact_by_id]
+                context = self._facts_text(step_facts, 10) + "\n" + self._evidence_excerpts(
+                    evidence_store, step.evidence_ids, limit=5)
+                texts = self._llm_paragraphs(
+                    "实验/效果验证子节。说明被验证对象、验证方法和证据边界；比较基线仅作为比较对象，"
+                    "不得写成本发明组成模块，不得扩大论文结论。", context, 1)
+                paragraphs.append(para(
+                    f"验证步骤V{index}：" + "".join(texts),
+                    facts=step.fact_ids, evidence=step.evidence_ids,
+                ))
 
         elif kind == "agency":
             core = []
@@ -654,7 +705,7 @@ class PatentDisclosurePlanner:
             return f"5.{num} 技术环节{num}"
         if kind == "embodiment":
             cn = _cn_number(int(sec["section_id"].split("-")[1]))
-            return f"7. 实施例{cn}：{sec.get('phase', '')}详细说明"
+            return f"7. 实施例{cn}：完整实施过程"
         return sec["title"]
 
 

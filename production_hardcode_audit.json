@@ -6,9 +6,45 @@
   "policy": "Fixed vocabularies are auxiliary only; production branching must be fact/evidence driven.",
   "records": [
     {
+      "term": "GAN",
+      "file": "patent_agent/document/chinese_validator.py",
+      "line/module": "patent_agent/document/chinese_validator.py:19",
+      "category": "auxiliary_vocabulary_data",
+      "status": "allowed",
+      "allowed / forbidden": "allowed",
+      "resolution": "Auxiliary signal only; evidence-derived fingerprint is the primary gate."
+    },
+    {
+      "term": "VAE",
+      "file": "patent_agent/document/chinese_validator.py",
+      "line/module": "patent_agent/document/chinese_validator.py:19",
+      "category": "auxiliary_vocabulary_data",
+      "status": "allowed",
+      "allowed / forbidden": "allowed",
+      "resolution": "Auxiliary signal only; evidence-derived fingerprint is the primary gate."
+    },
+    {
       "term": "LDM",
       "file": "patent_agent/document/chinese_validator.py",
       "line/module": "patent_agent/document/chinese_validator.py:19",
+      "category": "auxiliary_vocabulary_data",
+      "status": "allowed",
+      "allowed / forbidden": "allowed",
+      "resolution": "Auxiliary signal only; evidence-derived fingerprint is the primary gate."
+    },
+    {
+      "term": "GAN",
+      "file": "patent_agent/document/math_registry.py",
+      "line/module": "patent_agent/document/math_registry.py:199",
+      "category": "auxiliary_vocabulary_data",
+      "status": "allowed",
+      "allowed / forbidden": "allowed",
+      "resolution": "Auxiliary signal only; evidence-derived fingerprint is the primary gate."
+    },
+    {
+      "term": "VAE",
+      "file": "patent_agent/document/math_registry.py",
+      "line/module": "patent_agent/document/math_registry.py:199",
       "category": "auxiliary_vocabulary_data",
       "status": "allowed",
       "allowed / forbidden": "allowed",
@@ -27,6 +63,15 @@
       "term": "PMa-SynRM",
       "file": "patent_agent/document/math_registry.py",
       "line/module": "patent_agent/document/math_registry.py:200",
+      "category": "auxiliary_vocabulary_data",
+      "status": "allowed",
+      "allowed / forbidden": "allowed",
+      "resolution": "Auxiliary signal only; evidence-derived fingerprint is the primary gate."
+    },
+    {
+      "term": "GAN",
+      "file": "patent_agent/document/math_registry.py",
+      "line/module": "patent_agent/document/math_registry.py:168",
       "category": "auxiliary_vocabulary_data",
       "status": "allowed",
       "allowed / forbidden": "allowed",
@@ -105,6 +150,24 @@
       "resolution": "Deterministic demo fixture only; not used by the real-case production provider."
     },
     {
+      "term": "VAE",
+      "file": "patent_agent/v7/concepts.py",
+      "line/module": "patent_agent/v7/concepts.py:38",
+      "category": "auxiliary_vocabulary_data",
+      "status": "allowed",
+      "allowed / forbidden": "allowed",
+      "resolution": "Auxiliary signal only; evidence-derived fingerprint is the primary gate."
+    },
+    {
+      "term": "VAE",
+      "file": "patent_agent/v7/concepts.py",
+      "line/module": "patent_agent/v7/concepts.py:85",
+      "category": "auxiliary_vocabulary_data",
+      "status": "allowed",
+      "allowed / forbidden": "allowed",
+      "resolution": "Auxiliary signal only; evidence-derived fingerprint is the primary gate."
+    },
+    {
       "term": "torque",
       "file": "patent_agent/v7/concepts.py",
       "line/module": "patent_agent/v7/concepts.py:152",
@@ -135,6 +198,33 @@
       "term": "LDM",
       "file": "patent_agent/v7/concepts.py",
       "line/module": "patent_agent/v7/concepts.py:28",
+      "category": "auxiliary_vocabulary_data",
+      "status": "allowed",
+      "allowed / forbidden": "allowed",
+      "resolution": "Auxiliary signal only; evidence-derived fingerprint is the primary gate."
+    },
+    {
+      "term": "VAE",
+      "file": "patent_agent/v7/concepts.py",
+      "line/module": "patent_agent/v7/concepts.py:42",
+      "category": "auxiliary_vocabulary_data",
+      "status": "allowed",
+      "allowed / forbidden": "allowed",
+      "resolution": "Auxiliary signal only; evidence-derived fingerprint is the primary gate."
+    },
+    {
+      "term": "GAN",
+      "file": "patent_agent/v7/concepts.py",
+      "line/module": "patent_agent/v7/concepts.py:55",
+      "category": "auxiliary_vocabulary_data",
+      "status": "allowed",
+      "allowed / forbidden": "allowed",
+      "resolution": "Auxiliary signal only; evidence-derived fingerprint is the primary gate."
+    },
+    {
+      "term": "NSGA",
+      "file": "patent_agent/v7/concepts.py",
+      "line/module": "patent_agent/v7/concepts.py:60",
       "category": "auxiliary_vocabulary_data",
       "status": "allowed",
       "allowed / forbidden": "allowed",
@@ -231,6 +321,24 @@
       "resolution": "Non-executable documentation; does not control planning or validation."
     },
     {
+      "term": "VAE",
+      "file": "patent_agent/v7/language_gate.py",
+      "line/module": "patent_agent/v7/language_gate.py:50",
+      "category": "documentation",
+      "status": "allowed",
+      "allowed / forbidden": "allowed",
+      "resolution": "Non-executable documentation; does not control planning or validation."
+    },
+    {
+      "term": "NSGA",
+      "file": "patent_agent/v7/language_gate.py",
+      "line/module": "patent_agent/v7/language_gate.py:50",
+      "category": "documentation",
+      "status": "allowed",
+      "allowed / forbidden": "allowed",
+      "resolution": "Non-executable documentation; does not control planning or validation."
+    },
+    {
       "term": "rotor",
       "file": "patent_agent/v7/language_gate.py",
       "line/module": "patent_agent/v7/language_gate.py:62",
@@ -241,8 +349,8 @@
     }
   ],
   "summary": {
-    "occurrences": 26,
-    "allowed": 26,
+    "occurrences": 38,
+    "allowed": 38,
     "forbidden": 0,
     "pass": true
   }

@@ -24,6 +24,9 @@ TERMS = {
     "voltage constraint": r"voltage constraint|电压约束",
     "LDM": r"\bLDM\b|latent diffusion|潜在扩散",
     "PMa-SynRM": r"\bPMa-SynRM\b",
+    "GAN": r"\bGAN\b",
+    "VAE": r"\bVAE\b",
+    "NSGA": r"\bNSGA(?:-II)?\b",
 }
 
 VOCABULARY_MODULES = {

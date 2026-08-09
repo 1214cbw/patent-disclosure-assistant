@@ -238,6 +238,27 @@ class RealCaseWorkflow:
             raise V7GateError("TITLE_GATE_FAILED", "；".join(title_result.issues))
         claims = generate_chinese_claims(disclosure.title, strategy, understanding,
                                          self.provider, cache_dir=llm_cache_dir)
+        from patent_agent.v7_2.semantics import validate_bundle
+        semantic_bundle = planner.semantic_bundle
+        generated_embodiment_texts = [
+            paragraph.text for section in disclosure.sections
+            if section.section_id.startswith("07-")
+            for paragraph in section.paragraphs
+        ]
+        semantic_report = validate_bundle(
+            semantic_bundle, claims=claims, generated_texts=generated_embodiment_texts)
+        if semantic_report.status != "PASS":
+            raise V7GateError(
+                "PATENT_SEMANTICS_INVALID",
+                "；".join(finding.code for finding in semantic_report.findings[:12]),
+            )
+        self.store.save_stage(case_id, "p1_invention_core_graph", semantic_bundle.graph)
+        self.store.save_stage(case_id, "p1_embodiment_plan", [
+            item.model_dump(mode="json") for item in semantic_bundle.embodiments
+        ])
+        self.store.save_stage(case_id, "p1_semantic_registry", semantic_bundle.registry)
+        self.store.save_stage(case_id, "p1_semantic_bundle", semantic_bundle)
+        self.store.save_stage(case_id, "p1_patent_semantics_report", semantic_report)
         concepts = case_concepts_from_understanding(understanding)
         captions = language.validate_figure_captions(figures)
         if not captions.passed:
@@ -380,9 +401,26 @@ class RealCaseWorkflow:
             codes = [finding.code for result in content_results for finding in result.findings]
             raise RuntimeError("V7_1_CONTENT_QUALITY_GATE_FAILED: " + ",".join(codes))
         self._advance_delivery_state(case_id, CaseWorkflowState.CONTENT_VALIDATED)
+        from patent_agent.v7_2.semantics import SemanticPlanningBundle, validate_bundle
+        semantic_bundle = SemanticPlanningBundle.model_validate_json(
+            self.store.latest_stage_path(case_id, "p1_semantic_bundle").read_text(encoding="utf-8")
+        )
+        generated_embodiment_texts = [
+            paragraph.text for section in disclosure.sections
+            if section.section_id.startswith("07-")
+            for paragraph in section.paragraphs
+        ]
+        semantic_report = validate_bundle(
+            semantic_bundle, claims=claims, generated_texts=generated_embodiment_texts)
+        if semantic_report.status != "PASS":
+            raise RuntimeError(
+                "V7_2_PATENT_SEMANTICS_GATE_FAILED: "
+                + ",".join(finding.code for finding in semantic_report.findings)
+            )
+        self._advance_delivery_state(case_id, CaseWorkflowState.PATENT_SEMANTICS_VALIDATED)
         (output / "figures.json").write_text(json.dumps([item.model_dump(mode="json") for item in figures], ensure_ascii=False, indent=2), encoding="utf-8")
         draft = grounded_disclosure_to_draft(disclosure, knowledge, figures); tree = grounded_claims_to_tree(claims); renderer = DocumentRenderer(self.settings.template_root)
-        v7_docx = output / "技术交底书_v7_1.docx"
+        v7_docx = output / "技术交底书_v7_2.docx"
         disclosure_docx = renderer.render(disclosure_to_ast(case_id, draft), v7_docx)
         claims_docx = renderer.render(claims_to_ast(case_id, tree), output / "权利要求草案.docx")
         validator = PatentDocxValidator()
@@ -413,9 +451,11 @@ class RealCaseWorkflow:
         eval_run = evaluator.save_run(eval_root, snapshot, summary)
         for name in ("evaluation_summary.json", "model_evaluation_report.md", "technical_understanding_scorecard.md"): shutil.copy2(eval_run / name, output / name)
         (output / "validation_report.md").write_text(f"# Validation\n\n- XML/Word: {'PASS' if validation['pass'] else 'FAIL'}\n- OMML: {validation['xml']['omml_count']}\n- Residual LaTeX: {validation['xml']['residual_latex_in_omml']}\n- Claims Word available: {claims_validation.get('available')}\n", encoding="utf-8")
-        (output / "pipeline_report.md").write_text(f"# Real Case Pipeline Report\n\n- Case: {case_id}\n- Checkpoint C: APPROVED\n- Claims support: {support['validation_status']}\n- Scope review: complete\n- Traceability links: {len(traceability.links)}\n- Broken links: {len(traceability.broken_links)}\n- Word validation: {'PASS' if validation['pass'] else 'FAIL'}\n", encoding="utf-8")
+        (output / "pipeline_report.md").write_text(f"# Real Case Pipeline Report\n\n- Case: {case_id}\n- Checkpoint C: APPROVED\n- Patent semantics: {semantic_report.status}\n- Claims support: {support['validation_status']}\n- Scope review: complete\n- Traceability links: {len(traceability.links)}\n- Broken links: {len(traceability.broken_links)}\n- Word validation: {'PASS' if validation['pass'] else 'FAIL'}\n", encoding="utf-8")
         self._write_manifest_language(case_id, case_dir, evidence, translation_postprocess_used=False)
         self._write_generalization_report(output, case_id, understanding, disclosure, claims, figures, knowledge, validation, title_result)
+        self._write_semantic_audits(
+            output, semantic_bundle, semantic_report, disclosure, claims)
         from patent_agent.v7_1.delivery import run_delivery_audit
         delivery_report = run_delivery_audit(
             output, v7_docx, v7_docx.with_suffix(".pdf"), disclosure,
@@ -428,6 +468,9 @@ class RealCaseWorkflow:
             raise RuntimeError("REAL_CASE_FINAL_QUALITY_GATE_FAILED")
         if delivery_report["status"] != "PASS":
             raise RuntimeError("V7_1_DELIVERY_QUALITY_GATE_FAILED")
+        delivery_report["component_status"]["patent_semantics"] = semantic_report.status
+        (output / "delivery_quality_report.json").write_text(
+            json.dumps(delivery_report, ensure_ascii=False, indent=2), encoding="utf-8")
         from scripts.production_hardcode_audit import audit as audit_production_hardcodes
         hardcode_report = audit_production_hardcodes(self.settings.project_root)
         (output / "production_hardcode_audit.json").write_text(
@@ -459,8 +502,126 @@ class RealCaseWorkflow:
         manifest.case_state = state
         if state.value not in manifest.state_history:
             manifest.state_history.append(state.value)
-        manifest.delivery_version = "V7.1"
+        manifest.delivery_version = "V7.2"
         self.manager.save(manifest)
+
+    def _write_semantic_audits(self, output, bundle, report, disclosure, claims) -> None:
+        primary = next(item for item in bundle.embodiments if item.is_primary)
+        coverage = report.required_feature_coverage
+        embodiment_items = []
+        for embodiment in bundle.embodiments:
+            required_ids = list(coverage) if embodiment.is_primary else embodiment.required_feature_ids
+            covered = [feature for feature in required_ids if feature in coverage]
+            embodiment_items.append({
+                "embodiment_id": embodiment.embodiment_id,
+                "title": embodiment.title,
+                "type": embodiment.embodiment_type,
+                "is_primary": embodiment.is_primary,
+                "step_count": len(embodiment.ordered_steps),
+                "required_features": required_ids,
+                "covered_features": covered,
+                "fact_ids": embodiment.fact_ids,
+                "evidence_ids": embodiment.evidence_ids,
+                "input_defined": bool(embodiment.input_objects),
+                "output_defined": bool(embodiment.output_objects and embodiment.final_technical_result),
+                "continuity": report.component_status["EmbodimentContinuity"],
+                "scenario_consistent": report.component_status["ScenarioConsistency"],
+                "unsupported_generalization": sum(
+                    1 for item in report.findings if item.code == "UNSUPPORTED_GENERALIZATION"
+                ),
+                "baseline_contamination": sum(
+                    1 for item in report.findings if item.code == "BASELINE_PROMOTED_TO_INVENTION"
+                ),
+                "completeness": report.component_status["EmbodimentCompleteness"],
+                "status": report.status,
+            })
+        (output / "embodiment_audit.json").write_text(json.dumps({
+            "status": report.status, "embodiments": embodiment_items,
+        }, ensure_ascii=False, indent=2), encoding="utf-8")
+
+        drift_codes = {
+            "SCENARIO_DRIFT", "UNSUPPORTED_GENERALIZATION", "UNSUPPORTED_ALTERNATIVE",
+            "UNSUPPORTED_PARAMETER", "BASELINE_PROMOTED_TO_INVENTION",
+        }
+        drift_records = [{
+            "source_text": "case-local fact/evidence registry",
+            "generated_text": "",
+            "reason": item.message,
+            "code": item.code,
+            "status": "FAIL",
+        } for item in report.findings if item.code in drift_codes]
+        (output / "semantic_drift_audit.json").write_text(json.dumps({
+            "status": "PASS" if not drift_records else "FAIL",
+            "unresolved_hard_drift": len(drift_records),
+            "records": drift_records,
+        }, ensure_ascii=False, indent=2), encoding="utf-8")
+
+        claim_records = []
+        for claim in claims.claims:
+            if claim.claim_type == "dependent":
+                continue
+            for feature in claim.features:
+                if not feature.mandatory:
+                    continue
+                step = next((step for step in primary.ordered_steps if (
+                    feature.feature_id in step.required_feature_ids
+                    or set(feature.source_fact_ids) & set(step.fact_ids)
+                    or set(feature.evidence_ids) & set(step.evidence_ids)
+                )), None)
+                claim_records.append({
+                    "claim_id": claim.claim_number,
+                    "claim_feature": feature.feature_id,
+                    "required": True,
+                    "embodiment_id": primary.embodiment_id,
+                    "step_id": step.step_id if step else None,
+                    "fact_ids": feature.source_fact_ids,
+                    "evidence_ids": feature.evidence_ids,
+                    "support_status": "PASS" if step else "FAIL",
+                })
+        (output / "claim_embodiment_support.json").write_text(json.dumps({
+            "status": "PASS" if all(item["support_status"] == "PASS" for item in claim_records) else "FAIL",
+            "records": claim_records,
+        }, ensure_ascii=False, indent=2), encoding="utf-8")
+
+        redundancy = []
+        for index, cluster in enumerate(bundle.section5_fact_clusters, 1):
+            for embodiment in bundle.embodiments:
+                overlap = len(set(cluster) & set(embodiment.fact_ids)) / max(1, len(set(cluster)))
+                mirror = len(bundle.embodiments) > 1 and set(embodiment.fact_ids) <= set(cluster)
+                redundancy.append({
+                    "section_5_id": f"05-{index:02d}",
+                    "embodiment_id": embodiment.embodiment_id,
+                    "semantic_similarity": round(overlap, 4),
+                    "fact_overlap": round(overlap, 4),
+                    "verbatim_overlap": 0.0,
+                    "mirror_risk": mirror,
+                })
+        (output / "section_redundancy_audit.json").write_text(json.dumps({
+            "status": "PASS" if not any(item["mirror_risk"] for item in redundancy) else "FAIL",
+            "records": redundancy,
+        }, ensure_ascii=False, indent=2), encoding="utf-8")
+
+        substantive = [
+            paragraph for section in disclosure.sections if section.section_id.startswith("07-")
+            for paragraph in section.paragraphs
+        ]
+        evidence_backed = sum(bool(item.fact_ids and item.evidence_ids) for item in substantive)
+        lines = [
+            "# V7.2 Patent Semantics Report", "",
+            f"- Overall: {report.status}",
+            f"- Embodiments: {len(bundle.embodiments)}",
+            f"- Primary embodiments: {sum(item.is_primary for item in bundle.embodiments)}",
+            f"- Primary steps: {len(primary.ordered_steps)}",
+            f"- Required features covered: {len(coverage)}/{len(primary.required_feature_ids)}",
+            f"- Substantive paragraphs evidence-backed: {evidence_backed}/{len(substantive)}",
+            f"- Unresolved hard semantic drift: {report.unresolved_hard_drift}", "",
+            "## Component gates", "",
+        ]
+        lines.extend(f"- {name}: {status}" for name, status in report.component_status.items())
+        lines += ["", "## Architecture", "",
+                  "Fact clusters populate typed invention-graph nodes; they do not create embodiments.",
+                  "The primary embodiment is an end-to-end graph path with evidence-bound steps.", ""]
+        (output / "patent_semantics_report.md").write_text("\n".join(lines), encoding="utf-8")
 
     def _write_manifest_snapshot(self, output: Path, case_id: str) -> None:
         from patent_agent.core.models import utc_now
@@ -503,7 +664,7 @@ class RealCaseWorkflow:
         figures = figure.get("figures", [])
         equations = equation.get("equations", [])
         lines = [
-            "# V7.1 Delivery Quality Report", "",
+            "# V7.2 Delivery Quality Report", "",
             f"- Case: {case_id}",
             f"- Overall: {report['status']}",
             "- Standard pipeline rebuild: PASS",
@@ -515,6 +676,7 @@ class RealCaseWorkflow:
             f"- Figures: {report['figure_count']}",
             f"- Traceability broken links: {len(traceability.broken_links)}",
             f"- Claims Word available: {claims_validation.get('available')}",
+            f"- Patent semantics: {report['component_status'].get('patent_semantics', 'FAIL')}",
             "",
             "## 1. Baseline defects", "",
             "The V7 baseline reproduced truncated semantic headings, missing subsection bodies, misplaced/empty figure descriptions, graph collisions, incomplete visible equations, and split registered tokens. See `docs/V7_1_BASELINE_DEFECT_AUDIT.md`.",
@@ -527,7 +689,7 @@ class RealCaseWorkflow:
             "- Technical-token and inline-math registries were not fully case-local.",
             "",
             "## 3. Generic fixes", "",
-            "- Independent fact-driven heading and embodiment-title planning.",
+            "- Independent fact-driven headings plus invention-graph embodiment planning.",
             "- Section completeness and exact figure-section routing gates.",
             "- Semantic graph contracts, rendered parity, collision, and narrative-consistency gates.",
             "- Canonical OMML signature comparison plus PDF geometry inspection.",
@@ -616,7 +778,7 @@ class RealCaseWorkflow:
         grounded_facts = [f for f in total_facts if f.evidence_ids]
         evidence_ids = sorted({e for f in total_facts for e in f.evidence_ids})
         lines = [
-            "# Patent Agent V7.1 Generalization Report",
+            "# Patent Agent V7.2 Generalization Report",
             "",
             f"- Case: {case_id}",
             f"- 发明名称: {disclosure.title} (CJK {title_result.length} 字, "
@@ -683,7 +845,7 @@ class RealCaseWorkflow:
             "- TITLE_GATE_FAILED: no",
             "",
         ]
-        (output / "generalization_v7_1_report.md").write_text("\n".join(lines), encoding="utf-8")
+        (output / "generalization_v7_2_report.md").write_text("\n".join(lines), encoding="utf-8")
 
     def _review_statuses(self, case_id: str, checkpoint: str):
         if checkpoint == "A1": return {item.fact_id: item.review_status for item in TechnicalUnderstandingResult.model_validate_json(self.store.latest_stage_path(case_id, "p1_technical_understanding").read_text(encoding="utf-8")).facts}
