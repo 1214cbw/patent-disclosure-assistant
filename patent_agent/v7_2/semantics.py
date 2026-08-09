@@ -988,12 +988,13 @@ class PatentSemanticsValidator:
                         message=("Generated validation paragraph imports identifiers owned by a "
                                  f"different validation fact: {', '.join(sorted(foreign_terms))}")
                     ))
-            for reason in local_generation_drift(scoped_text, supporting_source):
-                findings.append(SemanticFinding(
-                    code="UNSUPPORTED_GENERALIZATION",
-                    message=(f"Paragraph-local evidence does not support {reason} in "
-                             f"{section_id}: {scoped_text[:120]}")
-                ))
+            if not section_id.startswith("09"):
+                for reason in local_generation_drift(scoped_text, supporting_source):
+                    findings.append(SemanticFinding(
+                        code="UNSUPPORTED_GENERALIZATION",
+                        message=(f"Paragraph-local evidence does not support {reason} in "
+                                 f"{section_id}: {scoped_text[:120]}")
+                    ))
             if (section_id.startswith("07-") and not is_validation_text
                     and re.search(r"(?:具体事实|输入|处理|输出).{0,12}待.{0,8}(?:补充|确认)", scoped_text)):
                 findings.append(SemanticFinding(

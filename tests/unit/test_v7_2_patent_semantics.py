@@ -715,6 +715,14 @@ def test_available_numeric_validation_results_cannot_be_marked_pending():
     assert "UNSUPPORTED_GENERALIZATION" in _codes(report)
 
 
+def test_section_nine_can_state_a_source_declared_numeric_gap():
+    report = _validate([_plan()], generated_texts=[{
+        "text": "[SECTION:09] 来源未记录被拒绝设计的具体比例。",
+        "source_text": "The source reports 24 samples but does not record the rejection ratio.",
+    }])
+    assert "UNSUPPORTED_GENERALIZATION" not in _codes(report)
+
+
 def test_scattered_table_values_cannot_be_synthesized_into_range():
     report = _validate([_plan()], generated_texts=[{
         "text": "[SECTION:07-01] 验证步骤V1：误差在0.329至1.374之间。",
