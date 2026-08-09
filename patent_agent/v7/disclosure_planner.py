@@ -577,7 +577,8 @@ class PatentDisclosurePlanner:
             source += self._evidence_excerpts(evidence_store, sec["evidence_ids"])
             texts = self._llm_paragraphs(
                 "重构背景技术：识别最接近的现有技术路线类别，说明其技术不足，"
-                "自然过渡到本发明要解决的问题。不要复述论文引言。", source, 6)
+                "自然过渡到本发明要解决的问题。不要复述论文引言。不得把多个优化目标"
+                "改写为多物理场约束，也不得引入来源未列出的物理场、约束或应用场景。", source, 6)
             for t in texts:
                 paragraphs.append(para(t))
 
