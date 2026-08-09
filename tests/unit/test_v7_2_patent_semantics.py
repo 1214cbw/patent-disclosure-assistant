@@ -575,6 +575,20 @@ def test_validation_evidence_excerpt_excludes_sibling_role_chunk():
     assert "OtherNet" not in excerpt
 
 
+def test_open_vocabulary_entailment_reports_unknown_domain_phrase():
+    class Provider:
+        def generate_text(self, *, system_prompt, user_prompt):
+            return SimpleNamespace(text=(
+                '{"supported":false,"unsupported_phrases":["未由证据支持的应用领域"]}'
+            ))
+
+    issues = PatentDisclosurePlanner(provider=Provider())._evidence_entailment_issues(
+        "在一个来源未提及的应用领域中执行优化。",
+        "Perform three-objective optimization.",
+    )
+    assert issues == ["未由证据支持的应用领域"]
+
+
 def test_embodiment_step_number_is_not_treated_as_parameter():
     report = _validate([_plan()], generated_texts=[{
         "text": "[SECTION:07-01] S3：训练模型并输出潜在样本。",

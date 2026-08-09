@@ -557,6 +557,7 @@ class PatentDisclosurePlanner:
     def _llm_paragraphs(
         self, purpose: str, context: str, estimated: int,
         forbidden_terms: set[str] | None = None,
+        require_evidence_entailment: bool = False,
     ) -> list[str]:
         """One LLM call -> Chinese paragraphs (blank-line separated)."""
         prompt = (
@@ -593,6 +594,7 @@ class PatentDisclosurePlanner:
                 set().union(*(distinctive_technical_terms(p) for p in paragraphs))
                 & set(forbidden_terms or set())
             ) if paragraphs else []
+            entailment_issues: list[str] = []
             unsupported: list[str] = []
             if paragraphs and self.evidence_fingerprint is not None:
                 from patent_agent.v7.cross_case import _latin_tokens
@@ -600,9 +602,16 @@ class PatentDisclosurePlanner:
                 unsupported = sorted(
                     output_tokens - set(self.evidence_fingerprint.technical_tokens)
                 )
-            if (paragraphs and not has_inline_formula and not unsupported
-                    and not unsupported_parameters and not semantic_drift
-                    and not role_contamination):
+            deterministic_pass = (
+                paragraphs and not has_inline_formula and not unsupported
+                and not unsupported_parameters and not semantic_drift
+                and not role_contamination
+            )
+            if deterministic_pass and require_evidence_entailment:
+                entailment_issues = self._evidence_entailment_issues(
+                    "\n".join(paragraphs), context,
+                )
+            if deterministic_pass and not entailment_issues:
                 return paragraphs
             instructions: list[str] = []
             if has_inline_formula:
@@ -630,6 +639,11 @@ class PatentDisclosurePlanner:
                     "删除属于其他验证任务而非当前验证事实的技术标识（包括："
                     + "、".join(role_contamination[:12]) + "）"
                 )
+            if entailment_issues:
+                instructions.append(
+                    "删除或纠正当前事实及局部证据不能蕴含的技术表述（包括："
+                    + "、".join(entailment_issues[:8]) + "）"
+                )
             feedback = (
                 f"\n\n第{attempt + 1}次输出未通过证据边界检查。请重新撰写："
                 + "；".join(instructions) + "。"
@@ -640,8 +654,34 @@ class PatentDisclosurePlanner:
             f"unsupported_terms={unsupported[:12]}; "
             f"unsupported_parameters={unsupported_parameters[:12]}; "
             f"semantic_drift={semantic_drift[:12]}; "
-            f"role_contamination={role_contamination[:12]}"
+            f"role_contamination={role_contamination[:12]}; "
+            f"entailment_issues={entailment_issues[:8]}"
         )
+
+    def _evidence_entailment_issues(self, generated: str, source: str) -> list[str]:
+        """Open-vocabulary, evidence-local semantic check for high-risk prose."""
+        prompt = (
+            "你是严格的专利证据蕴含审计器。仅判断候选中文是否被当前验证事实和局部证据支持。"
+            "若候选增加了未出现的应用领域、设备类型、物理量类别、模型、数据集、场景、"
+            "技术关系、比较任务或效果结论，supported必须为false。不要依据常识补足。"
+            "只输出JSON：{\"supported\":true或false,\"unsupported_phrases\":[\"短语\"]}。\n\n"
+            f"### 当前事实与局部证据\n{source}\n\n### 候选中文\n{generated}"
+        )
+        raw = _text_retry(
+            self.provider,
+            system_prompt="Evidence entailment only. Return strict JSON.",
+            user_prompt=prompt,
+            cache_dir=self.cache_dir,
+        )
+        match = re.search(r"\{.*\}", raw, re.S)
+        try:
+            payload = json.loads(match.group(0) if match else raw)
+        except (json.JSONDecodeError, AttributeError, TypeError):
+            return ["语义审计器未返回有效JSON"]
+        if payload.get("supported") is True:
+            return []
+        phrases = [str(item).strip() for item in payload.get("unsupported_phrases", []) if str(item).strip()]
+        return phrases or ["候选段落未通过证据蕴含审计"]
 
     def _generate_section(self, case_id, sec, understanding, evidence_store, strategy):
         kind = sec["kind"]
@@ -854,6 +894,7 @@ class PatentDisclosurePlanner:
                     "数据集、模型组合或评价任务。证据已经给出具体结果时，不得写成待发明人补充。",
                     context, 1,
                     forbidden_terms=forbidden_terms,
+                    require_evidence_entailment=True,
                 )
                 paragraphs.append(para(
                     f"验证步骤V{index}：" + "".join(texts),
