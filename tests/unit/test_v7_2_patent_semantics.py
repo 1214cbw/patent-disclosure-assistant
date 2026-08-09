@@ -509,6 +509,22 @@ def test_paragraph_generation_retries_unsupported_exact_parameter():
     assert paragraphs == ["在该处理过程中共评估3200个候选设计方案。"]
 
 
+def test_paragraph_generation_retries_local_scenario_drift():
+    responses = iter([
+        "本环节在线识别当前工况并动态切换约束模式。",
+        "本环节分别在两个固定目标工况下评估相应约束。",
+    ])
+
+    class Provider:
+        def generate_text(self, *, system_prompt, user_prompt):
+            return SimpleNamespace(text=next(responses))
+
+    paragraphs = PatentDisclosurePlanner(provider=Provider())._llm_paragraphs(
+        "说明约束评估。", "Offline constraints are evaluated at two fixed target conditions.", 1
+    )
+    assert paragraphs == ["本环节分别在两个固定目标工况下评估相应约束。"]
+
+
 def test_embodiment_step_number_is_not_treated_as_parameter():
     report = _validate([_plan()], generated_texts=[{
         "text": "[SECTION:07-01] S3：训练模型并输出潜在样本。",

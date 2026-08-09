@@ -572,9 +572,12 @@ class PatentDisclosurePlanner:
             has_inline_formula = any(
                 _contains_generated_formula(p) for p in paragraphs
             )
-            from patent_agent.v7_2.semantics import unsupported_local_parameters
+            from patent_agent.v7_2.semantics import local_generation_drift, unsupported_local_parameters
             unsupported_parameters = sorted(set().union(*(
                 set(unsupported_local_parameters(p, context)) for p in paragraphs
+            ))) if paragraphs else []
+            semantic_drift = sorted(set().union(*(
+                set(local_generation_drift(p, context)) for p in paragraphs
             ))) if paragraphs else []
             unsupported: list[str] = []
             if paragraphs and self.evidence_fingerprint is not None:
@@ -584,7 +587,7 @@ class PatentDisclosurePlanner:
                     output_tokens - set(self.evidence_fingerprint.technical_tokens)
                 )
             if (paragraphs and not has_inline_formula and not unsupported
-                    and not unsupported_parameters):
+                    and not unsupported_parameters and not semantic_drift):
                 return paragraphs
             instructions: list[str] = []
             if has_inline_formula:
@@ -602,6 +605,11 @@ class PatentDisclosurePlanner:
                     "删除或纠正参考材料未出现的精确数值/单位（包括："
                     + "、".join(unsupported_parameters[:12]) + "）；不得估算或取整"
                 )
+            if semantic_drift:
+                instructions.append(
+                    "删除与当前证据角色或关系不一致的表述（包括："
+                    + "、".join(semantic_drift) + "）"
+                )
             feedback = (
                 f"\n\n第{attempt + 1}次输出未通过证据边界检查。请重新撰写："
                 + "；".join(instructions) + "。"
@@ -610,7 +618,8 @@ class PatentDisclosurePlanner:
             "V7_DISCLOSURE_EVIDENCE_VOCABULARY_FAILED: "
             f"inline_formula={has_inline_formula}; "
             f"unsupported_terms={unsupported[:12]}; "
-            f"unsupported_parameters={unsupported_parameters[:12]}"
+            f"unsupported_parameters={unsupported_parameters[:12]}; "
+            f"semantic_drift={semantic_drift[:12]}"
         )
 
     def _generate_section(self, case_id, sec, understanding, evidence_store, strategy):

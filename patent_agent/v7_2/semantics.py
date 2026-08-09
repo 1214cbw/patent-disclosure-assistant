@@ -234,6 +234,50 @@ def unsupported_local_parameters(text: str, source: str) -> list[str]:
     return sorted(set(unsupported))
 
 
+def local_generation_drift(text: str, source: str) -> list[str]:
+    """Detect paragraph-local role/relation drift early enough to trigger retry."""
+    reasons: list[str] = []
+    online = re.compile(
+        r"实时|在线|每(?:个|次)控制周期|当前(?:控制)?周期|"
+        r"(?:获取|采集|接收).{0,12}反馈|动态.{0,18}(?:切换|选择|启用)"
+    )
+    source_online = re.compile(
+        r"实时|在线|real[- ]?time|online|control\s+cycle|feedback",
+        re.I,
+    )
+    target = re.compile(
+        r"(?:生成|获得|输出).{0,30}符合.{0,12}(?:目标|要求|需求)|"
+        r"符合.{0,12}(?:目标|要求|需求).{0,24}(?:拓扑|样本|输出|设计|编码)"
+    )
+    source_target = re.compile(
+        r"(?:目标|要求|需求).{0,30}(?:生成|输出|设计)|"
+        r"(?:condition(?:ed|al)?|target[- ]conditioned|satisf(?:y|ies|ying|ied))"
+        r".{0,40}(?:target|objective|requirement|design|output)",
+        re.I,
+    )
+    normalization = re.compile(
+        r"(?:相对于|除以|归一化于).{0,16}(?:平均|均值).{0,12}(?:比例|比率|百分比|脉动)|"
+        r"(?:比例|比率|百分比).{0,12}(?:平均|均值)"
+    )
+    source_normalization = re.compile(
+        r"相对于|除以|归一化|relative\s+to|divid(?:e|ed)\s+by|normalized?\s+by",
+        re.I,
+    )
+    pending_numeric = re.compile(
+        r"(?:具体)?(?:数值|数据|结果).{0,12}待(?:发明人)?补充|"
+        r"待(?:发明人)?.{0,12}补充.{0,12}(?:数值|数据|结果)"
+    )
+    if online.search(text) and not source_online.search(source):
+        reasons.append("unsupported online/control scenario")
+    if target.search(text) and not source_target.search(source):
+        reasons.append("unsupported target-satisfaction relation")
+    if normalization.search(text) and not source_normalization.search(source):
+        reasons.append("unsupported metric normalization")
+    if pending_numeric.search(text) and len(re.findall(r"\d+(?:\.\d+)?", source)) >= 2:
+        reasons.append("available numeric evidence marked pending")
+    return reasons
+
+
 def _semantic_strings(value) -> list[str]:
     if value is None:
         return []
