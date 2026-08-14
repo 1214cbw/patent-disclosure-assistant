@@ -187,7 +187,9 @@ class FigurePlannerV7:
             title = str(entry.get("title") or "来源材料结构示意图")
             return self._contract(FigureSpec(
                 id=f"FIG-{number:03d}", number=number, type="system", title=title,
-                nodes=[FigureNode(id="R1", label="来源材料结构示意图")], edges=[],
+                nodes=[FigureNode(id="R1", label="来源材料结构示意图",
+                                  evidence_ids=list(entry.get("evidence_ids", [])))],
+                edges=[],
                 source_ids=list(entry.get("evidence_ids", [])), png_path=str(path),
                 provenance="extracted", source_type="case_local_registry",
                 source_figure_ref=str(entry.get("source_figure_ref", path.name)),

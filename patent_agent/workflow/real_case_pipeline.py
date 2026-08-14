@@ -807,9 +807,16 @@ class RealCaseWorkflow:
         complete = DisclosureCompletenessValidator().validate(disclosure)
         grounded = UnsupportedParagraphValidator().validate(disclosure)
         concepts = case_concepts_from_understanding(understanding)
+        # Same evidence-augmented fingerprint as finalize's disclosure gate:
+        # report-section contamination checks must not flag terms that the
+        # case's own raw evidence supports (REAL-PAPER-003: nondominated /
+        # sorting / genetic / tree1 were reported unsupported with the
+        # understanding-only fingerprint).
+        case_dir = self.manager.case_dir(case_id)
+        evidence = EvidenceStore(case_dir / "evidence")
         contamination = CrossCaseContaminationValidator(
             concepts, self._other_case_fingerprints(case_id),
-            build_case_evidence_fingerprint(understanding)).validate(
+            build_case_evidence_fingerprint(understanding, evidence)).validate(
                 disclosure=disclosure, claims=claims, figures=figures)
         placeholders = PlaceholderLeakValidator().validate(
             disclosure=disclosure, claims=claims, figures=figures)

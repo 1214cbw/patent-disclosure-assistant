@@ -11,6 +11,7 @@ double-JSON regression, and REAL-PAPER-002 (flow matching) vs REAL-PAPER-001
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -829,3 +830,156 @@ def test_traceability_feature_citing_unknown_evidence_is_broken():
     claims = GroundedClaimSet(title="t", claims=[claim])
     report = build_traceability(disclosure, claims, u)
     assert "TR-CL1-CORE-F001" in report.broken_links
+
+
+# ── concept registry: active learning + XGBoost (REAL-PAPER-003) ───────────
+
+def test_detect_active_learning_concepts():
+    """REAL-PAPER-003 evidence (active learning + XGBoost surrogate for
+    IPMSM torque optimization) detects the new families and stays free of
+    latent diffusion / flow matching."""
+    from patent_agent.v7.concepts import detect_case_concepts
+    evidence = [
+        "An active learning loop selects the most informative unlabeled "
+        "samples via an acquisition function and uncertainty sampling.",
+        "An XGBoost surrogate model with gradient-boosted decision trees "
+        "predicts torque under FEA evaluation budget constraints.",
+        "The NSGA-II baseline is benchmarked against the active learning "
+        "strategy on torque ripple and average torque.",
+    ]
+    concepts = detect_case_concepts(evidence)
+    assert "active_learning" in concepts
+    assert "surrogate" in concepts
+    assert "optimization" in concepts
+    assert "fea_simulation" in concepts
+    assert "latent_diffusion" not in concepts
+    assert "flow_matching" not in concepts
+
+
+def test_forbidden_concepts_exclude_active_learning_owner():
+    """A case owning active_learning must not have it forbidden, while the
+    LDM case keeps its own foreign concepts."""
+    from patent_agent.v7.concepts import forbidden_concepts_for
+    case_concepts = {"active_learning", "surrogate", "optimization",
+                     "fea_simulation", "data_generation"}
+    other = {"REAL-PAPER-002": {"flow_matching", "vae", "surrogate"},
+             "REAL-PAPER-001": {"latent_diffusion", "vae"}}
+    forbidden = forbidden_concepts_for(case_concepts, other)
+    assert "active_learning" not in forbidden
+    assert "latent_diffusion" in forbidden
+    assert "flow_matching" in forbidden
+
+
+# ── V7.2 REAL-PAPER-003 regression: baseline isolation + prose sanitization ─
+
+class _CannedProvider:
+    """Deterministic stub: JSON for title/titles calls, plain prose otherwise."""
+
+    def __init__(self, prose: str):
+        self.prose = prose
+        self.calls = []
+
+    def generate_text(self, *, system_prompt, user_prompt, context=None):
+        self.calls.append(user_prompt[:60])
+        if "SECTION_TITLE" in user_prompt:
+            count = len(re.findall(r'"index":\s*\d+', user_prompt))
+            titles = ",".join(f'"技术环节{index}"' for index in range(1, count + 1))
+            return type("R", (), {"text": '{"titles":[' + titles + "]}"})()
+        if "蕴含审计" in user_prompt:
+            return type("R", (), {"text": '{"supported": true, "unsupported_phrases": []}'})()
+        return type("R", (), {"text": self.prose})()
+
+
+def _al_understanding() -> TechnicalUnderstandingResult:
+    """REAL-PAPER-003-like understanding: AL+XGBoost invention facts plus a
+    benchmark-config fact (category 'benchmark') the semantic registry marks
+    as COMPARISON_BASELINE via the comparison experiment."""
+    facts = [
+        _fact("F-AL1", "An active learning loop selects the most informative samples via an acquisition function."),
+        _fact("F-AL2", "An XGBoost surrogate model with Tree1 to Treek members predicts torque under an FEA evaluation budget."),
+        _fact("F-BENCH", "Benchmark NSGA-II configuration: population size 32, simulated binary crossover (probability 0.9, distribution index 15.0), polynomial mutation (distribution index 20.0), tournament selection."),
+    ]
+    facts[2] = facts[2].model_copy(update={"category": "benchmark"})
+    return TechnicalUnderstandingResult(
+        technical_field=[_stmt("内置式永磁同步电机转矩优化")],
+        technical_problems=[_stmt("多参数电机优化计算代价高")],
+        system_overview=[_stmt("主动学习与代理模型耦合的优化框架")],
+        components=[ComponentKnowledge(component_id="C-1", name="XGBoost代理模型",
+                                       description=_stmt("预测转矩"))],
+        steps=[MethodStepKnowledge(step_id="S-1", text=_stmt("均匀采样构建标注数据集")),
+               MethodStepKnowledge(step_id="S-2", text=_stmt("训练XGBoost集成代理模型")),
+               MethodStepKnowledge(step_id="S-3", text=_stmt("主动学习选择高价值样本"))],
+        data_flows=[], control_flows=[],
+        inputs=[_stmt("设计变量")], outputs=[_stmt("最优转矩与设计参数")],
+        parameters=[ParameterKnowledge(parameter_id="P-1", name="种群规模",
+                                       evidence_ids=["E-1"],
+                                       status=EvidenceStatus.SOURCE_FACT)],
+        equations=[], technical_effects=[_stmt("降低有限元分析调用次数")],
+        experiments=[
+            _stmt("The active learning method is compared against the NSGA-II baseline "
+                  "under the same FEA evaluation budget."),
+            _stmt("XGBoost ensemble R2 reaches 0.995 on d-axis flux linkage validation."),
+        ],
+        alternatives=[_stmt("NSGA-II: multi-objective evolutionary search")],
+        uncertainties=[InventorQuestion(question_id="Q-1", text="参数取值？", priority="P0")],
+        facts=facts,
+    )
+
+
+def _al_strategy() -> GroundedProtectionStrategy:
+    return GroundedProtectionStrategy(
+        inventive_concept="主动学习与XGBoost代理模型耦合的转矩优化",
+        independent_claim_core=[
+            _stmt("均匀采样构建标注数据集"),
+            _stmt("训练XGBoost集成代理模型预测磁链与转矩"),
+            _stmt("基于主动学习选择高价值样本"),
+        ],
+        dependent_claim_features=[], optional_features=[],
+        broad_terms=[], narrow_terms=[], parameters_to_avoid_locking=[],
+        alternative_embodiments_needed=[], support_gaps=[],
+        risks=[], inventor_questions=[], scope_strategy="Balanced",
+    )
+
+
+def test_benchmark_fact_excluded_from_solution_clusters():
+    """A 'benchmark'-category fact naming a COMPARISON_BASELINE term must not
+    become a 技术方案 (5.N) cluster, and its terms must not surface in
+    section-5 prose (REAL-PAPER-003 run-1: BASELINE_PROMOTED_TO_INVENTION
+    x5 on a generated '5.20 NSGA-II基准算法参数配置' section)."""
+    understanding = _al_understanding()
+    strategy = _al_strategy()
+    planner = PatentDisclosurePlanner(
+        provider=_CannedProvider("本环节描述主动学习代理模型的转矩优化流程。"),
+        cache_dir=None)
+    figures = FigurePlannerV7("REAL-003", understanding).plan()
+    disclosure = planner.plan("REAL-003", understanding, None, strategy, figures=figures)
+    solution = [section for section in disclosure.sections
+                if section.section_id.startswith("05-")]
+    joined = " ".join(section.title + " " + " ".join(p.text for p in section.paragraphs)
+                      for section in solution)
+    lowered = joined.lower()
+    assert "nsga" not in lowered and "基准算法" not in lowered
+    assert "种群规模" not in joined and "交叉概率" not in joined
+    # the invention content survives as a solution subsection
+    assert "主动学习" in joined or "代理模型" in joined
+
+
+def test_evidence_id_reference_stripped_from_prose():
+    """Generated prose echoing an internal '[EV-<doc>-P00N-<hash>]' citation
+    marker must be sanitized before it reaches the disclosure - the marker
+    would surface in the docx and trip the semantic parameter gate on the
+    hash fragments (REAL-PAPER-003 run-1: UNSUPPORTED_PARAMETER x4)."""
+    from types import SimpleNamespace
+    provider = _CannedProvider(
+        "本环节描述主动学习样本查询机制，证据[EV-DOCD5D5DDDCF3-P006-71ca2a05fd]"
+        "支持相关表述，优化过程使用有限元分析评估。")
+    planner = PatentDisclosurePlanner(provider=provider, cache_dir=None)
+    sec = {"kind": "field", "section_id": "02", "title": "2. 技术领域",
+           "facts": [], "evidence_ids": []}
+    understanding = SimpleNamespace(technical_field=[SimpleNamespace(
+        text="电机转矩优化，证据编号EV-DOCD5D5DDDCF3-P006-71ca2a05fd支持相关表述")])
+    section = planner._generate_section("REAL-003", sec, understanding, None, None)
+    for paragraph in section.paragraphs:
+        assert "EV-" not in paragraph.text
+        assert "71ca" not in paragraph.text
+        assert "P006" not in paragraph.text

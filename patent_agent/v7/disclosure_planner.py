@@ -486,12 +486,6 @@ class PatentDisclosurePlanner:
         # Section 3/4 own problem statements and system overviews. Section 5
         # is reserved for concrete mechanisms; broad overview facts otherwise
         # invite unsupported architectural elaboration and duplicate Section 4.
-        detailed_facts = [fact for fact in facts_all if not any(
-            token in re.sub(r"[^a-z]", "", str(getattr(fact, "category", "")).lower())
-            for token in ("problem", "system", "overview", "result", "experiment",
-                          "validation", "metric", "limitation")
-        )]
-        clusters = cluster_facts(detailed_facts or facts_all)
         source_texts = [_clean_statement(f) for f in facts_all]
         if evidence_store is not None:
             source_texts.extend(
@@ -505,13 +499,37 @@ class PatentDisclosurePlanner:
         self.evidence_fingerprint = build_case_evidence_fingerprint(
             understanding, evidence_store
         )
-        section_titles = self.generate_section_titles(clusters)
-        from patent_agent.v7_2.semantics import EvidenceBoundEmbodimentPlanner, enrich_registry
+        from patent_agent.v7_2.semantics import (
+            EvidenceBoundEmbodimentPlanner, TechnicalRole, _latin_terms, _norm,
+            enrich_registry,
+        )
         self.semantic_bundle = EvidenceBoundEmbodimentPlanner().plan(understanding, strategy)
         enrich_registry(self.semantic_bundle, source_texts)
+        # V7.2: comparison-baseline facts (benchmark config / comparative
+        # results) must never become 技术方案 (section 5) clusters - the
+        # semantic gate rejects any baseline term in embodiment prose, so a
+        # fact that names one cannot be written there anyway. Filter by the
+        # registry's COMPARISON_BASELINE role terms instead of category names:
+        # the LLM's free-form categories miss "benchmark" (REAL-PAPER-003's
+        # NSGA-II config facts leaked into section 5.20 as a result).
+        baseline_terms = {
+            _norm(entry.term)
+            for entry in self.semantic_bundle.registry.technical_roles
+            if entry.role == TechnicalRole.COMPARISON_BASELINE
+        }
+        detailed_facts = [fact for fact in facts_all if not any(
+            token in re.sub(r"[^a-z]", "", str(getattr(fact, "category", "")).lower())
+            for token in ("problem", "system", "overview", "result", "experiment",
+                          "validation", "metric", "limitation")
+        ) and not (
+            baseline_terms
+            & {_norm(token) for token in _latin_terms(str(getattr(fact, "statement", "")))}
+        )]
+        clusters = cluster_facts(detailed_facts or facts_all)
         self.semantic_bundle.section5_fact_clusters = [
             {str(getattr(fact, "fact_id", "")) for fact in cluster} for cluster in clusters
         ]
+        section_titles = self.generate_section_titles(clusters)
         plan = self.build_plan(
             understanding, strategy, figures, clusters, title=title,
             section_titles=section_titles,
@@ -704,6 +722,11 @@ class PatentDisclosurePlanner:
             pid = f"DISC-{sec['section_id']}-P{para_idx:03d}"
             para_idx += 1
             text = _clean_html(text)  # never ship <sub>/<sup> markup to the docx
+            # Never ship internal evidence references in prose: the LLM
+            # occasionally echoes the "[EV-...]" markers it sees in excerpts,
+            # which would surface in the docx and be misread by the semantic
+            # parameter gate as exact parameters (hash fragments).
+            text = re.sub(r"\[EV-[^\]]*\]", "", text).strip()
             if self.term_normalizer is not None:
                 text = self.term_normalizer.normalize(text)
             return GroundedParagraph(
