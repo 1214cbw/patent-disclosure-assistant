@@ -1,12 +1,24 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "cn-patent-agent"
 version = "0.1.0"
 description = "Evidence-grounded Chinese Patent Agent with native Word OMML equations"
+readme = "README.md"
 requires-python = ">=3.11"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+keywords = ["patent", "technical-disclosure", "evidence-traceability", "docx", "omml"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Operating System :: Microsoft :: Windows",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Office/Business :: Office Suites",
+]
 dependencies = [
   "pydantic>=2.8",
   "python-docx>=1.2",
@@ -14,16 +26,28 @@ dependencies = [
   "pypdf>=5.0",
   "python-pptx>=1.0",
   "Pillow>=10.0",
+  "PyMuPDF>=1.24,<2",
+  "matplotlib>=3.8,<4",
   "fastapi>=0.115",
   "uvicorn>=0.30",
   "pywin32>=308; platform_system == 'Windows'",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0"]
+dev = [
+  "build>=1.2,<2",
+  "pytest>=8.0,<10",
+  "pytest-cov>=6,<8",
+]
 
 [project.scripts]
 patent-agent = "app.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/1214cbw/patent-disclosure-assistant"
+Documentation = "https://github.com/1214cbw/patent-disclosure-assistant#readme"
+Issues = "https://github.com/1214cbw/patent-disclosure-assistant/issues"
+Source = "https://github.com/1214cbw/patent-disclosure-assistant"
 
 [tool.setuptools.packages.find]
 where = ["."]

@@ -1,0 +1,29 @@
+name: 功能建议
+description: 建议具有通用价值的新能力或改进
+title: "[Feature]: "
+labels: [enhancement, triage]
+body:
+  - type: checkboxes
+    attributes:
+      label: 提交前检查
+      options:
+        - label: 我已搜索现有 Issues，确认没有相同建议
+          required: true
+        - label: 建议不依赖无法公开的专利、论文或客户材料
+          required: true
+  - type: textarea
+    attributes:
+      label: 使用场景
+      description: 请描述谁会遇到什么问题，以及现有工作流为什么不足。
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: 建议方案
+      description: 可说明界面、数据结构、质量门禁或兼容性要求。
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: 替代方案与风险
+      description: 可选。尤其欢迎说明误报、隐私、成本和法律边界。

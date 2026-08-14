@@ -1,11 +1,18 @@
 .env
 .env.*
 !.env.example
+.DS_Store
+.idea/
+.vscode/
 __pycache__/
 *.py[cod]
 *.egg-info/
 .pytest_cache/
 .venv/
+dist/
+build/
+htmlcov/
+.coverage
 workspace/cache/
 workspace/cases/*
 !workspace/cases/.gitkeep
@@ -25,5 +32,6 @@ runtime/job_errors/
 runtime/patent_agent_server.json
 runtime/patent_agent_server.log
 runtime/progress/REAL-*.json
+runtime/*.pid
 reference/
 tmp/

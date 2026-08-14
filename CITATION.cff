@@ -1,0 +1,14 @@
+cff-version: 1.2.0
+message: "If you use this software in research, please cite it using the metadata below."
+title: "Patent Disclosure Assistant"
+type: software
+version: 0.1.0
+date-released: 2026-08-13
+license: Apache-2.0
+repository-code: "https://github.com/1214cbw/patent-disclosure-assistant"
+url: "https://github.com/1214cbw/patent-disclosure-assistant"
+abstract: >-
+  An evidence-grounded, local-first assistant for producing reviewable Chinese
+  patent disclosure drafts with traceable evidence and editable Word equations.
+authors:
+  - name: "Patent Disclosure Assistant contributors"

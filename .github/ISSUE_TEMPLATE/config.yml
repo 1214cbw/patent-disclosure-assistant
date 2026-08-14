@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 私密安全漏洞
+    url: https://github.com/1214cbw/patent-disclosure-assistant/security/advisories/new
+    about: 请使用 GitHub 私密漏洞报告，不要公开敏感安全问题。
